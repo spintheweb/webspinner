@@ -9,9 +9,18 @@
  * MIT License. Copyright (c) 2024 Giancarlo Trevisan
  */
 // deno-lint-ignore-file
-self.addEventListener("load", stwStartWebsocket);
 
-function newId(uuid) {
+let stwWS;
+let stwReconnectTimer = null;
+
+window.addEventListener("load", () => {
+	stwStartWebsocket();
+	if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
+		_enableStudio();
+	}
+});
+
+function _newId(uuid) {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const hex = uuid.replace(/-/g, "");
 
@@ -27,16 +36,58 @@ function newId(uuid) {
 	return "x" + out;
 }
 
-let stwWS;
-let stwReconnectTimer = null;
 const stwTabId = sessionStorage.getItem("stwTabId") || (() => {
 	const raw = crypto.randomUUID
 		? crypto.randomUUID()
 		: (Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2));
-	const id = newId(raw);
+	const id = _newId(raw);
 	sessionStorage.setItem("stwTabId", id);
 	return id;
 })();
+
+// --- Studio helpers ---
+function _hasStudioCookie() {
+	return document.cookie.split("; ").some((c) => c.startsWith("stwStudio=1"));
+}
+function _enableStudio() {
+	if (document.getElementById("stwStudio")) return;
+	const stash = document.createElement("div");
+	while (document.body.firstChild) stash.appendChild(document.body.firstChild);
+	document.body.insertAdjacentHTML(
+		"afterbegin",
+		`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwSite"></div></div><footer id="stwStatusbar"></footer></div>`,
+	);
+	while (stash.firstChild) document.getElementById("stwSite").appendChild(stash.firstChild);
+	if (!document.cookie.includes("stwStudio=")) document.cookie = "stwStudio=1; path=/; max-age=31536000";
+
+	// If WS is open, load studio interface; else defer to onopen
+	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
+		stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false } }));
+	} else {
+		// flag for onopen
+		window._stwStudioPending = true;
+	}
+}
+function _disableStudio() {
+	const stash = document.getElementById("stwSite");
+	if (stash) {
+		while (stash.firstChild) document.body.appendChild(stash.firstChild);
+	}
+	document.getElementById("stwStudio")?.remove();
+	document.cookie = "stwStudio=; path=/; max-age=0";
+}
+
+// Toggle studio mode with Alt+F12
+window.addEventListener("keydown", (event) => {
+	if (event.altKey && event.key == "F12") {
+		event.preventDefault();
+		if (document.getElementById("stwStudio")) {
+			_disableStudio();
+		} else {
+			_enableStudio();
+		}
+	}
+});
 
 function stwStartWebsocket() {
 	if (stwWS && (stwWS.readyState === WebSocket.OPEN || stwWS.readyState === WebSocket.CONNECTING)) return;
@@ -58,11 +109,16 @@ function stwStartWebsocket() {
 				lang: navigator.language,
 				langs: navigator.languages,
 				tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				placeholder: "", // optional, server may echo this back
+				placeholder: "",
 			},
 		}));
 
-		// TODO: Update lang to reflect the session language, should each <article> have a lang attribute that reflects its language?
+		// If studio is active or pending, load its interface
+		if (document.getElementById("stwStudio") || window._stwStudioPending || _hasStudioCookie()) {
+			window._stwStudioPending = false;
+			stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false } }));
+		}
+
 		document.querySelectorAll("[lang]").forEach((element) => element.setAttribute("lang", "en-US"));
 	};
 
@@ -180,62 +236,8 @@ function stwToggleCollapse(event) {
 	}
 }
 
-// Toggle studio mode with Alt+F12
-window.addEventListener("keydown", (event) => {
-	if (event.altKey && event.key == "F12") {
-		event.preventDefault();
-		if (document.getElementById("stwStudio")) {
-			const stash = document.getElementById("stwSite");
-			while (stash.firstChild) {
-				document.body.appendChild(stash.firstChild);
-			}
-			document.getElementById("stwStudio").remove();
-		} else {
-			const stash = document.createElement("div");
-			while (document.body.firstChild) {
-				stash.appendChild(document.body.firstChild);
-			}
-			document.body.insertAdjacentHTML(
-				"afterbegin",
-				`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwSite"></div></div><footer id="stwStatusbar"></footer></div>`,
-			);
-			while (stash.firstChild) {
-				document.getElementById("stwSite").appendChild(stash.firstChild);
-			}
-			stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false } }));
-		}
-	}
-});
-
-// Handle resizing of the sidebar in studio mode
-document.addEventListener("mousedown", function (event) {
-	const splitter = event.target.closest(".stwSplitter");
-
-	if (!splitter) return;
-
-	const container = splitter.parentElement;
-	const aside = container.querySelector("aside");
-	const startX = event.clientX;
-	const startWidth = aside.offsetWidth;
-
-	function onMouseMove(e2) {
-		const dx = e2.clientX - startX;
-		let newWidth = startWidth + dx;
-		newWidth = Math.max(100, Math.min(window.innerWidth * 0.5, newWidth));
-		aside.style.width = `${newWidth}px`;
-	}
-
-	function onMouseUp() {
-		document.removeEventListener("mousemove", onMouseMove);
-		document.removeEventListener("mouseup", onMouseUp);
-	}
-
-	document.addEventListener("mousemove", onMouseMove);
-	document.addEventListener("mouseup", onMouseUp);
-});
-
 // Open content properties when studio mode is enabled with Alt+click
-window.addEventListener("click", function (e) {
+document.addEventListener("click", function (e) {
 	const article = e.target.closest("article[id]");
 	if (document.getElementById("stwStudio") && article && e.altKey) {
 		e.stopPropagation();
@@ -250,36 +252,36 @@ window.addEventListener("click", function (e) {
 	}
 });
 
-// Handle navigation inside the webbase
-// This allows the user to navigate inside the webbase without reloading the page
-document.addEventListener("DOMContentLoaded", () => {
-	document.body.addEventListener("click", function (event) {
-		const target = event.target.closest("a[href]");
-
-		const href = target?.getAttribute("href").replace(window.location.origin, "");
-		if (href?.startsWith("/")) {
-			event.preventDefault();
-			//			history.pushState({}, "", target.getAttribute("href"));
-			if (stwWS && stwWS.readyState === WebSocket.OPEN) {
-				stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {} }));
-			} else {
-				console.warn("WebSocket is not open, cannot send PATCH request, reload page.");
-				window.location.reload();
-			}
+// Global, capture-phase nav handler (works before/after studio reparenting)
+function _stwHandleNavClick(event) {
+	const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+	let a = null;
+	for (const n of path) {
+		if (n && n.nodeType === 1 && typeof n.closest === "function") {
+			a = n.closest("a[href]");
+			if (a) break;
 		}
-	});
-});
+	}
+	if (!a) return;
+	const href = a.getAttribute("href")?.replace(window.location.origin, "");
+	if (!href || !href.startsWith("/")) return;
 
-// Optional: handle browser back/forward navigation
-window.addEventListener("popstate", function () {
-	stwWS.send(JSON.stringify({ method: "PATCH", resource: location.pathname, options: {} }));
-});
+	event.preventDefault();
+	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
+		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {} }));
+	} else {
+		window.location.href = a.getAttribute("href");
+	}
+}
+
+// Attach once, capture
+document.addEventListener("click", _stwHandleNavClick, true);
 
 // --- Lazy editor loader utilities ---
 const _stwLoaded = { jquery: false, summernote: false, ace: false };
 const _stwLoading = {};
 
-function stwLoadScript(src) {
+function _stwLoadScript(src) {
 	if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
 	if (_stwLoading[src]) return _stwLoading[src];
 	_stwLoading[src] = new Promise((resolve, reject) => {
@@ -293,7 +295,7 @@ function stwLoadScript(src) {
 	return _stwLoading[src];
 }
 
-function stwLoadStyle(href) {
+function _stwLoadStyle(href) {
 	if (document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) return Promise.resolve();
 	if (_stwLoading[href]) return _stwLoading[href];
 	_stwLoading[href] = new Promise((resolve) => {
@@ -308,23 +310,23 @@ function stwLoadStyle(href) {
 	return _stwLoading[href];
 }
 
-window.stwLoadSummernote = function stwLoadSummernote() {
+window.stwLoadSummernote = async function stwLoadSummernote() {
 	if (_stwLoaded.summernote) return Promise.resolve();
 	const jqueryCdn = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js";
 	const snCss = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css";
 	const snJs = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.js";
-	const ensureJq = window.jQuery ? Promise.resolve() : stwLoadScript(jqueryCdn).then(() => {
+	const ensureJq = window.jQuery ? Promise.resolve() : _stwLoadScript(jqueryCdn).then(() => {
 		_stwLoaded.jquery = true;
 	});
-	return Promise.all([ensureJq, stwLoadStyle(snCss)]).then(() => stwLoadScript(snJs)).then(() => {
-		_stwLoaded.summernote = true;
-	});
+	await Promise.all([ensureJq, _stwLoadStyle(snCss)]);
+	_stwLoadScript(snJs);
+	_stwLoaded.summernote = true;
 };
 
 window.stwLoadAce = function stwLoadAce() {
 	if (_stwLoaded.ace) return Promise.resolve();
 	const aceJs = "https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.min.js";
-	return stwLoadScript(aceJs).then(() => {
+	return _stwLoadScript(aceJs).then(() => {
 		_stwLoaded.ace = true;
 	});
 };

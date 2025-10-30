@@ -385,6 +385,13 @@ if [ "$UPGRADE_MODE" = true ]; then
     rsync -av --exclude='.data' "$TEMP_EXTRACT/public/" "$INSTALL_DIR/public/" 2>/dev/null || cp -r "$TEMP_EXTRACT/public"/* "$INSTALL_DIR/public/" 2>/dev/null || true
   fi
 
+  # Always replace client script on upgrade to ensure latest behavior
+  if [ -f "$TEMP_EXTRACT/public/scripts/stwClient.js" ]; then
+    install -d "$INSTALL_DIR/public/scripts" 2>/dev/null || true
+    cp -f "$TEMP_EXTRACT/public/scripts/stwClient.js" "$INSTALL_DIR/public/scripts/stwClient.js" 2>/dev/null || true
+    echo "Updated public/scripts/stwClient.js"
+  fi
+
   # Optionally replace root .data directory if requested
   if [ "$REPLACE_DATA" = true ] && [ -d "$TEMP_EXTRACT/.data" ]; then
     echo "Replacing .data directory contents (requested via --replace-data) ..."
@@ -396,6 +403,21 @@ if [ "$UPGRADE_MODE" = true ]; then
 else
   # Fresh install - copy everything
   cp -r "$TEMP_EXTRACT"/* "$INSTALL_DIR/"
+fi
+
+# Ensure essential data files exist; copy from payload if missing (both install and upgrade)
+mkdir -p "$INSTALL_DIR/.data"
+if [ ! -f "$INSTALL_DIR/.data/datasources.json" ] && [ -f "$TEMP_EXTRACT/.data/datasources.json" ]; then
+  cp "$TEMP_EXTRACT/.data/datasources.json" "$INSTALL_DIR/.data/"
+  echo "Copied missing .data/datasources.json from payload"
+fi
+if [ ! -f "$INSTALL_DIR/.data/users.json" ] && [ -f "$TEMP_EXTRACT/.data/users.json" ]; then
+  cp "$TEMP_EXTRACT/.data/users.json" "$INSTALL_DIR/.data/"
+  echo "Copied missing .data/users.json from payload"
+fi
+if [ ! -f "$INSTALL_DIR/.data/webbase.wbdl" ] && [ -f "$TEMP_EXTRACT/.data/webbase.wbdl" ]; then
+  cp "$TEMP_EXTRACT/.data/webbase.wbdl" "$INSTALL_DIR/.data/"
+  echo "Copied missing .data/webbase.wbdl from payload"
 fi
 
 # Clean up temp directory
@@ -524,7 +546,7 @@ ALLOW_DEV="false"
 cat > "$INSTALL_DIR/.env" << EOF
 # Webspinner Environment Configuration
 # Generated during installation
-HOST=$HOST
+HOST=localhost
 PORT=$PORT
 CERTFILE=$CERTFILE
 KEYFILE=$KEYFILE
@@ -800,7 +822,7 @@ sudo ./server.sh
 
 ### Upgrade
 
-Run installer on existing installation to upgrade. Preserves configuration, user data, certificates, and custom webbaselets.
+Run installer on existing installation to upgrade. Preserves configuration, user data, certificates, and webbase.
 
 ### Requirements
 

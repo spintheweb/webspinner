@@ -12,7 +12,7 @@
 
 #stwStudio > div {
 	display: grid;
-	grid-template-columns: auto 5px 1fr; 
+	grid-template-columns: auto 5px 1fr;
 	overflow: hidden;
 }
 
@@ -55,6 +55,9 @@
 	cursor: col-resize;
 	background-color: var(--border);
 	transition: background-color 0.2s ease;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
 }
 
 .stwSplitter:hover {

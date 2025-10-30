@@ -358,7 +358,7 @@
           "command": null,
           "params": "",
           "layout": {
-            "en": "Alt+F12 Toggles Spin the Web Studio"
+            "en": "<img src=\"https://img.shields.io/badge/status-WIP-yellow\" alt=\"WIP Status\">"
           }
         }
       ],
