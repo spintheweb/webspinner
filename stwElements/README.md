@@ -1,6 +1,6 @@
 # Spin the Web elements
 
-This folder defines the core classes that define the base elements of WBDL (Webbase Description Language), the structural foundation of  Spin the Web. These elements form a hierarchical tree structure, enabling the modeling of a site, areas, pages, and content blocks.
+This folder defines the core classes that define the base elements of WBDL (Webbase Description Language), the structural foundation of Spin the Web. These elements form a hierarchical tree structure, enabling the modeling of a site, areas, pages, and content blocks.
 
 A **Webbase** is the description of a web application, composed of these elements. The `STWSite` element is a singleton—there can be only one `STWSite` in a webbase. If a structure does not include an `STWSite`, it is referred to as a **Webbaselet**.
 
