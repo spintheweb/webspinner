@@ -1,5 +1,3 @@
-![status: WIP](https://img.shields.io/badge/status-WIP-yellow)
-
 # Webspinner
 Webspinner is a runtime interpreter for WBDL (Webbase Description Language).
 
