@@ -15,6 +15,11 @@ FROM base AS deps
 # Copy only files needed to resolve and cache dependencies
 COPY deno.json deno.lock ./
 COPY stwSpinner.ts ./
+# Copy local sources needed for dependency resolution
+COPY stwComponents ./stwComponents
+COPY stwContents ./stwContents
+COPY stwElements ./stwElements
+COPY webbaselets ./webbaselets
 
 # Cache and verify dependencies using the lockfile (Deno v2: --lock writes/updates)
 RUN deno cache --lock=deno.lock stwSpinner.ts \
