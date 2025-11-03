@@ -4,8 +4,10 @@ services:
   webspinner:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: spintheweb/webspinner:latest
+      dockerfile: deployment/Dockerfile
+      args:
+        DENO_VERSION: ${DENO_VERSION:-2.3.0}
+    image: "ghcr.io/spintheweb/webspinner:${WEBSPINNER_IMAGE_TAG:-latest}"
     container_name: webspinner
     restart: unless-stopped
     ports:
@@ -14,6 +16,8 @@ services:
       # Server Configuration
       - HOST=0.0.0.0
       - PORT=8080
+      # Site domain (set to your public DNS name). If unset, container will serve an info page on first run.
+      - SITE_DOMAIN=${SITE_DOMAIN:-}
       
       # TLS/SSL (optional - uncomment and provide cert paths if using HTTPS)
       # - CERTFILE=/app/.cert/cert.pem

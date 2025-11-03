@@ -1,5 +1,14 @@
 # Webspinner
-Webspinner is a runtime interpreter for WBDL (Webbase Description Language).
+
+Webspinner is the runtime that reads a Webbase (a WBDL model) and renders a working web portal from it.
+
+- It interprets WBDL (Webbase Description Language) to build pages, navigation, layout, and behaviors at runtime.
+- It maps data sources (databases, APIs, services) to UI elements (forms, tables, trees, calendars, etc.) to deliver a consistent UX across heterogeneous backends.
+- It supports modular extensions called Webbaselets—self-contained features (e.g., mail, ERP, BPMS) that plug into a Webbase.
+- In short: you describe the portal declaratively in WBDL, and Webspinner “spins” it into a live application.
+
+
+*Figure 1*: Webspinner driven portal with Spin the Web Studio enabled.
 
 ![Webspinner Studio screenshot](./public/media/stwStudio.png)
 

@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.6
 # Webspinner Docker Image
 # Multi-stage build for optimized production image
 
 # Stage 1: Base image with Deno
-FROM denoland/deno:debian-1.46.3 AS base
+ARG DENO_VERSION=2.3.0
+FROM denoland/deno:debian-${DENO_VERSION} AS base
 
 # Set working directory
 WORKDIR /app
@@ -38,12 +40,16 @@ COPY LICENSE README.md ./
 # Copy environment template (not actual .env with secrets)
 COPY .env.example ./.env
 
+# Copy entrypoint
+COPY deployment/entrypoint.sh /app/entrypoint.sh
+
 # Create necessary directories
 RUN mkdir -p public/.data \
     && mkdir -p .cert
 
 # Set permissions
-RUN chown -R deno:deno /app
+RUN chown -R deno:deno /app \
+    && chmod +x /app/entrypoint.sh
 
 # Switch to non-root user
 USER deno
@@ -61,5 +67,5 @@ ENV PORT=8080
 ENV ALLOW_DEV=false
 ENV SPINNER_ENV=docker
 
-# Entry point
-CMD ["deno", "run", "--allow-net", "--allow-read", "--allow-env", "stwSpinner.ts"]
+# Use entrypoint script which will either serve a static info page or start the server
+ENTRYPOINT ["/app/entrypoint.sh"]
