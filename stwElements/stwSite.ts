@@ -182,7 +182,7 @@ export class STWSite extends STWElement {
 		this.children.forEach((child) => fragment += child.export());
 
 		return '<?xml version="1.0" encoding="utf-8"?>\n' +
-			'<wbdl version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://webspinner.org" xsi:schemaLocation="https://webspinner.org/schemas wbol.xsd">\n' +
+			'<wbdl version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://webspinner.org" xsi:schemaLocation="https://webspinner.org/schemas wbdl.xsd">\n' +
 			`<!--Spin the Web (TM) webbase generated ${(new Date()).toISOString()}-->\n` +
 			`<site id="${this._id}" language="${
 				this.langs[0]
