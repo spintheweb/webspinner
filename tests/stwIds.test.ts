@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Tests for stwIds.ts
 
 import { assertEquals } from "@std/assert";

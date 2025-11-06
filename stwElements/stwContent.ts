@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web element: stwContent
 
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";

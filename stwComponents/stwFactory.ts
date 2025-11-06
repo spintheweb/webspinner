@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Central registry for Spin the Web element/content constructors.
 // This file intentionally has NO runtime dependencies on element implementations
 // to avoid circular import chains. Elements call registerElement() at module

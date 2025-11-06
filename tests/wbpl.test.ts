@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Test suite: wbpl.test
 
 import { assertEquals } from "@std/assert";

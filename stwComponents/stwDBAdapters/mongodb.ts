@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // MongoDB adapter for Spin the Web
 
 import { MongoClient } from "npm:mongodb";

@@ -5,7 +5,7 @@
     "en": "STW Studio"
   },
   "description": {
-    "en": "Spin the Web studio webbaselet v1.0.0\nMIT License. Copyright (c) 2025 Giancarlo Trevisan"
+    "en": "Spin the Web studio webbaselet v1.0.0\nGNU GPLv3. Copyright (c) 2025 Giancarlo Trevisan"
   },
   "slug": {
     "en": "stws"

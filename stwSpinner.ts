@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web module: stwSpinner.ts
 
 import { getCookies } from "@std/http/cookie";

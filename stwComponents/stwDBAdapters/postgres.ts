@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // PostgreSQL database adapter for Spin the Web
 
 import { Client as PostgresClient } from "jsr:@db/postgres";

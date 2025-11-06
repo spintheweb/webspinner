@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // SQL Server database adapter for Spin the Web
 
 import { ISTWAdapter, ISTWRecords } from "./adapter.ts";

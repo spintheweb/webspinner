@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Build/development task: minify
 
 import * as esbuild from "https://deno.land/x/esbuild@v0.21.5/mod.js";

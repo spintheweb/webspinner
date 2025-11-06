@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Oracle database adapter (SQLcl/CLI) for Spin the Web
 
 // Oracle adapter (CLI via SQLcl). Requires `sql` in PATH.

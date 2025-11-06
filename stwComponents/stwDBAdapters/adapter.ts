@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Database adapter interface for Spin the Web
 
 export interface ISTWRecords {

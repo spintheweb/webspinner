@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web component: stwRouter
 
 // This file is responsible for handling /stw/action POST requests

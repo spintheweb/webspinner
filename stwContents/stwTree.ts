@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web module: stwContents/stwTree.ts
 
 import type { STWSession } from "../stwComponents/stwSession.ts";

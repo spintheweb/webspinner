@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Build/development task: merge-css
 
 // Watches stwStyles, merges and minifies all .css files into stwStyle.css on change
