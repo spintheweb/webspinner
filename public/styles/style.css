@@ -60,9 +60,6 @@ h1 {
 dialog[open] {
 	position: fixed;
 	padding: 0;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
 	font-size: smaller;
 	border: thin solid var(--border);
 	z-index: 1000;
@@ -75,6 +72,7 @@ dialog h1 {
 	color: var(--on-special);
 	margin: 0;
 	padding: var(--padding);
+	font-size: smaller;
 }
 
 article {

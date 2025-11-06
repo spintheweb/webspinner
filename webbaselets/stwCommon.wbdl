@@ -12,6 +12,24 @@
   },
   "children": [
     {
+      "_id": "x2mKzHtKJ9CAWaGfqxW60PS",
+      "type": "Content",
+      "name": {
+        "en": "Settings"
+      },
+      "slug": {
+        "en": "settings"
+      },
+      "visibility": {},
+      "subtype": "Form",
+      "cssClass": "stwForm",
+      "section": "stwShowModal",
+      "sequence": "",
+      "layout": {
+        "en": "\\s('caption=\"Settings\" header=\"HOST is not set\"')l('HOST')e('url;host')\\a('required placeholder=\"e.g. www.spintheweb.org\"')\\rb(';stw;pwdreset')t('Save Settings')"
+      }
+    },
+    {
       "_id": "x5TokLIuAijfTRXR4HqwejR",
       "type": "Content",
       "name": {
