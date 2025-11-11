@@ -6,8 +6,20 @@ projects.
 
 ## Spin the Web Commons (stwCommon.wbdl)
 
-Webbaselet that defines common contents useable in all portals, e.g., sign in and sign out, manage passwords, users and
-roles, messages boxes
+Webbaselet that provides reusable, cross‑portal building blocks such as authentication (sign‑in / sign‑out, password reset), user and role management, notification/message boxes, common UI fragments, and localization helpers.
+
+Key points
+- These common capabilities are packaged as a webbaselet so they can be embedded into any portal webbase.
+- A portal webbase and the webbaselets it uses evolve independently: a portal webbase has its own lifecycle and each webbaselet has its own versioning and updates.
+- Embedding a webbaselet into a portal augments the portal with the webbaselet’s functionality, assets, and configuration. Manage compatibility and update strategy to ensure smooth integration.
+
+Typical features
+- Authentication: sign in, sign out, password recovery, session handling
+- User & role management: create/update users, assign roles, audit events
+- Messaging: modal/message boxes, toast notifications, system alerts
+- Common UI & utilities: shared components, localization helpers, validation routines
+- Data contracts: standard schemas and endpoints for consistent integration
+- Configuration: options to enable/disable features per portal and to persist settings in the portal’s data store
 
 ## Spin the Web Studio (stwStudio.wbdl)
 

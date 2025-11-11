@@ -69,7 +69,7 @@ export abstract class STWContent<
 		this.cache = content.cache || 0;
 		this.contentType = content.contentType || "text/html; charset=utf-8"; // marker property used for duck-typing
 
-		if (!["Text", "Script", "Shortcut"].includes(this.type) && content.layout) {
+		if (!["Text", "ClientScript", "Shortcut"].includes(this.type) && content.layout) {
 			this.layout = new Map();
 			for (const [lang, wbll] of Object.entries(content.layout)) {
 				try {

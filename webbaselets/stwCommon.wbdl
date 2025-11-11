@@ -12,22 +12,57 @@
   },
   "children": [
     {
-      "_id": "x2mKzHtKJ9CAWaGfqxW60PS",
-      "type": "Content",
+      "_id": "xCfgPage1",
+      "type": "Page",
       "name": {
-        "en": "Settings"
+        "en": "Configuration"
       },
       "slug": {
-        "en": "settings"
+        "en": "configuration"
       },
       "visibility": {},
-      "subtype": "Form",
-      "cssClass": "stwForm",
-      "section": "stwShowModal",
-      "sequence": "",
-      "layout": {
-        "en": "\\s('caption=\"Settings\" header=\"HOST is not set\"')l('HOST')e('url;host')\\a('required placeholder=\"e.g. www.spintheweb.org\"')\\rb(';stw;pwdreset')t('Save Settings')"
-      }
+      "children": [
+        {
+          "_id": "x2mKzHtKJ9CAWaGfqxW60PS",
+          "type": "Content",
+          "name": {
+            "en": "Settings"
+          },
+          "slug": {
+            "en": "settings"
+          },
+          "visibility": {},
+          "subtype": "Form",
+          "cssClass": "stwForm",
+          "section": "main",
+          "sequence": "",
+          "layout": {
+            "en": "\\s('caption=\"Configuration\" header=\"HOST is not set\"')l('HOST')e('url;host')\\a('required placeholder=\"e.g. www.spintheweb.org\"')\\rb(';stw;saveHost')t('Save Settings')"
+          },
+          "extra": {}
+        },
+        {
+          "_id": "xSaveHost1",
+          "type": "Content",
+          "name": {
+            "en": "Save Host"
+          },
+          "slug": {
+            "en": "saveHost"
+          },
+          "visibility": {},
+          "subtype": "ServerSide",
+          "cssClass": "",
+          "section": "main",
+          "sequence": "",
+          "layout": {
+            "en": {
+              "javascript": "// records.rows[0] contains form fields. Persist HOST into .data/config.json\n(async function(req, session, records, envGet, envSet, Deno, console){\n  try {\n    const host = (records?.rows?.[0]?.host || '').trim();\n    if (!host) return { ok: false, message: 'host empty' };\n    const cfgPath = './.data/config.json';\n    let current = {};\n    try { current = JSON.parse(await Deno.readTextFile(cfgPath)); } catch(e) { current = {}; }\n    current.HOST = host;\n    await Deno.mkdir('.data', { recursive: true }).catch(()=>{});\n    await Deno.writeTextFile(cfgPath, JSON.stringify(current, null, 2));\n    // update in-memory env/cache if runtime exposes envSet\n    try { envSet && envSet('HOST', host); } catch(e){}\n    return { ok: true, host };\n  } catch(err) {\n    return { ok: false, error: String(err) };\n  }\n})(req, session, records, envGet, envSet, Deno, console)"
+            }
+          },
+          "extra": {}
+        }
+      ]
     },
     {
       "_id": "x5TokLIuAijfTRXR4HqwejR",

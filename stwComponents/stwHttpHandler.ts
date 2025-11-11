@@ -10,6 +10,7 @@ import { STWContent } from "../stwElements/stwContent.ts";
 import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { secureResponse } from "./stwResponse.ts";
 import { envGet } from "./stwConfig.ts";
+import { actionRouter, ActionContext } from "./stwActions.ts";
 
 export async function handleHttp(request: Request, session: STWSession, sessionId: string): Promise<Response> {
 	const pathname = new URL(request.url).pathname;
@@ -26,9 +27,9 @@ export async function handleHttp(request: Request, session: STWSession, sessionI
             const res = await element.serve(request, session);
             if (res.status === 200) {
                 const text = await res.text();
-                for (const ws of session.sockets.values()) {
-                    try { ws.send(text); } catch {}
-                }
+					for (const ws of session.sockets.values()) {
+					try { ws.send(text); } catch (_e) { /* noop */ }
+				}
             }
         }
 
@@ -110,13 +111,44 @@ export async function handleHttp(request: Request, session: STWSession, sessionI
                     const _result = origin.getLayout(session).handleAction(stwAction);
                     const msg = JSON.stringify({ method: "PUT", section: "stwShowModal", body: `<label>Form data ${stwAction}</label><pre>${JSON.stringify(records, null, 4)}</pre>` });
                     const targets = Array.from(session.sockets.values());
-                    for (const s of targets) { try { s.send(msg); } catch {} }
+					for (const s of targets) { try { s.send(msg); } catch (_e) { /* ignore send errors */ } }
                 } catch (error: any) {
                     const msg = JSON.stringify({ method: "PUT", section: "stwShowModal", body: `<label>Error</label><pre>${error.message}</pre>` });
                     const targets = Array.from(session.sockets.values());
-                    for (const s of targets) { try { s.send(msg); } catch {} }
+                    for (const s of targets) { try { s.send(msg); } catch (_e) { /* ignore send errors */ } }
                 }
             }
+
+			// Handle form actions
+			if (formData.has("stwAction")) {
+				const actionValue = formData.get("stwAction")!.toString();
+				
+				const ctx: ActionContext = {
+					req: request,
+					session,
+					content: origin as STWContent,
+					formData,
+					action: actionValue,
+					url: formData.get("stwRedirect")?.toString(),
+				};
+				
+				const result = await actionRouter.execute(ctx);
+				
+				if (result.redirect) {
+					return Response.redirect(result.redirect, 303);
+				}
+				
+				if (!result.ok && result.error) {
+					// Handle error (show error page, flash message, etc.)
+					session.placeholders.set("ERROR", result.error.message);
+				}
+				
+				if (result.data) {
+					// Store result data in session for next render
+					session.placeholders.set("RESULT", JSON.stringify(result.data));
+				}
+			}
+
 			// Always return a response
 			return secureResponse(null, { status: 204 });
 		} catch (_error) {
