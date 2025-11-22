@@ -46,7 +46,7 @@ export class STWText extends STWContent {
 	// deno-lint-ignore require-await
 	public override async render(_req: Request, session: STWSession, records: ISTWRecords): Promise<string> {
 		const layoutValue = this.layout?.get(session.lang);
-		const layoutText = typeof layoutValue === "string" ? layoutValue : (layoutValue?.toString?.() ?? "");
+		let layoutText = typeof layoutValue === "string" ? layoutValue : (layoutValue?.toString?.() ?? "");
 
 		if (!layoutText) {
 			if (this.contentType === "application/json") {
@@ -56,7 +56,8 @@ export class STWText extends STWContent {
 			} else {
 				return "";
 			}
-		}
+		} else
+			layoutText = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="${this.cssClass ?? "stwText"}">${layoutText}</article>`;
 
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {
