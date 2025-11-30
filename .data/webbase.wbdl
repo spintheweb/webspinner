@@ -219,6 +219,41 @@
               "ref": "x3YCLoAbUczj9NNvlOFO081"
             },
             {
+              "name": {
+                "en": "-"
+              }
+            },
+            {
+              "ref": "x3YCLoAbUczjbaXTHruz8Yx"
+            }
+          ]
+        },
+        {
+          "_id": "x4sHhypzM0UjIzY20BICPrH",
+          "type": "Content",
+          "name": {
+            "en": "Tabs"
+          },
+          "slug": {
+            "en": "tabs"
+          },
+          "visibility": {
+            "guests": true
+          },
+          "subtype": "Tabs",
+          "section": "main",
+          "sequence": "10",
+          "layout": {
+            "en": "\\s('mode=\"vertical\"')"
+          },
+          "options": [
+            {
+              "name": {
+                "en": "./public"
+              },
+              "ref": "x3YCLoAbUczj9NNvlOFO081"
+            },
+            {
               "ref": "x3YCLoAbUczjbaXTHruz8Yx"
             }
           ]

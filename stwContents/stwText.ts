@@ -57,7 +57,7 @@ export class STWText extends STWContent {
 				return "";
 			}
 		} else
-			layoutText = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="${this.cssClass ?? "stwText"}">${layoutText}</article>`;
+			layoutText = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
 
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {

@@ -339,27 +339,6 @@
           "layout": {
             "en": "\\s('caption=\"Logon\"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';Logon;;stw;logon;@@usr;@@pwd')"
           }
-        },
-        {
-          "_id": "x7x632LisDuQKDzazMvGb8y",
-          "type": "Content",
-          "name": {
-            "en": "statusbar"
-          },
-          "slug": {
-            "en": "statusbar"
-          },
-          "visibility": {},
-          "subtype": "Text",
-          "cssClass": null,
-          "section": "stwStatusbar",
-          "sequence": "1",
-          "dsn": null,
-          "command": null,
-          "params": "",
-          "layout": {
-            "en": "<img src=\"https://img.shields.io/badge/status-WIP-yellow\" alt=\"WIP Status\">"
-          }
         }
       ],
       "visibility": {}

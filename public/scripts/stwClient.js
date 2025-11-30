@@ -163,7 +163,7 @@ function stwStartWebsocket() {
 			} else {
 				let insertion = document.getElementById(data.section);
 				insertion?.querySelectorAll("article[data-sequence]").forEach((article) => {
-					if (parseFloat(article.getAttribute("data-sequence")) < data.sequence) {
+					if (parseFloat(article.dataset.sequence) < parseFloat(data.sequence)) {
 						insertion = article;
 					}
 				});
@@ -186,6 +186,9 @@ function stwStartWebsocket() {
 		// Load content script
 		document.body.querySelectorAll("script").forEach((script) => {
 			if (document.head.querySelector(`script[name="${script.getAttribute("name")}"]`)) {
+				if (typeof script.onload === "function") {
+					script.onload();
+				}
 				return;
 			}
 

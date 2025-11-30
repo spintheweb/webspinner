@@ -76,7 +76,7 @@ export abstract class STWContent<
 					this.layout.set(lang, new STWLayout(wbll));
 				} catch (error) {
 					throw SyntaxError(
-						`${this.type} (${this.name.entries().next().value}) @${this.section}.${this.sequence} [${this._id}]\n └ Layout: ${
+						`${this.type} (${this.name.entries().next().value}) §${this.section}.${this.sequence} [${this._id}]\n └ Layout: ${
 							(error as Error).message
 						}`,
 					);
@@ -151,13 +151,13 @@ export abstract class STWContent<
 			console.debug(
 				`${new Date().toISOString()}: ${ref._id === this._id ? " ●" : "│└"} ${this.type} (${
 					this.pathname(session)
-				}) @${this.section}.${this.sequence} [${this._id}]`,
+				}) §${this.section}.${this.sequence} [${this._id}]`,
 			);
 		} else {
 			console.debug(
 				`${new Date().toISOString()}: ├─ ${this.type} (${
 					this.pathname(session)
-				}) @${this.section}.${this.sequence} [${this._id}]`,
+				}) §${this.section}.${this.sequence} [${this._id}]`,
 			);
 		}
 
