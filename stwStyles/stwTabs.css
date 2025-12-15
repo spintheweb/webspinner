@@ -11,33 +11,28 @@
 
 .stwHTabs>div {
 	display: flex;
-	border-bottom: thin solid var(--border);
 }
 
 .stwVTabs>div {
 	display: flex;
 	flex-direction: column;
-	border-right: thin solid var(--border);
 }
 
-.stwHTabs dt[data-ref] {
+.stwTabs dt[data-ref] {
 	display: inline-block;
-	padding: var(--thickness) var(--padding);
+	padding: var(--padding-reduced) calc(2 * var(--padding));
 	cursor: pointer;
-	border-top: thin solid var(--border);
-	border-left: thin solid var(--border);
+	background-color: var(--bg-faint);
+	min-width: 8rem;
 }
-.stwHTabs dt[data-ref]:last-of-type {
-	border-right: thin solid var(--border);
+
+.stwTabs i.fa-xmark {
+	float: inline-end;
+	line-height: var(--line-height);
 }
 
 .stwVTabs dd:first-of-type {
 	flex-grow: 1;
-}
-
-.stwVTabs dt[data-ref] {
-	padding: var(--padding);
-	cursor: pointer;
 }
 
 .stwTabs dd {
@@ -46,5 +41,6 @@
 }
 
 .stwTabs dd>article {
-	padding: 0;
+	padding: var(--padding-reduced);
+	border: thin solid var(--border);
 }
