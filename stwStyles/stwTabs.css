@@ -23,7 +23,6 @@
 	padding: var(--padding-reduced) calc(2 * var(--padding));
 	cursor: pointer;
 	background-color: var(--bg-faint);
-	min-width: 8rem;
 }
 
 .stwTabs i.fa-xmark {

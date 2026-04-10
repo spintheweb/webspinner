@@ -29,9 +29,9 @@ services:
       
       # Site Configuration
       - SITE_ROOT=./public
-      - WEBBASE=./.data/webbase.wbdl
-      - COMMON_WEBBASE=./webbaselets/stwCommon.wbdl
-      - STUDIO_WEBBASE=./webbaselets/stwStudio.wbdl
+      - WEBBASE=./.data/webbase.wbol
+      - COMMON_WEBBASE=./webbaselets/stwCommon.wbol
+      - STUDIO_WEBBASE=./webbaselets/stwStudio.wbol
       
       # Upload Configuration
       - MAX_UPLOADSIZE=200

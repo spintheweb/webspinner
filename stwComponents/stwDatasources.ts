@@ -278,7 +278,7 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
 
 	if (!isArray) {
 		const expr = jsonata(wbpl(content.command, session.placeholders));
-		result = expr.evaluate(STWSite.wbdl);
+		result = expr.evaluate(STWSite.wbol);
 
 		if (result instanceof Promise) {
 			result = await result;

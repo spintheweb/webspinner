@@ -15,7 +15,7 @@ import { newId } from "./stwComponents/stwIds.ts";
 try {
     const portalUrl = envGet("PORTAL_URL");
     if (portalUrl && /^https?:\/\//i.test(portalUrl)) {
-        const webbasePath = envGet("WEBBASE") || "./.data/webbase.wbdl";
+        const webbasePath = envGet("WEBBASE") || "./.data/webbase.wbol";
         console.log(`${new Date().toISOString()}: Fetching portal webbase from ${portalUrl} ...`);
         const res = await fetch(portalUrl);
         if (!res.ok) throw new Error(`Failed to download portal webbase: ${res.status} ${res.statusText}`);

@@ -4,7 +4,7 @@ Webbaselets are modular web applications designed to be embedded within a webbas
 not include a root site element, allowing them to integrate seamlessly as components or features within larger webbase
 projects.
 
-## Spin the Web Commons (stwCommon.wbdl)
+## Spin the Web Commons (stwCommon.wbol)
 
 Webbaselet that provides reusable, cross‑portal building blocks such as authentication (sign‑in / sign‑out, password reset), user and role management, notification/message boxes, common UI fragments, and localization helpers.
 
@@ -21,7 +21,7 @@ Typical features
 - Data contracts: standard schemas and endpoints for consistent integration
 - Configuration: options to enable/disable features per portal and to persist settings in the portal’s data store
 
-## Spin the Web Studio (stwStudio.wbdl)
+## Spin the Web Studio (stwStudio.wbol)
 
 Spin the Web Studio is a webbaselet designed for building and managing Spin the Web applications. It offers an intuitive
 interface that integrates directly with your project, enabling developers and administrators to organize application
@@ -31,7 +31,7 @@ structure, manage content, configure data sources, and set up authorizations—a
 
 - **Webbase Structure Management:**\
   Visualize the entire webbase (site, areas, pages, contents) as a tree. Edit elements in memory and persist changes to
-  `./.data/webbase.wbdl`.
+  `./.data/webbase.wbol`.
 
 - **Search:**\
   Quickly find any element within the webbase structure.

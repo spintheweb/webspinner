@@ -372,7 +372,7 @@ if [ "$UPGRADE_MODE" = true ]; then
   cp -r "$TEMP_EXTRACT/README.md" "$INSTALL_DIR/"
     
   # Update system webbaselets (preserve custom)
-  cp "$TEMP_EXTRACT/webbaselets/stw"*.wbdl "$INSTALL_DIR/webbaselets/" 2>/dev/null || true
+  cp "$TEMP_EXTRACT/webbaselets/stw"*.wbol "$INSTALL_DIR/webbaselets/" 2>/dev/null || true
     
   # Update public files; default preserves .data directory unless --replace-public
   if [ "$REPLACE_PUBLIC" = true ]; then
@@ -415,9 +415,9 @@ if [ ! -f "$INSTALL_DIR/.data/users.json" ] && [ -f "$TEMP_EXTRACT/.data/users.j
   cp "$TEMP_EXTRACT/.data/users.json" "$INSTALL_DIR/.data/"
   echo "Copied missing .data/users.json from payload"
 fi
-if [ ! -f "$INSTALL_DIR/.data/webbase.wbdl" ] && [ -f "$TEMP_EXTRACT/.data/webbase.wbdl" ]; then
-  cp "$TEMP_EXTRACT/.data/webbase.wbdl" "$INSTALL_DIR/.data/"
-  echo "Copied missing .data/webbase.wbdl from payload"
+if [ ! -f "$INSTALL_DIR/.data/webbase.wbol" ] && [ -f "$TEMP_EXTRACT/.data/webbase.wbol" ]; then
+  cp "$TEMP_EXTRACT/.data/webbase.wbol" "$INSTALL_DIR/.data/"
+  echo "Copied missing .data/webbase.wbol from payload"
 fi
 
 # Clean up temp directory
@@ -553,9 +553,9 @@ KEYFILE=$KEYFILE
 SESSION_TIMEOUT=$SESSION_TIMEOUT
 MAX_USERS=$MAX_USERS
 SITE_ROOT="./public"
-WEBBASE="./.data/webbase.wbdl"
-COMMON_WEBBASE="./webbaselets/stwCommon.wbdl"
-STUDIO_WEBBASE="./webbaselets/stwStudio.wbdl"
+WEBBASE="./.data/webbase.wbol"
+COMMON_WEBBASE="./webbaselets/stwCommon.wbol"
+STUDIO_WEBBASE="./webbaselets/stwStudio.wbol"
 MAX_UPLOADSIZE=$MAX_UPLOADSIZE
 DATASOURCES="./.data/datasources.json"
 USERS="./.data/users.json"
@@ -667,7 +667,7 @@ fi
 if [ "$SERVICE_INSTALL" = true ]; then
   cat > /etc/systemd/system/webspinner.service << EOF
 [Unit]
-Description=Webspinner (WBDL interpreter)
+Description=Webspinner (WBOL interpreter)
 After=network.target
 
 [Service]
