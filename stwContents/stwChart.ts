@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwChart.ts
+/**
+ * @fileoverview Defines the chart content element.
+ *
+ * Renders a client-side chart canvas and initializes it with the Chart.js
+ * library.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwChart
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -13,9 +22,9 @@ export class STWChart extends STWContent {
 
 	// deno-lint-ignore require-await
 	public override async render(_req: Request, _session: STWSession, _records: ISTWRecords): Promise<string> {
-		return `<canvas id="Chart${this._id}"></canvas>
+		return `<canvas id="Chart${this.uuid}"></canvas>
 			<script name="chart" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-			<script name="STWChart" onload="fnSTWChart('Chart${this._id}')">
+			<script name="STWChart" onload="fnSTWChart('Chart${this.uuid}')">
 				function fnSTWChart(id) {
 					const ctx = self.document.getElementById(id);
 					new Chart(ctx, {

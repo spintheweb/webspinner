@@ -122,8 +122,10 @@ export class STWActionRouter {
     const command = `INSERT INTO ${content.table || "records"} (${columns}) VALUES (${placeholders})`;
     
     try {
-      const datasources = new STWDatasources(ctx.session);
-      await datasources.command(content.dsn, command, values);
+      const sqlContent = content as STWContent & { query: string; params: string };
+      sqlContent.query = command;
+      sqlContent.params = "";
+      await STWDatasources.command(ctx.session, sqlContent);
       
       return {
         ok: true,
@@ -172,8 +174,10 @@ export class STWActionRouter {
     const command = `UPDATE ${content.table || "records"} SET ${setClauses} WHERE ${keyField} = ?`;
     
     try {
-      const datasources = new STWDatasources(ctx.session);
-      await datasources.command(content.dsn, command, values);
+      const sqlContent = content as STWContent & { query: string; params: string };
+      sqlContent.query = command;
+      sqlContent.params = "";
+      await STWDatasources.command(ctx.session, sqlContent);
       
       return {
         ok: true,
@@ -212,8 +216,10 @@ export class STWActionRouter {
     const command = `DELETE FROM ${content.table || "records"} WHERE ${keyField} = ?`;
     
     try {
-      const datasources = new STWDatasources(ctx.session);
-      await datasources.command(content.dsn, command, [keyValue]);
+      const sqlContent = content as STWContent & { query: string; params: string };
+      sqlContent.query = command;
+      sqlContent.params = "";
+      await STWDatasources.command(ctx.session, sqlContent);
       
       return {
         ok: true,
@@ -292,10 +298,10 @@ export class STWActionRouter {
     }
 
     // Look for ServerScript/ShellScript with matching slug or action name
-    const scriptContent = page.children.find(child => 
+    const scriptContent = page.children.find((child: any) =>
       (child.subtype === "ServerScript" || child.subtype === "ShellScript") &&
-      (child.slug === ctx.action.split(";")[1] || child.name === ctx.action)
-    );
+      (child.localize?.(session, "slug") === ctx.action.split(";")[1] || child.localize?.(session, "name") === ctx.action)
+    ) as STWContent | undefined;
 
     if (!scriptContent) {
       return {
@@ -310,7 +316,7 @@ export class STWActionRouter {
     // Convert FormData to records format
     const records: ISTWRecords = {
       rows: [Object.fromEntries(formData.entries())],
-      fields: Array.from(formData.keys()),
+      fields: Array.from(formData.keys()).map((name) => ({ name })),
     };
 
     // Execute the script

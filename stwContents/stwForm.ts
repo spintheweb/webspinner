@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwForm.ts
+/**
+ * @fileoverview Defines the form content element.
+ *
+ * Renders datasource fields through the WBLL layout system and produces
+ * regular or modal HTML forms according to the content section.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwForm
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -33,7 +42,7 @@ export class STWForm extends STWContent {
 
 		// If the form is modal, method="dialog"
 		return `<form method="${this.section === "stwShowModal" ? "dialog" : "post"}">
-			<input type="hidden" name="stwOrigin" value="${this._id}">
+			<input type="hidden" name="stwOrigin" value="${this.uuid}">
 			${body}
 		</form>`;
 	}

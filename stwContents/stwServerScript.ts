@@ -1,11 +1,23 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web content: stwServerScript
+/**
+ * @fileoverview Defines the server-script content element.
+ *
+ * Executes JavaScript stored in content layouts against datasource records
+ * with restricted filesystem and datasource helper APIs.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwServerScript
+ * @requires jsr:@std/path
+ * @license GPL-3.0-or-later
+ */
 
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWContent, STWContent } from "../stwElements/stwContent.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
 import { wbpl } from "../stwComponents/stwWBPL.ts";
+
+// deno-lint-ignore no-unversioned-import
 import * as path from "jsr:@std/path";
 
 /**
@@ -194,7 +206,7 @@ class DatasourceHelper {
     async execute(dsn: string, command: string, params: string = ""): Promise<ISTWRecords> {
         // Create a temporary content object for STWDatasources.command
         const tempContent: any = {
-            _id: `temp-\${Date.now()}`,
+            uuid: `temp-\${Date.now()}`,
             dsn,
             command,
             params,
@@ -231,7 +243,7 @@ export default class STWServerScript extends STWContent {
         const code = this._extractCode(session);
         
         if (!code) {
-            console.warn(`ServerScript \${this._id} has no layout.javascript for lang \${session.lang}`);
+            console.warn(`ServerScript \${this.uuid} has no layout.javascript for lang \${session.lang}`);
             return JSON.stringify({ ok: false, error: "No script found" });
         }
 
@@ -254,7 +266,7 @@ export default class STWServerScript extends STWContent {
             // Return the result as JSON
             return JSON.stringify({ ok: true, result });
         } catch (error: any) {
-            console.error(`ServerScript \${this._id} execution error:`, error);
+            console.error(`ServerScript \${this.uuid} execution error:`, error);
             return JSON.stringify({
                 ok: false,
                 error: {
@@ -285,8 +297,8 @@ export default class STWServerScript extends STWContent {
     /**
      * Override serve to set proper contentType for JSON responses.
      */
+    // deno-lint-ignore require-await
     public override async serve(req: Request, session: STWSession, ref: STWContent | undefined): Promise<Response> {
-        // Ensure JSON content type for ServerScript responses
         this.contentType = "application/json; charset=utf-8";
         return super.serve(req, session, ref);
     }

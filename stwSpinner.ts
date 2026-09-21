@@ -1,9 +1,19 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwSpinner.ts
+/**
+ * @fileoverview Starts the Spin the Web HTTP/WebSocket server.
+ *
+ * Boots the application runtime by loading registered content and element
+ * modules, initializing the shared portal and session environment, and serving
+ * requests while maintaining per-client session state.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwSpinner
+ * @license GPL-3.0-or-later
+ */
 
 import { getCookies } from "@std/http/cookie";
 import { STWSession } from "./stwComponents/stwSession.ts";
-import { STWSite } from "./stwElements/stwSite.ts";
+import { STWPortal } from "./stwElements/stwPortal.ts";
 import { handleHttp } from "./stwComponents/stwHttpHandler.ts";
 import { handleWebSocket } from "./stwComponents/stwWebSocket.ts";
 import project from "./deno.json" with { type: "json" };
@@ -11,31 +21,31 @@ import { STWFactory } from "./stwComponents/stwFactory.ts";
 import { envGet, envSet, isDocker } from "./stwComponents/stwConfig.ts";
 import { newId } from "./stwComponents/stwIds.ts";
 
-// If a PORTAL_URL is provided (env or .env), fetch it and persist to WEBBASE path before the site loads.
+// If a PORTAL_URL is provided (env or .env), fetch it and persist to WEBBASE path before the portal loads.
 try {
-    const portalUrl = envGet("PORTAL_URL");
-    if (portalUrl && /^https?:\/\//i.test(portalUrl)) {
-        const webbasePath = envGet("WEBBASE") || "./.data/webbase.wbol";
-        console.log(`${new Date().toISOString()}: Fetching portal webbase from ${portalUrl} ...`);
-        const res = await fetch(portalUrl);
-        if (!res.ok) throw new Error(`Failed to download portal webbase: ${res.status} ${res.statusText}`);
-        const json = await res.text(); // keep as text; it's stored and later parsed by STWSite
-        // Ensure folder exists
-        const dir = webbasePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || ".";
-        await Deno.mkdir(dir, { recursive: true });
-        await Deno.writeTextFile(webbasePath, json);
-        console.log(`${new Date().toISOString()}: Portal webbase saved to ${webbasePath}.`);
-        // Ensure STWSite reads the same path
-        envSet("WEBBASE", webbasePath);
-    }
+	const portalUrl = envGet("PORTAL_URL");
+	if (portalUrl && /^https?:\/\//i.test(portalUrl)) {
+		const webbasePath = envGet("WEBBASE") || "./.data/webbase.wbol";
+		console.log(`${new Date().toISOString()}: Fetching portal webbase from ${portalUrl} ...`);
+		const res = await fetch(portalUrl);
+		if (!res.ok) throw new Error(`Failed to download portal webbase: ${res.status} ${res.statusText}`);
+		const json = await res.text(); // keep as text; it's stored and later parsed by STWPortal
+		// Ensure folder exists
+		const dir = webbasePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || ".";
+		await Deno.mkdir(dir, { recursive: true });
+		await Deno.writeTextFile(webbasePath, json);
+		console.log(`${new Date().toISOString()}: Portal webbase saved to ${webbasePath}.`);
+		// Ensure STWPortal reads the same path
+		envSet("WEBBASE", webbasePath);
+	}
 } catch (error) {
-    console.error(`PORTAL_URL setup error: ${(error as Error).message}`);
+	console.error(`PORTAL_URL setup error: ${(error as Error).message}`);
 }
 
 /**
- * Deterministically load element / content modules so that base abstractions
+ * Load element / content modules so that base abstractions
  * are evaluated before derived implementations. Modules self-register via
- * registerElement() side-effects. No dummy instantiation needed.
+ * registerElement() side-effects.
  */
 async function loadSTWModules(dir: string, priority: string[] = []) {
 	const files: string[] = [];
@@ -54,12 +64,12 @@ async function loadSTWModules(dir: string, priority: string[] = []) {
 	}
 }
 
-// Load core element hierarchy in a safe order, then all contents.
+// Load core element hierarchy in a safe order.
 await loadSTWModules("./stwElements", [
 	"stwIndex.ts", // shared registry map (no deps)
 	"stwElement.ts", // base
 	"stwArea.ts", // derives from STWElement
-	"stwSite.ts", // depends on Area for webbaselets
+	"stwPortal.ts", // depends on Area for webbaselets
 	"stwPage.ts", // page-level element
 	"stwContent.ts", // abstract content base
 ]);
@@ -75,7 +85,6 @@ const stwSessions: Map<string, STWSession> = new Map();
 /**
  * Spin the Web Spinner
  */
-// Declare the variable that will hold the final options.
 let serverOptions: Deno.ServeOptions;
 
 // Determine the correct hostname based on the environment.
@@ -83,27 +92,27 @@ let serverOptions: Deno.ServeOptions;
 const hostname: string = isDocker ? "0.0.0.0" : (envGet("HOST") || "127.0.0.1");
 
 if (envGet("CERTFILE") && envGet("KEYFILE")) {
-    serverOptions = {
-        hostname: hostname,
-        port: parseInt(envGet("PORT") || "443"),
-        cert: await Deno.readTextFile(envGet("CERTFILE")!),
-        key: await Deno.readTextFile(envGet("KEYFILE")!),
-        onListen: () => {
-            console.log(
-                `${new Date().toISOString()}: Spin the Web v${project.version} listening on https://${envGet("HOST") || "localhost"}:${envGet("PORT") || "443"}`,
-            );
-        },
-    } as Deno.ServeOptions;
+	serverOptions = {
+		hostname: hostname,
+		port: parseInt(envGet("PORT") || "443"),
+		cert: await Deno.readTextFile(envGet("CERTFILE")!),
+		key: await Deno.readTextFile(envGet("KEYFILE")!),
+		onListen: () => {
+			console.log(
+				`${new Date().toISOString()}: Spin the Web v${project.version} listening on https://${envGet("HOST") || "localhost"}:${envGet("PORT") || "443"}`,
+			);
+		},
+	} as Deno.ServeOptions;
 } else {
-    serverOptions = {
-        hostname: hostname,
-        port: parseInt(envGet("PORT") || "8000"),
-        onListen: () => {
-            console.log(
-                `${new Date().toISOString()}: Spin the Web v${project.version} listening on http://${envGet("HOST") || "localhost"}:${envGet("PORT") || "8000"}`,
-            );
-        },
-    } as Deno.ServeOptions;
+	serverOptions = {
+		hostname: hostname,
+		port: parseInt(envGet("PORT") || "8000"),
+		onListen: () => {
+			console.log(
+				`${new Date().toISOString()}: Spin the Web v${project.version} listening on http://${envGet("HOST") || "localhost"}:${envGet("PORT") || "8000"}`,
+			);
+		},
+	} as Deno.ServeOptions;
 }
 
 Deno.serve(serverOptions, async (request: Request, info: Deno.ServeHandlerInfo): Promise<Response> => {
@@ -120,12 +129,11 @@ Deno.serve(serverOptions, async (request: Request, info: Deno.ServeHandlerInfo):
 	) {
 		if (session) {
 			console.log(
-				`${
-					new Date().toISOString()
+				`${new Date().toISOString()
 				}: IP address changed for session [${sessionId}]. A new session will be created.`,
 			);
 		}
-		session = new STWSession(sessionId, info.remoteAddr, STWSite.instance);
+		session = new STWSession(sessionId, info.remoteAddr, STWPortal.instance);
 		stwSessions.set(sessionId, session);
 	}
 

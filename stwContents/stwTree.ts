@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwTree.ts
+/**
+ * @fileoverview Defines the tree content element.
+ *
+ * Converts hierarchical or path-based datasource records into a localized
+ * tree rendered through the configured WBLL layout.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwTree
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -45,7 +54,7 @@ export class STWTree extends STWContent {
 		let body = "";
 		if (treeData)
 			body = `<ul>${renderNode(treeData)}</ul>
-			<script name="STWTree" onload="fnSTWTree('${this._id}')">
+			<script name="STWTree" onload="fnSTWTree('${this.uuid}')">
 				function fnSTWTree(id) {
 					self.document.getElementById(id).addEventListener("click", event => {
 						event.stopImmediatePropagation();

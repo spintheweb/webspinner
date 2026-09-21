@@ -62,7 +62,7 @@ export class STWAdapterRegistry {
 export const ApiAdapter: STWAdapter<STWAdapterConfig> = {
   type: "api",
   async execute(ctx): Promise<ISTWRecords> {
-    const _query = wbpl(ctx.content.command, ctx.session.placeholders);
+    const _query = wbpl(ctx.content.query, ctx.session.placeholders);
     const url = `${ctx.config.host}?${wbpl(ctx.content.params, ctx.session.placeholders)}`;
     const response = await fetch(url, { headers: { "Content-Type": ctx.config.contentType || "application/json" } });
     const json = await response.json();
@@ -81,7 +81,7 @@ export const MySqlAdapter: STWAdapter<STWAdapterConfig> = {
   execute(ctx): Promise<ISTWRecords> {
     // This mockup doesn't open sockets; in real code we’d reuse the MySQL client/pool.
     // Shape only: convert SQL into a stubbed response to show uniform contract.
-    const sql = wbpl(ctx.content.command, ctx.session.placeholders);
+    const sql = wbpl(ctx.content.query, ctx.session.placeholders);
     return Promise.resolve({ affectedRows: 0, fields: [{ name: "sql" }], rows: [{ sql }] });
   },
 };
@@ -91,7 +91,7 @@ export const ShellAdapter: STWAdapter<STWAdapterConfig> = {
   type: "shell",
   async execute(ctx): Promise<ISTWRecords> {
     const shellName = ctx.config.host || ctx.config.name || ctx.content.dsn;
-    const cmdString = wbpl(ctx.content.command, ctx.session.placeholders).trim();
+    const cmdString = wbpl(ctx.content.query, ctx.session.placeholders).trim();
     if (/\bsudo\b/i.test(cmdString)) {
       return { affectedRows: 1, fields: [{ name: "error" }], rows: [{ error: "Forbidden token 'sudo' in shell command" }] };
     }

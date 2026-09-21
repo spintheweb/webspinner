@@ -1,5 +1,22 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web element: stwContent
+/**
+ * @fileoverview Defines the abstract Spin the Web content element.
+ *
+ * Provides shared content metadata, localized layout handling, session state,
+ * datasource execution, response rendering, visibility behavior, and runtime
+ * updates for concrete content elements.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwContent
+ * @requires ../stwComponents/stwDBAdapters/adapter.ts
+ * @requires ../stwComponents/stwDatasources.ts
+ * @requires ../stwComponents/stwSession.ts
+ * @requires ./stwElement.ts
+ * @requires ../stwComponents/stwWBLL.ts
+ * @requires ../stwComponents/stwWBPL.ts
+ * @requires ../stwComponents/stwResponse.ts
+ * @license GPL-3.0-or-later
+ */
 
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
@@ -19,6 +36,7 @@ import { secureResponse } from "../stwComponents/stwResponse.ts";
 export interface ISTWOption {
 	name: STWLocalized;
 	ref?: string;
+	parameters?: string;
 	options?: ISTWOption[];
 }
 export interface ISTWContentWithOptions extends ISTWContent<any, any, any> {
@@ -31,7 +49,7 @@ export interface ISTWContent<TRow = Record<string, unknown>, TState = unknown, T
 	section: string;
 	sequence: number;
 	dsn: string;
-	command: string;
+	query: string;
 	params: string;
 	layout: object;
 	stateful?: boolean;
@@ -48,7 +66,7 @@ export abstract class STWContent<
 	section: string;
 	sequence: number;
 	dsn: string;
-	command: string;
+	query: string;
 	params: string;
 	protected layout!: Map<string, STWLayout>;
 	readonly stateful: boolean;
@@ -63,7 +81,7 @@ export abstract class STWContent<
 		this.section = content.section || "";
 		this.sequence = content.sequence || 0.0;
 		this.dsn = content.dsn || "";
-		this.command = content.command || "";
+		this.query = content.query || "";
 		this.params = content.params || "";
 		this.stateful = content.stateful || false;
 		this.cache = content.cache || 0;
@@ -76,7 +94,7 @@ export abstract class STWContent<
 					this.layout.set(lang, new STWLayout(wbll));
 				} catch (error) {
 					throw SyntaxError(
-						`${this.type} (${this.name.entries().next().value}) §${this.section}.${this.sequence} [${this._id}]\n └ Layout: ${
+						`${this.type} (${this.name.entries().next().value}) §${this.section}.${this.sequence} [${this.uuid}]\n └ Layout: ${
 							(error as Error).message
 						}`,
 					);
@@ -95,7 +113,7 @@ export abstract class STWContent<
 			section: this.section,
 			sequence: this.sequence,
 			dsn: this.dsn,
-			command: this.command,
+			command: this.query,
 			params: this.params,
 			layout: this.layout.get(session.lang)?.wbll || "",
 			contentType: this.contentType,
@@ -126,7 +144,7 @@ export abstract class STWContent<
 	 * @returns The state object, or undefined if not stateful or no state is set.
 	 */
 	public getState(session: STWSession): TState | undefined {
-		return this.stateful ? session.states?.get(this._id) as TState : undefined;
+		return this.stateful ? session.states?.get(this.uuid) as TState : undefined;
 	}
 
 	/**
@@ -138,7 +156,7 @@ export abstract class STWContent<
 	public setState(session: STWSession, state: TState): void {
 		if (this.stateful) {
 			if (!session.states) session.states = new Map<string, any>();
-			session.states.set(this._id, state);
+			session.states.set(this.uuid, state);
 		}
 	}
 
@@ -149,15 +167,15 @@ export abstract class STWContent<
 
 		if (ref) {
 			console.debug(
-				`${new Date().toISOString()}: ${ref._id === this._id ? " ●" : "│└"} ${this.type} (${
+				`${new Date().toISOString()}: ${ref.uuid === this.uuid ? " ●" : "│└"} ${this.type} (${
 					this.pathname(session)
-				}) §${this.section}.${this.sequence} [${this._id}]`,
+				}) §${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		} else {
 			console.debug(
 				`${new Date().toISOString()}: ├─ ${this.type} (${
 					this.pathname(session)
-				}) §${this.section}.${this.sequence} [${this._id}]`,
+				}) §${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		}
 
@@ -178,12 +196,12 @@ export abstract class STWContent<
 
 			if (!bodyHtml) {
 				bodyHtml = layout?.settings.has("nodata")
-					? `<article id="${this._id}" data-sequence="${this.sequence}" class="stwNoData">${
+					? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${
 						wbpl(layout?.settings.get("nodata") || "", placeholders)
 					}</article>`
 					: "";
 			} else {
-				bodyHtml = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="${
+				bodyHtml = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${
 					(ref || this).cssClass || "stw" + this.type
 				}">
 					${
@@ -217,7 +235,7 @@ export abstract class STWContent<
 				}
 				return JSON.stringify(filtered, null, 2);
 			};
-			bodyHtml = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="stwError">
+			bodyHtml = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">
 				<h1><i class="fa-light fa-bug"></i> Error</h1>
 				<header>${(error as Error).message}</header>
 				<pre>${safeStringify(this)}</pre>
@@ -226,7 +244,7 @@ export abstract class STWContent<
 
 		const data = {
 			method: "PUT",
-			id: this._id,
+			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
 			body: bodyHtml,
@@ -261,7 +279,7 @@ export abstract class STWContent<
 		this.section = data.section || this.section;
 		this.sequence = data.sequence || this.sequence;
 		this.dsn = data.dsn || this.dsn;
-		this.command = data.command || this.command;
+		this.query = data.command || this.query;
 		this.params = data.params || this.params;
 		this.contentType = data.contentType || this.contentType;
 

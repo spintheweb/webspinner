@@ -5,11 +5,16 @@ import { assertEquals } from "@std/assert";
 import { newId } from "../stwComponents/stwIds.ts";
 
 Deno.test("newId: generate sample IDs", () => {
-  console.log("Generated IDs:");
+  const ids: string[] = [];
+
   for (let i = 0; i < 5; i++) {
     const id = newId();
-    console.log(`${i + 1}: ${id}`);
+    ids.push(id);
   }
+
+  console.debug("Generated IDs:", ids);
+
   // Test passes if no errors occur
-  assertEquals(true, true);
+  assertEquals(ids.length, 5);
+  assertEquals(ids.every((id) => id.startsWith("x")), true);
 });

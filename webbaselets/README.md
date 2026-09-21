@@ -1,7 +1,7 @@
 # Webbaselets
 
 Webbaselets are modular web applications designed to be embedded within a webbase. Unlike traditional webbases, they do
-not include a root site element, allowing them to integrate seamlessly as components or features within larger webbase
+not include a root portal element, allowing them to integrate seamlessly as components or features within larger webbase
 projects.
 
 ## Spin the Web Commons (stwCommon.wbol)
@@ -30,7 +30,7 @@ structure, manage content, configure data sources, and set up authorizations—a
 ### Key Features
 
 - **Webbase Structure Management:**\
-  Visualize the entire webbase (site, areas, pages, contents) as a tree. Edit elements in memory and persist changes to
+  Visualize the entire webbase (portal, areas, pages, contents) as a tree. Edit elements in memory and persist changes to
   `./.data/webbase.wbol`.
 
 - **Search:**\
@@ -49,13 +49,13 @@ structure, manage content, configure data sources, and set up authorizations—a
   Access debugging features to inspect and troubleshoot the application.
 
 - **Live Preview:**\
-  Instantly see how changes affect the site, with support for multiple languages and user roles.
+  Instantly see how changes affect the portal, with support for multiple languages and user roles.
 
 - **Layout Designer:**\
   Edit and preview WBLL (Webbase Layout Language) templates, manage placeholders, and control responsive layouts.
 
 - **Tree and Navigation Management:**\
-  Organize site structure.
+  Organize portal structure.
 
 - **Localization Tools:**\
   Easily manage translations and localized content for multilingual sites.
@@ -63,8 +63,8 @@ structure, manage content, configure data sources, and set up authorizations—a
 ### Who Is It For?
 
 - **Developers:**\
-  Rapidly prototype and extend site features with code and visual tools.
-- **Site Administrators:**\
+  Rapidly prototype and extend portal features with code and visual tools.
+- **Portal Administrators:**\
   Oversee structure, permissions, and localization from a central dashboard.
 
 > **Note:**\

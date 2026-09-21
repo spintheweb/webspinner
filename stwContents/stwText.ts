@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwText.ts
+/**
+ * @fileoverview Defines the text content element.
+ *
+ * Executes the text content datasource command, applies WBPL placeholders,
+ * and serves localized text responses with the configured content type.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwText
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -21,21 +30,21 @@ export class STWText extends STWContent {
 
 		if (ref) {
 			console.debug(
-				`${new Date().toISOString()}: ${ref._id === this._id ? " ●" : "│└"} Text (${
+				`${new Date().toISOString()}: ${ref.uuid === this.uuid ? " ●" : "│└"} Text (${
 					this.pathname(session)
-				}) @${this.section}.${this.sequence} [${this._id}]`,
+				}) @${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		} else {
 			console.debug(
 				`${new Date().toISOString()}: ├─ Text (${
 					this.pathname(session)
-				}) @${this.section}.${this.sequence} [${this._id}]`,
+				}) @${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		}
 
 		const data = {
 			method: "PUT",
-			id: this._id,
+			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
 			body: await this.render(req, session, await STWDatasources.command(session, this)),
@@ -57,7 +66,7 @@ export class STWText extends STWContent {
 				return "";
 			}
 		} else
-			layoutText = `<article tabindex="0" id="${this._id}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
+			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
 
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {

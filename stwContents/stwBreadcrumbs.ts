@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwBreadcrumbs.ts
+/**
+ * @fileoverview Defines the breadcrumbs content element.
+ *
+ * Builds a localized navigation trail from the current request path and
+ * renders it through the configured content layout.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwBreadcrumbs
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -24,7 +33,7 @@ export class STWBreadcrumbs extends STWContent {
 				placeholders.set(`@@${name}`, String(value));
 
 		let body = "";
-		for (let element = session.site.find(session, new URL(request.url).pathname); element; element = element.parent)
+		for (let element = session.portal.find(session, new URL(request.url).pathname); element; element = element.parent)
 			if (element.isVisible(session) & 1 && element.pathname(session))
 				body = `/<a href="${element.pathname(session)}">${element.localize(session, "name")}</a>` + body;
 

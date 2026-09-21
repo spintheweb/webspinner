@@ -3,7 +3,7 @@ set -eu
 
 # Entry point for the Webspinner Docker image.
 # Behavior:
-# - If SITE_DOMAIN is set, mark configured and exec the main server.
+# - If PORTAL_DOMAIN is set, mark configured and exec the main server.
 # - If /app/.configured exists, exec the main server.
 # - Otherwise, serve a static configuration info page on PORT and exit when stopped.
 
@@ -22,10 +22,10 @@ cat > "$INFO_PAGE" <<'HTML'
 </head>
 <body>
   <h1>Webspinner: Configuration required</h1>
-  <p>The container detected no <code>SITE_DOMAIN</code> environment variable and the instance is not configured.</p>
-  <p>To configure the container, restart it with an environment variable <code>SITE_DOMAIN</code> set to a DNS name pointing to this host. Example (docker-compose):</p>
+  <p>The container detected no <code>PORTAL_DOMAIN</code> environment variable and the instance is not configured.</p>
+  <p>To configure the container, restart it with an environment variable <code>PORTAL_DOMAIN</code> set to a DNS name pointing to this host. Example (docker-compose):</p>
   <pre>environment:
-  - SITE_DOMAIN=example.com
+  - PORTAL_DOMAIN=example.com
   - PORT=8080
   </pre>
   <p>Future releases will allow interactive configuration via a webbaselet. For now, set the environment and restart.</p>
@@ -35,15 +35,15 @@ cat > "$INFO_PAGE" <<'HTML'
 </html>
 HTML
 
-# If SITE_DOMAIN set or already configured, run the main server
-if [ -n "${SITE_DOMAIN:-}" ] || [ -f "$APP_DIR/.configured" ]; then
+# If PORTAL_DOMAIN set or already configured, run the main server
+if [ -n "${PORTAL_DOMAIN:-}" ] || [ -f "$APP_DIR/.configured" ]; then
   # create sentinel
   touch "$APP_DIR/.configured" || true
-  echo "INFO: Starting Webspinner (SITE_DOMAIN=${SITE_DOMAIN:-<unset>})."
+  echo "INFO: Starting Webspinner (PORTAL_DOMAIN=${PORTAL_DOMAIN:-<unset>})."
   exec deno run --allow-net --allow-read --allow-env stwSpinner.ts
 fi
 
-echo "INFO: No SITE_DOMAIN set and no configuration sentinel found. Serving configuration info page on port $PORT."
+echo "INFO: No PORTAL_DOMAIN set and no configuration sentinel found. Serving configuration info page on port $PORT."
 
 # Serve the info page using Deno's built-in server (no remote imports needed)
 deno run --allow-net --allow-read --allow-env - <<'DENO'

@@ -1,8 +1,8 @@
 # Spin the Web elements
 
-This folder defines the core classes that define the base elements of WBOL (Webbase Ontology Language), the structural foundation of Spin the Web. These elements form a hierarchical tree structure, enabling the modeling of a site, areas, pages, and content blocks.
+This folder defines the core classes that define the base elements of WBOL (Webbase Ontology Language), the structural foundation of Spin the Web. These elements form a hierarchical tree structure, enabling the modeling of a portal, areas, pages, and content blocks.
 
-A **Webbase** is the description of a web application, composed of these elements. The `STWSite` element is a singleton—there can be only one `STWSite` in a webbase. If a structure does not include an `STWSite`, it is referred to as a **Webbaselet**.
+A **Webbase** is the description of a web application, composed of these elements. The `STWPortal` element is a singleton—there can be only one `STWPortal` in a webbase. If a structure does not include an `STWPortal`, it is referred to as a **Webbaselet**.
 
 ## Core WBOL Base Element
 
@@ -11,20 +11,20 @@ All WBOL elements derive from `STWElement` share a common set of properties:
 
 | Property     | Type             | Description                                                                 |
 |--------------|------------------|-----------------------------------------------------------------------------|
-| `_id`        | `string`         | Unique identifier for the element.                                          |
-| `type`       | `string`         | The type of the element (e.g., "Site", "Area", "Page", "Content").          |
+| `uuid`       | `string`         | Unique identifier for the element.                                          |
+| `type`       | `string`         | The type of the element (e.g., "Portal", "Area", "Page", "Content").          |
 | `name`       | `string`         | Human-readable name of the element.                                         |
 | `slug`       | `string`         | Union of slugs from the root element makes up the URL of the element        |
-| `children`   | `STWElement[]`   | Array of child elements (all types except `STWSite`).                       |
+| `children`   | `STWElement[]`   | Array of child elements (all types except `STWPortal`).                       |
 | `localize()` | `(session, key) => string` | Returns a localized string for the given key and session.         |
 
 
 ## Derived Elements
 
-`STWSite`, `STWArea`, `STWPage`, and `STWContent` represent the main structural nodes of a WBOL document.
-These elemets can contain children, allowing for nested site structures (e.g., a site contains areas, which contain pages, which contain contents). Children can include all types of elements except `STWSite`.
+`STWPortal`, `STWArea`, `STWPage`, and `STWContent` represent the main structural nodes of a WBOL document.
+These elemets can contain children, allowing for nested portal structures (e.g., a portal contains areas, which contain pages, which contain contents). Children can include all types of elements except `STWPortal`.
 
-- **STWSite**: Represents the root of a WBOL site, containing metadata and top-level structure. Only one instance is allowed per webbase. Inherits from `STWArea`.
+- **STWPortal**: Represents the root of a WBOL portal, containing metadata and top-level structure. Only one instance is allowed per webbase. Inherits from `STWArea`.
 - **STWArea**: Groups related sub-areas, pages and contents.
 - **STWPage**: Represents an individual page and its contents.
 - **STWContent**: Abstract base for reusable content blocks or widgets, with concrete implementations in the `stwContents` folder.  
@@ -39,10 +39,10 @@ These elemets can contain children, allowing for nested site structures (e.g., a
 
 These classes are used throughout the Spin the Web platform for:
 - Parsing and generating WBOL files
-- Building and manipulating the in-memory site tree
-- Rendering and exporting site structures
+- Building and manipulating the in-memory portal tree
+- Rendering and exporting portal structures
 - Providing a type-safe API for extensions and tools
 
 ---
 
-This folder is essential for the definition and manipulation of all WBOL-based site structures in Spin the Web.
+This folder is essential for the definition and manipulation of all WBOL-based portal structures in Spin the Web.

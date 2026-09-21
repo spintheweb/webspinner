@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwShortcut.ts
+/**
+ * @fileoverview Defines the shortcut content element.
+ *
+ * Resolves a referenced content element from the shared index and delegates
+ * serving to it when both shortcut and target are visible.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwShortcut
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -25,7 +34,7 @@ export class STWShortcut extends STWContent {
 		if (!(ref instanceof STWContent) || !this.isVisible(_session) || !ref || ref instanceof STWShortcut)
 			return new Promise<Response>(resolve => resolve(secureResponse(null, { status: 204 }))); // 204 No content
 
-		console.debug(`${new Date().toISOString()}: ├┬ ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this._id}]`);
+		console.debug(`${new Date().toISOString()}: ├┬ ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
 
 		return ref.serve(_req, _session, this);
 	}

@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwScript.ts
+/**
+ * @fileoverview Defines the client-script content element.
+ *
+ * Provides the content subtype for returning client-side script payloads to
+ * the browser.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwClientScript
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -17,7 +26,7 @@ export class STWScript extends STWContent {
 
 		const data = {
 			method: "PUT",
-			id: this._id,
+			id: this.uuid,
 			section: this.section,
 			sequence: this.sequence,
 			body: this.layout.get(_session.lang),

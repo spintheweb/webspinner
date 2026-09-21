@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwGraph.ts
+/**
+ * @fileoverview Defines the graph content element.
+ *
+ * Provides the graph content subtype and its current placeholder rendering
+ * implementation.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwGraph
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";

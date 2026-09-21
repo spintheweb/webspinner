@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwTable.ts
+/**
+ * @fileoverview Defines the table content element.
+ *
+ * Renders datasource fields and rows as a layout-driven HTML table with
+ * localized labels, placeholders, and configured actions.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwTable
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -69,7 +78,7 @@ export class STWTable extends STWContent {
 
 		if (layout.acts(ACTIONS.stwinsert || ACTIONS.stwupdate || ACTIONS.stwdelete) && !isTruthy(layout.settings.get("disabled"))) {
 			body = `<form method="post">
-				<input type="hidden" name="stwOrigin" value="${this._id}">
+				<input type="hidden" name="stwOrigin" value="${this.uuid}">
 				${body}
 				<button value="stwcrud" name="stwAction" type="submit">Save</button>
 			</form>`;

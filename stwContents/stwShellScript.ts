@@ -1,5 +1,15 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web content: stwShellScript
+/**
+ * @fileoverview Defines the shell-script content element.
+ *
+ * Executes shell scripts stored in content layouts against datasource records
+ * using the module's restricted filesystem and environment contract.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwShellScript
+ * @requires jsr:@std/path@1
+ * @license GPL-3.0-or-later
+ */
 
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
@@ -106,7 +116,7 @@ function buildEnvironment(session: STWSession, records: ISTWRecords): Record<str
 	};
 
 	// Add common placeholders as individual env vars for convenience
-	const commonKeys = ["HOST", "USER", "LANG", "THEME", "SITE", "PAGE"];
+	const commonKeys = ["HOST", "USER", "LANG", "THEME", "PORTAL", "PAGE"];
 	for (const key of commonKeys) {
 		const value = session.placeholders.get(key);
 		if (value) {
@@ -136,7 +146,7 @@ export default class STWShellScript extends STWContent {
 		const script = this._extractCode(session);
 		
 		if (!script) {
-			console.warn(`ShellScript ${this._id} has no layout script for lang ${session.lang}`);
+			console.warn(`ShellScript ${this.uuid} has no layout script for lang ${session.lang}`);
 			return JSON.stringify({ ok: false, error: "No script found" });
 		}
 
@@ -155,7 +165,7 @@ export default class STWShellScript extends STWContent {
 
 			return result;
 		} catch (error: any) {
-			console.error(`ShellScript ${this._id} execution error:`, error);
+			console.error(`ShellScript ${this.uuid} execution error:`, error);
 			return JSON.stringify({
 				ok: false,
 				error: {

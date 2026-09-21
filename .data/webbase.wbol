@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<webbase xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="wGGpiW7IjjrFqapqVuZopW"
+	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
+	<visibilities>
+		<role id="root" />
+		<role id="administrators" />
+		<role id="guests" />
+		<role id="users" />
+		<role id="developers" />
+		<role id="translators" />
+		<role id="seo" />
+	</visibilities>
+	<name>
+		<text xml:lang="en" slug="spin-the-web"><![CDATA[Spin the Web]]></text>
+	</name>
+	<children>
+		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+			<name>
+				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
+			</name>
+			<keywords>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</keywords>
+			<description>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</description>
+			<children>
+				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					section="main" sequence="1" class="stwTable">
+					<name>
+						<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
+					</name>
+					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers LIMIT 3]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Customers"')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+				<content uuid="cno61aDt5dXpvK93DcE96l" origin="wGGpiW7IjjrFqapqVuZopW" type="tree"
+					section="main" sequence="10" class="stwTree">
+					<name>
+						<text xml:lang="en" slug="db-schema"><![CDATA[DB Schema]]></text>
+					</name>
+					<query datasource="mysqlsample"><![CDATA[SELECT 'TABLES' as TYPE, 'TABLES' as NAME, null as rows, '' as DATA_TYPE, '' as COLUMN_TYPE, '' as COLUMN_KEY, 'TABLE' as PATH
+								UNION
+								SELECT 'TABLE', T.TABLE_NAME, T.TABLE_ROWS, '', '', '', concat_ws('/', 'TABLE', T.TABLE_NAME)
+								    FROM information_schema.tables T 
+								    WHERE T.TABLE_SCHEMA='qt3ul9nb_sampledb' and T.TABLE_TYPE = 'BASE TABLE'
+								UNION
+								SELECT 'COLUMN', C.COLUMN_NAME, null, C.DATA_TYPE, C.COLUMN_TYPE, C.COLUMN_KEY, concat_ws('/', 'TABLE', T.TABLE_NAME, C.COLUMN_NAME)
+								    FROM information_schema.tables T inner join information_schema.columns C on T.TABLE_SCHEMA = C.TABLE_SCHEMA and T.TABLE_NAME = C.TABLE_NAME 
+								    WHERE T.TABLE_SCHEMA='qt3ul9nb_sampledb' and T.TABLE_TYPE = 'BASE TABLE'
+								UNION
+								SELECT 'VIEWS', 'VIEWS', null, '', '', '', 'VIEW'
+								UNION
+								SELECT 'VIEW', V.TABLE_NAME, null, '', '', '', concat_ws('/', 'VIEW', V.TABLE_NAME)
+								    FROM information_schema.views V
+								    WHERE V.TABLE_SCHEMA='qt3ul9nb_sampledb'
+								UNION
+								SELECT 'COLUMN', C.COLUMN_NAME, null, C.DATA_TYPE, C.COLUMN_TYPE, C.COLUMN_KEY, concat_ws('/', 'VIEW', V.TABLE_NAME, C.COLUMN_NAME)
+								    FROM information_schema.views V inner join information_schema.columns C on V.TABLE_SCHEMA = C.TABLE_SCHEMA and V.TABLE_NAME = C.TABLE_NAME
+								    WHERE V.TABLE_SCHEMA='qt3ul9nb_sampledb'
+								UNION
+								SELECT 'ROUTINES', 'ROUTINES', null, '', '', '', 'ROUTINE'
+								UNION
+								SELECT distinct concat(R.ROUTINE_TYPE, 'S'), concat(R.ROUTINE_TYPE, 'S'), null, '', '', '', concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE)
+								    FROM information_schema.ROUTINES R
+								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb'
+								UNION
+								SELECT R.ROUTINE_TYPE, R.ROUTINE_NAME, null, '', '', '', concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE, R.ROUTINE_NAME)
+								    FROM information_schema.ROUTINES R
+								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb'
+								UNION
+								SELECT 'PARAMETER', ifnull(P.PARAMETER_NAME, 'RETURN'), null, P.DATA_TYPE, P.DTD_IDENTIFIER, ifnull(P.PARAMETER_MODE, ''), concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE, R.ROUTINE_NAME, ifnull(P.PARAMETER_NAME, 'RETURN'))
+								    FROM information_schema.ROUTINES R left join information_schema.PARAMETERS P ON R.ROUTINE_SCHEMA = P.SPECIFIC_SCHEMA and R.ROUTINE_NAME = P.SPECIFIC_NAME
+								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb']]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="DB Schema" key="PATH"')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="false" />
+					</visibilities>
+				</content>
+				<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
+					section="main" sequence="2" class="stwForm">
+					<name>
+						<text xml:lang="en" slug="logoff"><![CDATA[Logoff]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[t('
+								<form action="/stw/logoff" method="post">
+								<button type="submit">Logoff</button>
+								</form>')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="false" />
+					</visibilities>
+				</content>
+				<content uuid="c4sHhyptkJDFXjfOgnM0lRD" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
+					section="header" sequence="1">
+					<name>
+						<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+					<options>
+						<option>
+							<text xml:lang="en"><![CDATA[Animals]]></text>
+							<options>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Dogs]]></text>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Cats]]></text>
+								</option>
+								<option>
+									<text xml:lang="en"><![CDATA[Bears]]></text>
+									<options>
+										<option ref="/home">
+											<text xml:lang="en"><![CDATA[Dogs]]></text>
+										</option>
+										<option ref="/home">
+											<text xml:lang="en"><![CDATA[Cats]]></text>
+										</option>
+										<option ref="/home">
+											<text xml:lang="en"><![CDATA[Bears]]></text>
+										</option>
+										<option ref="-"></option>
+										<option ref="/home">
+											<text xml:lang="en"><![CDATA[Orcas]]></text>
+										</option>
+										<option ref="/home">
+											<text xml:lang="en"><![CDATA[Whales]]></text>
+										</option>
+									</options>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Orcas]]></text>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Whales]]></text>
+								</option>
+							</options>
+						</option>
+						<option ref="wGGpiW7IjjrFqapqVuZopW" parameters="txt=@txt"></option>
+						<option ref="https://www.keyvisions.it"></option>
+						<option ref="c2hvVEcjC57XCDxmovj54PD"></option>
+					</options>
+				</content>
+				<content uuid="c4sHhypzM0UjizY20BICPrH" origin="wGGpiW7IjjrFqapqVuZopW" type="tabs"
+					section="main" sequence="10">
+					<name>
+						<text xml:lang="en" slug="tabs"><![CDATA[Tabs]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+					<options>
+						<option ref="c3YCLoAbUczj9NNvlOFO081" parameters="id=3">
+							<text xml:lang="en"><![CDATA[./public]]></text>
+						</option>
+						<option ref="c3YCLoAbUczjbaXTHruz8Yx">
+						</option>
+					</options>
+				</content>
+				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
+					section="main" sequence="11">
+					<name>
+						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')t('Submit')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+				<content uuid="c4sHhypzNzBJ7LpOv3ROBvX" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
+					section="main" sequence="9">
+					<name>
+						<text xml:lang="en" slug="explain"><![CDATA[Explain]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <b>HTML (HyperText Markup Language)</b> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, WBOL (Webbase Ontology Language)</b> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					section="aside-right" sequence="1">
+					<name>
+						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
+					</name>
+					<query datasource="mysqlsample"><![CDATA[select * from offices]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId"')l('City')hel('Tel.')e\a('type="tel"')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
+					section="aside-left" sequence="1">
+					<name>
+						<text xml:lang="en" slug="calendar"><![CDATA[Calendar]]></text>
+					</name>
+					<query datasource=""><![CDATA[]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('mode="month" key="date"')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+			</children>
+		</page>
+		<page uuid="p76qSPuePylfg88klSQBx5r" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+			<name>
+				<text xml:lang="en" slug="sales"><![CDATA[Sales]]></text>
+			</name>
+			<keywords>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</keywords>
+			<description>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</description>
+			<visibilities>
+				<role id="guests" visibility="true" />
+			</visibilities>
+			<children>
+				<content uuid="c3YCLoAbUczj9NNvlOFO081" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					sequence="1">
+					<name>
+						<text xml:lang="en" slug="files"><![CDATA[Files]]></text>
+					</name>
+					<query datasource="bash"><![CDATA[ls -l ./public]]></query>
+				</content>
+				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list"
+					sequence="5">
+					<name>
+						<text xml:lang="en" slug="objects"><![CDATA[Objects]]></text>
+					</name>
+					<query datasource="objects" parameters="id=3&amp;id=5&amp;id=10"><![CDATA[$.({"name":name,"color":data.color})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
+					</layout>
+					<visibilities>
+						<role id="guests" visibility="true" />
+					</visibilities>
+				</content>
+				<content uuid="c7mIXOTljyDnSgsnYFNOqrh" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					section="main" sequence="1">
+					<name>
+						<text xml:lang="en" slug="employees"><![CDATA[Employees]]></text>
+					</name>
+					<query datasource="mysqlsample"><![CDATA[select *, 'collapsible' as foo from employees limit 3]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Employees" key="employeeNumber" @@foo ')
+								l('Name')a('dashboard')pp('fufi;@@foo')ff
+								l('Ext.')f
+								l('eMail')a('mailto:@@email')f
+								lf
+								lf
+								l('Title')f]]></text>
+					</layout>
+				</content>
+			</children>
+		</page>
+		<area uuid="aadwSs5vCJGXHbaqMwAYpj" origin="wGGpiW7IjjrFqapqVuZopW">
+			<name>
+				<text xml:lang="en" slug="profile"><![CDATA[Profile]]></text>
+			</name>
+			<children>
+				<area uuid="ayfpEhe2ISsKb9NiVLcw5y" origin="aadwSs5vCJGXHbaqMwAYpj"
+					mainpage="p3ACYHuY1IOe1UCmBuXClNc">
+					<name>
+						<text xml:lang="en" slug="area"><![CDATA[Area]]></text>
+					</name>
+					<children>
+						<page uuid="p3ACYHuY1IOe1UCmBuXClNc" origin="ayfpEhe2ISsKb9NiVLcw5y"
+							template="index.html">
+							<name>
+								<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
+							</name>
+							<keywords>
+								<text xml:lang="en"><![CDATA[]]></text>
+							</keywords>
+							<description>
+								<text xml:lang="en"><![CDATA[]]></text>
+							</description>
+							<visibilities>
+								<role id="guests" visibility="true" />
+							</visibilities>
+						</page>
+					</children>
+				</area>
+			</children>
+		</area>
+		<page uuid="pBMD2db90OORrnHEXlmSiq" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+			<name>
+				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
+			</name>
+			<keywords>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</keywords>
+			<description>
+				<text xml:lang="en"><![CDATA[]]></text>
+			</description>
+			<visibilities>
+				<role id="guests" visibility="true" />
+			</visibilities>
+		</page>
+		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
+			section="header" sequence="2" class="stwBreadcrumbs">
+			<name>
+				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
+			</name>
+			<query datasource=""><![CDATA[]]></query>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
+			</layout>
+			<visibilities>
+				<role id="guests" visibility="true" />
+			</visibilities>
+		</content>
+		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
+			section="footer" sequence="1" class="stwLanguages">
+			<name>
+				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
+			</name>
+			<query datasource=""><![CDATA[]]></query>
+			<visibilities>
+				<role id="guests" visibility="true" />
+			</visibilities>
+		</content>
+	</children>
+</webbase>

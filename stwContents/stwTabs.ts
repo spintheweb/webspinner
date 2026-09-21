@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwTabs.ts
+/**
+ * @fileoverview Defines the tabs content element.
+ *
+ * Loads localized tab options, resolves referenced content through the shared
+ * index, and renders the selected content panels.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwTabs
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
@@ -29,11 +38,11 @@ export class STWTabs extends STWContent {
 			if (option.name.get(session.lang) === "-")
 				body += `<dt style="flex-grow: 1;"></dt>`;
 			else {
-				const element = session.site.find(session, option.ref || "");
+				const element = session.portal.find(session, option.ref || "");
 				if (element instanceof STWContent && element.isVisible(session)) {
 					const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
-					body += `<dt data-ref="${element._id}"${id ? "" : " class=\"stwSelected\""}>${name}${closable(session, element._id)}</dt>`;
-					id = id || element._id;
+					body += `<dt data-ref="${element.uuid}"${id ? "" : " class=\"stwSelected\""}>${name}${closable(session, element.uuid)}</dt>`;
+					id = id || element.uuid;
 				}
 			}
 		});
@@ -46,7 +55,7 @@ export class STWTabs extends STWContent {
 		// The STWTabs script selects the clicked tab and requests from the spinner the tab content
 		const mode = layout.settings.get("mode") || "horizontal";
 		return `<dl class="stw${mode[0].toUpperCase()}Tabs">${body}</dl>
-			<script name="STWTabs" onload="fnSTWTabs('${this._id}')">
+			<script name="STWTabs" onload="fnSTWTabs('${this.uuid}')">
 				function fnSTWTabs(id) {
 					const tabs = self.document.getElementById(id);
 					tabs.querySelector("dl").addEventListener("click", event => {

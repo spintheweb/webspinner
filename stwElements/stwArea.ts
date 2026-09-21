@@ -1,10 +1,25 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web element: stwArea
+/**
+ * @fileoverview Defines the Spin the Web area element.
+ *
+ * Stores area metadata, serializes and updates its main page and version,
+ * delegates requests to the portal's indexed main page, and registers the
+ * element as `Area`.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwArea
+ * @requires ../stwComponents/stwSession.ts
+ * @requires ../stwComponents/stwFactory.ts
+ * @requires ./stwElement.ts
+ * @requires ./stwPortal.ts
+ * @requires ../stwComponents/stwResponse.ts
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
 import { ISTWElement, STWElement } from "./stwElement.ts";
-import { STWSite } from "./stwSite.ts";
+import { STWPortal } from "./stwPortal.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
 
 export interface ISTWArea extends ISTWElement {
@@ -38,7 +53,7 @@ export class STWArea extends STWElement {
 	}
 
 	public override serve(req: Request, session: STWSession): Promise<Response> {
-		const page = STWSite.index.get(this.mainpage);
+		const page = STWPortal.index.get(this.mainpage);
 
 		return page?.serve(req, session) ||
 			new Promise<Response>(resolve => {

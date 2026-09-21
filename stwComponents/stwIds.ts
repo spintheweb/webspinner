@@ -1,30 +1,32 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Utility: ID helpers (UUID -> base62)
-
+/**
+ * @fileoverview Provides identifier utilities for Spin the Web components.
+ *
+ * Converts UUID strings to compact base62 identifiers and generates new
+ * identifiers from cryptographically random UUID values.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwIds
+ * @requires crypto.randomUUID
+ * @license GPL-3.0-or-later
+ */
 const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-/**
- * Convert a UUID string to base62. Dashes are removed before conversion.
- */
-export function uuidToBase62(uuid: string): string {
-    // Remove dashes and interpret as a hex bigint
-    const hex = uuid.replace(/-/g, "");
-    let n = BigInt("0x" + hex);
-    if (n === 0n) return "0";
-
-    let out = "";
-    const base = BigInt(ALPHABET.length);
-    while (n > 0n) {
-        const rem = Number(n % base);
-        out = ALPHABET[rem] + out;
-        n = n / base;
-    }
-    return "x" + out;
+export function newId(): string {
+	return uuidToBase62(crypto.randomUUID());
 }
 
-/**
- * Generate a new base62 id from crypto.randomUUID()
- */
-export function newId(): string {
-    return uuidToBase62(crypto.randomUUID());
+function uuidToBase62(uuid: string): string {
+	const hex = uuid.replace(/-/g, "");
+	let n = BigInt("0x" + hex);
+	if (n === 0n) return "0";
+
+	let out = "";
+	const base = BigInt(ALPHABET.length);
+	while (n > 0n) {
+		const rem = Number(n % base);
+		out = ALPHABET[rem] + out;
+		n = n / base;
+	}
+	return "x" + out;
 }

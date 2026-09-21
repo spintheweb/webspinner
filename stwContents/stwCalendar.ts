@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwCalendar.ts
+/**
+ * @fileoverview Defines the calendar content element.
+ *
+ * Groups datasource records by date and renders calendar views using the
+ * configured layout and localized session context.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwCalendar
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";

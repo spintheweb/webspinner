@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwImagemap.ts
+/**
+ * @fileoverview Defines the image-map content element.
+ *
+ * Provides the image-map content subtype and its current placeholder rendering
+ * implementation.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwImagemap
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";

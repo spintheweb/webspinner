@@ -55,9 +55,9 @@ function _enableStudio() {
 	while (document.body.firstChild) stash.appendChild(document.body.firstChild);
 	document.body.insertAdjacentHTML(
 		"afterbegin",
-		`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwSite"></div></div><footer id="stwStatusbar"></footer></div>`,
+		`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwPortal"></div></div><footer id="stwStatusbar"></footer></div>`,
 	);
-	while (stash.firstChild) document.getElementById("stwSite").appendChild(stash.firstChild);
+	while (stash.firstChild) document.getElementById("stwPortal").appendChild(stash.firstChild);
 	if (!document.cookie.includes("stwStudio=")) document.cookie = "stwStudio=1; path=/; max-age=31536000";
 
 	// If WS is open, load studio interface; else defer to onopen
@@ -69,7 +69,7 @@ function _enableStudio() {
 	}
 }
 function _disableStudio() {
-	const stash = document.getElementById("stwSite");
+	const stash = document.getElementById("stwPortal");
 	if (stash) {
 		while (stash.firstChild) document.body.appendChild(stash.firstChild);
 	}
@@ -248,7 +248,7 @@ document.addEventListener("click", function (e) {
 		stwWS.send(
 			JSON.stringify({
 				method: "PATCH",
-				resource: `/stws/editcontent?_id=${article.id}`,
+				resource: `/stws/editcontent?uuid=${article.id}`,
 				options: { placeholder: "" },
 			}),
 		);

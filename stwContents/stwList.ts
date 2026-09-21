@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web module: stwContents/stwList.ts
+/**
+ * @fileoverview Defines the list content element.
+ *
+ * Renders datasource records as a localized, layout-driven HTML list with
+ * placeholder substitution and no-data handling.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwList
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";

@@ -2,7 +2,7 @@
 // Spin the Web component: stwSession
 
 import { getCookies } from "@std/http/cookie";
-import { STWSite } from "../stwElements/stwSite.ts";
+import { STWPortal } from "../stwElements/stwPortal.ts";
 import { envGet } from "./stwConfig.ts";
 
 export class STWSession {
@@ -10,19 +10,19 @@ export class STWSession {
 	remoteAddr: Deno.Addr;
 	user: string; // User name
 	name!: string; // Full name
-	roles: string[]; // Roles played by the user. Note: Security revolves around this aspect!
-	lang: string; // Preferred user language (this language is used to render contents based on the accepted and available site languages)
+	roles: string[]; // Roles played by the user. IMPORTANT: Security revolves around this aspect!
+	lang: string; // Preferred user language (this language is used to render contents based on the accepted and available portal languages)
 	langs: string[]; // Accepted user languages (Accept-Language)
 	tz: string; // Timezone of the user
 	placeholders: Map<string, string>;
 	timestamp: number; // Session timeout in minutes
 	private timer: number = 0;
 	dev: boolean; // If true STW Studio  enabled
-	site: STWSite;
+	portal: STWPortal;
 	public sockets: Map<string, WebSocket> = new Map(); // per-tab sockets
 	public states: Map<string, any>;
 
-	public constructor(sessionId: string, remoteAddr: Deno.Addr, site: STWSite) {
+	public constructor(sessionId: string, remoteAddr: Deno.Addr, portal: STWPortal) {
 		this.sessionId = sessionId;
 		this.remoteAddr = remoteAddr;
 		this.user = "guest";
@@ -33,7 +33,7 @@ export class STWSession {
 		this.placeholders = new Map<string, string>;
 		this.timestamp = Date.now();
 		this.dev = true;
-		this.site = site;
+		this.portal = portal;
 		this.states = new Map<string, any>();
 		this.sockets = new Map();
 
@@ -78,7 +78,6 @@ export class STWSession {
 		clearTimeout(timer);
 		console.log(`${new Date().toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
 
-		this.timer = setTimeout(() => this.timeout(this.timer), parseInt(envGet("TIMEOUT") || "15") * 60000); // Session timeout
+		this.timer = setTimeout(() => this.timeout(this.timer), parseInt(envGet("TIMEOUT") || "15") * 60000) as unknown as number; // Session timeout
 	}
 }
-// STWFactory has been moved to stwFactory.ts; import from there where needed.

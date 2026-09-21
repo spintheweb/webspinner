@@ -1,5 +1,22 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Spin the Web element: stwElement
+/**
+ * @fileoverview Defines the base types and abstract element implementation
+ * shared by Spin the Web portal elements.
+ *
+ * Builds element hierarchies through the factory, maintains localized metadata
+ * and paths, evaluates role-based visibility, serializes elements, applies
+ * updates, and provides the default response behavior for subclasses.
+ *
+ * @author Giancarlo
+ * @version 1.0.0
+ * @module stwElement
+ * @requires ../stwComponents/stwSession.ts
+ * @requires ../stwComponents/stwFactory.ts
+ * @requires ./stwContent.ts
+ * @requires ./stwIndex.ts
+ * @requires ../stwComponents/stwResponse.ts
+ * @requires ../stwComponents/stwIds.ts
+ * @license GPL-3.0-or-later
+ */
 
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { STWFactory } from "../stwComponents/stwFactory.ts";
@@ -13,12 +30,12 @@ export type STWLocalized = Map<string, string>;
 export type STWVisibility = Map<STWRole, boolean>;
 
 export interface ISTWElement<TExtra = unknown> {
-	_id: string;
+	uuid: string;
 	type: string;
 	subtype: string;
 	name: object;
 	slug: object;
-	keys: object;
+	keywords: object;
 	description: object;
 	visibility: object;
 	children: ISTWElement<any>[]; // heterogeneous children allowed
@@ -26,7 +43,7 @@ export interface ISTWElement<TExtra = unknown> {
 	extra?: TExtra; // optional custom metadata/payload
 }
 export abstract class STWElement<TExtra = unknown> {
-	_id: string;
+	uuid: string;
 	type: string;
 	protected name: STWLocalized;
 	protected slug: STWLocalized;
@@ -39,13 +56,11 @@ export abstract class STWElement<TExtra = unknown> {
 	protected extra?: TExtra;
 
 	public constructor(element: ISTWElement<TExtra>) {
-		this._id = element._id ? element._id : newId();
+		this.uuid = element.uuid ? element.uuid : newId();
 		this.type = element.type || this.constructor.name.replace("STW", "");
 		this.name = new Map(Object.entries(element.name || { "en": `New ${this.type}` }));
-		this.slug = new Map(
-			Object.entries(element.slug || { "en": `New ${this.type}`.replace(/[^a-z0-9_]/gi, "").toLowerCase() }),
-		);
-		this.keywords = new Map(Object.entries(element.keys || {}));
+		this.slug = new Map(Object.entries(element.slug || { "en": `New ${this.type}`.replace(/[^a-z0-9_]/gi, "").toLowerCase() }));
+		this.keywords = new Map(Object.entries(element.keywords || {}));
 		this.description = new Map(Object.entries(element.description || {}));
 		this.visibility = new Map(Object.entries(element.visibility || {}));
 		this.modified = element.modified || Date.now();
@@ -58,7 +73,7 @@ export abstract class STWElement<TExtra = unknown> {
 				elementInstance.parent = this as unknown as STWElement<any>;
 				this.children.push(elementInstance);
 
-				STWIndex.set(elementInstance._id, elementInstance);
+				STWIndex.set(elementInstance.uuid, elementInstance);
 			}
 		}
 	}
@@ -92,7 +107,7 @@ export abstract class STWElement<TExtra = unknown> {
 
 	public toLocalizedJSON(session: STWSession): object {
 		return {
-			_id: this._id,
+			uuid: this.uuid,
 			type: this.type,
 			subtype: (this as any).subtype || this.type,
 			name: this.localize(session, "name"),
@@ -101,13 +116,13 @@ export abstract class STWElement<TExtra = unknown> {
 			description: this.localize(session, "description"),
 			visibility: Object.fromEntries(this.visibility),
 			modified: this.modified,
-			children: this.children.map((child) => child._id),
+			children: this.children.map((child) => child.uuid),
 		};
 	}
 
 	/**
 	 * Determines the Role Based Visibility of the element climbing up the webbase hierarchy if necessary.
-	 * By default an element is not visible except for the site's mainpage. Given the session roles,
+	 * By default an element is not visible except for the portal's mainpage. Given the session roles,
 	 * apply a logical OR of these roles in element visiblity, if no role applies move to
 	 * the element parent.
 	 *
@@ -117,8 +132,8 @@ export abstract class STWElement<TExtra = unknown> {
 	public isVisible(session: STWSession, recurse: boolean = false): number {
 		let ac!: number;
 
-		if (session.site.mainpage === this._id) {
-			ac = recurse ? 0b11 : 0b01; // Main site page always visible
+		if (session.portal.mainpage === this.uuid) {
+			ac = recurse ? 0b11 : 0b01; // Main portal page always visible
 		}
 
 		for (let i = 0; ac != 0b01 && i < session.roles.length; ++i) {
@@ -130,7 +145,7 @@ export abstract class STWElement<TExtra = unknown> {
 		if (typeof ac === "undefined") {
 			if (this.parent) {
 				ac = 0b10 | this.parent.isVisible(session, true);
-			} else if (["Site", "Area", "Page"].indexOf(this.type) === -1) { // Content
+			} else if (["Portal", "Area", "Page"].indexOf(this.type) === -1) { // Content
 				ac = 0b10; // NOTE: this covers contents without a parent nor a RBV, it's in limbo!
 			}
 		}
@@ -141,7 +156,7 @@ export abstract class STWElement<TExtra = unknown> {
 	// Export element as XML
 	public export(): string {
 		let xml =
-			`<${this.type} id="${this._id}" type="${this.type}" subtype="${this.type}" modified="${this.modified}">\n`;
+			`<${this.type} id="${this.uuid}" type="${this.type}" subtype="${this.type}" modified="${this.modified}">\n`;
 		for (const [key, value] of Object.entries(this)) {
 			if (key === "parent" || key === "children") {
 				continue;

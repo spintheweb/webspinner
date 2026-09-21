@@ -2,12 +2,14 @@
 // Spin the Web component: stwDatasources
 
 import { STWSession } from "./stwSession.ts";
-import { STWSite } from "../stwElements/stwSite.ts";
+import { STWPortal } from "../stwElements/stwPortal.ts";
 import { STWContent } from "../stwElements/stwContent.ts";
 import { wbpl } from "./stwWBPL.ts";
 import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { Client as MySQLClient } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
-import jsonata from "https://esm.sh/jsonata@1.8.7";
+import * as jsonataModule from "https://esm.sh/jsonata@1.8.7";
+
+const jsonata = (jsonataModule as { default?: (expr: string) => any }).default ?? (jsonataModule as unknown as (expr: string) => any);
 
 // Global cache for query results
 const queryCache = new Map<string, { data: ISTWRecords; timestamp: number }>();
@@ -23,7 +25,7 @@ interface ISTWDatasource {
 	name?: string; // Executable name for shell type (mirrors settings.name)
 }
 export class STWDatasources {
-	static datasources: Map<string, STWSite | MySQLClient | ISTWDatasource> = new Map();
+	static datasources: Map<string, STWPortal | MySQLClient | ISTWDatasource> = new Map();
 	static #initializationPromise: Promise<void> | null = null;
 	// Keep DSN settings to reconnect when needed
 	private static mysqlConfigs = new Map<string, any>();
@@ -31,7 +33,7 @@ export class STWDatasources {
 	private static initialize(session: STWSession): Promise<void> {
 		if (!this.#initializationPromise) {
 			this.#initializationPromise = (async () => {
-				this.datasources.set("stw", session.site); // Webbase
+				this.datasources.set("stw", session.portal); // Webbase
 
 				// TODO: Connection pools
 				
@@ -118,7 +120,7 @@ export class STWDatasources {
 			return { fields: [], rows: [] };
 		}
 
-		const cacheKey = `${content._id}:${wbpl(content.params, session.placeholders)}`;
+		const cacheKey = `${content.uuid}:${wbpl(content.params, session.placeholders)}`;
 
 		if (content.cache && queryCache.has(cacheKey)) {
 			const cached = queryCache.get(cacheKey)!;
@@ -134,7 +136,7 @@ export class STWDatasources {
 
 			const datasource = STWDatasources.datasources.get(content.dsn) || {};
 			if (content.dsn === "json") {
-				const json = JSON.parse(content.command);
+				const json = JSON.parse(content.query);
 				records = {
 					affectedRows: 1,
 					fields: json && typeof json === "object" && !Array.isArray(json)
@@ -148,7 +150,7 @@ export class STWDatasources {
 				const dsShell = datasource as ISTWDatasource;
 
 				const shellName = dsShell.host || dsShell.name || content.dsn; // executable or path
-				const cmdString = wbpl(content.command, session.placeholders).trim();
+				const cmdString = wbpl(content.query, session.placeholders).trim();
 				let args: string[] = [];
 
 				// Security: disallow sudo usage explicitly
@@ -212,10 +214,10 @@ export class STWDatasources {
 					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
 					records = { affectedRows: 0, fields: [], rows: [] };
 				}
-			} else if (datasource instanceof STWSite) {
+			} else if (datasource instanceof STWPortal) {
 				records = await fetchWebbaseData(session, content);
 			} else if (datasource instanceof MySQLClient) {
-				const sql = wbpl(content.command, session.placeholders);
+				const sql = wbpl(content.query, session.placeholders);
 				// try execute; on "closed" error, reconnect and retry once
 				try {
 					records = await datasource.execute(sql) as ISTWRecords;
@@ -271,14 +273,14 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
 
 	let isArray = true;
 	try {
-		JSON.parse(content.command) instanceof Array;
+		JSON.parse(content.query) instanceof Array;
 	} catch {
 		isArray = false;
 	}
 
 	if (!isArray) {
-		const expr = jsonata(wbpl(content.command, session.placeholders));
-		result = expr.evaluate(STWSite.wbol);
+		const expr = jsonata(wbpl(content.query, session.placeholders));
+		result = expr.evaluate(STWPortal.wbol);
 
 		if (result instanceof Promise) {
 			result = await result;
@@ -295,12 +297,12 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
 		);
 	}
 
-	result = STWSite.instance.find(session, session.placeholders.get("@_id") || "/")?.toLocalizedJSON(session);
+	result = STWPortal.instance.find(session, session.placeholders.get("@uuid") || "/")?.toLocalizedJSON(session);
 
 	return new Promise<ISTWRecords>((resolve) =>
 		resolve({
 			affectedRows: 1,
-			fields: (JSON.parse(content.command) || Object.getOwnPropertyNames(result) || []).map((name: string) => ({
+			fields: (JSON.parse(content.query) || Object.getOwnPropertyNames(result) || []).map((name: string) => ({
 				name,
 			})),
 			rows: Array.isArray(result) ? result : [result],
@@ -317,7 +319,7 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
  * @returns The result set
  */
 async function fetchAPIData(session: STWSession, content: STWContent, datasource: any): Promise<ISTWRecords> {
-	const query = wbpl(content.command, session.placeholders);
+	const query = wbpl(content.query, session.placeholders);
 	const expr = jsonata(query);
 
 	const response = await fetch(`${datasource.host}?${wbpl(content.params, session.placeholders)}`, {

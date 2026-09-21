@@ -16,8 +16,8 @@
 	overflow: hidden;
 }
 
-#stwSite {
-	overflow: auto; /* Confines the site and adds scrollbars when needed */
+#stwPortal {
+	overflow: auto; /* Confines the portal and adds scrollbars when needed */
 	height: 100%;
 	width: 100%;
 	position: relative; /* Establishes a positioning context for child elements */

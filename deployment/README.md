@@ -13,16 +13,16 @@ bash deployment/build-docker.sh
 # 2) Run the local image
 docker run --rm \
 	-p 8080:8080 \
-	-e SITE_DOMAIN=example.com \
+	-e PORTAL_DOMAIN=example.com \
 	-v "$PWD/webspinner-data:/app/.data" \
 	ghcr.io/spintheweb/webspinner:latest
 ```
 
 Notes:
 - Images are tagged locally as `ghcr.io/spintheweb/webspinner:latest` by default but are not pushed anywhere unless you explicitly use `--push`.
-- First run: if `SITE_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `SITE_DOMAIN` to proceed.
+- First run: if `PORTAL_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `PORTAL_DOMAIN` to proceed.
 - Persistent data: `./webspinner-data` on host is mounted to `/app/.data` in the container.
-- Environment variables supported include `PORT`, `SITE_ROOT`, `WEBBASE`, `COMMON_WEBBASE`, `STUDIO_WEBBASE`, and `SITE_DOMAIN`.
+- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE`, `STUDIO_WEBBASE`, and `PORTAL_DOMAIN`.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
 
 ## Quick start (docker-compose)
