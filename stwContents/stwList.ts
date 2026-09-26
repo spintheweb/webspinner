@@ -15,7 +15,7 @@ import { registerElement } from "../stwComponents/stwFactory.ts";
 import { STWContent, ISTWContent } from "../stwElements/stwContent.ts";
 import { STWLayout } from "../stwComponents/stwWBLL.ts";
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 
 export class STWList extends STWContent {
 	public constructor(content: ISTWContent) {
@@ -43,7 +43,7 @@ export class STWList extends STWContent {
 
 		body = `<ul>`;
 		while (true) {
-			body += `<li${wbpl(layout.groupAttributes, placeholders)}>${await layout.render(request, session, fields, placeholders)}</li>`;
+			body += `<li${WBPL(layout.groupAttributes, placeholders)}>${await layout.render(request, session, fields, placeholders)}</li>`;
 			if (++row >= records.rows.length || row >= parseInt(layout.settings.get("rows") || "25"))
 				break;
 			for (const [name, value] of Object.entries(records.rows[row]))

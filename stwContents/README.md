@@ -4,15 +4,9 @@ This folder contains content modules. Each file defines a specific type of conte
 
 ---
 
-## stwText.ts
+## stwAccordion.ts
 
-Implements the `STWText` content type. Renders plain or formatted text, supporting localization and dynamic placeholders.
-
----
-
-## stwTree.ts
-
-Implements the `STWTree` content type. Renders hierarchical data as an interactive HTML tree, allowing users to expand and collapse branches and view nested structures.
+Implements the `STWAccordion` content type. Displays localized, expandable sections that load referenced content when opened, with optional links and parameters.
 
 ---
 
@@ -31,12 +25,6 @@ Implements the `STWCalendar` content type. Shows events or records in a calendar
 ## stwChart.ts
 
 Implements the `STWChart` content type. Visualizes data as charts using Chart.js, supporting various chart types and interactive features.
-
----
-
-## stwCodeeditor.ts
-
-Implements the `STWCodeeditor` content type. Provides an embedded code editor with syntax highlighting and editing capabilities for code or text.
 
 ---
 
@@ -88,12 +76,6 @@ Implements the `STWPivot` content type. Renders pivot tables for interactive dat
 
 ---
 
-## stwScript.ts
-
-Implements the `STWScript` content type. Embeds or executes scripts within content for dynamic or programmable sections.
-
----
-
 ## stwShortcut.ts
 
 Implements the `STWShortcut` content type. Provides shortcuts for quick navigation or linking to other content or elements.
@@ -115,3 +97,10 @@ Implements the `STWTabs` content type. Organizes content into tabbed interfaces 
 ## stwText.ts
 
 Implements the `STWText` content type. Renders plain or formatted text, supporting localization and dynamic placeholders.
+
+---
+
+## stwTree.ts
+
+Implements the `STWTree` content type. Renders hierarchical data as an interactive HTML tree, allowing users to expand and collapse branches and view nested structures.
+

@@ -15,7 +15,7 @@ import { registerElement } from "../stwComponents/stwFactory.ts";
 import { ISTWContent, STWContent } from "../stwElements/stwContent.ts";
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
 
 export class STWText extends STWContent {
@@ -72,10 +72,10 @@ export class STWText extends STWContent {
 			return records.rows.map((row) => {
 				const mergedObj = { ...Object.fromEntries(session.placeholders), ...row };
 				const mergedMap = new Map<string, string>(Object.entries(mergedObj).map(([k, v]) => [k, String(v)]));
-				return wbpl(layoutText, mergedMap);
+				return WBPL(layoutText, mergedMap);
 			}).join("");
 		}
-		return wbpl(layoutText, new Map(session.placeholders));
+		return WBPL(layoutText, new Map(session.placeholders));
 	}
 }
 registerElement("Text", STWText);

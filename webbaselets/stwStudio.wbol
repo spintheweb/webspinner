@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerGVamxGi8kA"
-	mainpage="c6TC0s1xSa5NgDIgMyCbIhL" slug="stws" langs="en">
+	mainpage="c6TC0s1xSa5NgDIgMyCbIhL" langs="en">
 	<name>
-		<text xml:lang="en" slug="stw-studio"><![CDATA[STW Studio]]></text>
+		<text xml:lang="en" slug="stws"><![CDATA[STW Studio]]></text>
 	</name>
 	<children>
 		<page uuid="c6TC0s1xSa5NgDIgMyCbIhL" origin="a6T6S55WbZjerGVamxGi8kA">
@@ -51,7 +51,7 @@
 					</layout>
 				</content>
 				<content uuid="c6SyclmGzAM2uOpnred9ceG" origin="a6T6S55WbZjerGVamxGi8kA" type="table"
-					section="" sequence="" class="stwFormCompact">
+					class="stwFormCompact">
 					<name>
 						<text xml:lang="en" slug="edit-datasource"><![CDATA[Edit datasource]]></text>
 					</name>
@@ -75,7 +75,6 @@
 			<name>
 				<text xml:lang="en" slug="structure"><![CDATA[Structure]]></text>
 			</name>
-			<query datasource=""><![CDATA[]]></query>
 			<layout>
 				<text xml:lang="en"><![CDATA[\s('header="&emsp;WEBBASE"')]]></text>
 			</layout>
@@ -92,21 +91,19 @@
 			</options>
 		</content>
 		<content uuid="c64HscPpcM9pByUEWIVTocq" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwShowModal" sequence="" class="stwFormCompact">
+			section="stwShowModal" class="stwFormCompact">
 			<name>
 				<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 			</name>
-			<query datasource=""><![CDATA[]]></query>
 			<layout>
 				<text xml:lang="en"><![CDATA[\s('header="&emsp;SEARCH"')e\a('placeholder="Search"')e\a('placeholder="Replace"')b(';stw;search')t('Search')\nt('search results')]]></text>
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwShowModal" sequence="" class="stwFormCompact">
+			section="stwShowModal" class="stwFormCompact">
 			<name>
 				<text xml:lang="en" slug="settings"><![CDATA[Settings]]></text>
 			</name>
-			<query datasource=""><![CDATA[]]></query>
 			<layout>
 				<text xml:lang="en"><![CDATA[l('Color')d('tint;;1;Blue;Green;Red;Yellow;Purple;Gray')\rb('stws;save')t('Save')]]></text>
 			</layout>
@@ -115,19 +112,12 @@
 			<name>
 				<text xml:lang="en" slug="interface"><![CDATA[Interface]]></text>
 			</name>
-			<keywords>
-
-			</keywords>
-			<description>
-
-			</description>
 			<children>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzX" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
 					section="stwSidebar" sequence="2">
 					<name>
 						<text xml:lang="en" slug="activities"><![CDATA[activities]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('mode="vertical"')]]></text>
 					</layout>
@@ -146,8 +136,7 @@
 						</option>
 					</options>
 				</content>
-				<content uuid="c6TC0s1xSa5NgDIgMyCbIhL" origin="a6T6S55WbZjerGVamxGi8kA" type="tree"
-					section="" sequence="">
+				<content uuid="c6TC0s1xSa5NgDIgMyCbIhL" origin="a6T6S55WbZjerGVamxGi8kA" type="tree">
 					<name>
 						<text xml:lang="en" slug="webbase"><![CDATA[Webbase]]></text>
 					</name>
@@ -156,8 +145,7 @@
 						<text xml:lang="en"><![CDATA[n('2;Site*;<i class="fa-light fa-globe"></i>;Area*;<i class="fa-light fa-folder"></i>;Page*;<i class="fa-light fa-file"></i>;Content*;<i class="fa-light fa-cloud"></i>;;<i class="fa-light fa-rectangle"></i>')apf]]></text>
 					</layout>
 				</content>
-				<content uuid="c6TC0s1xSa5SWiCO4QcQf7T" origin="a6T6S55WbZjerGVamxGi8kA" type="table"
-					section="" sequence="">
+				<content uuid="c6TC0s1xSa5SWiCO4QcQf7T" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
 					<name>
 						<text xml:lang="en" slug="explorer"><![CDATA[Explorer]]></text>
 					</name>
@@ -166,19 +154,16 @@
 						<text xml:lang="en"><![CDATA[]]></text>
 					</layout>
 				</content>
-				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="" sequence="">
+				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form" section="main">
 					<name>
 						<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Logon"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';Logon;;stw;logon;@@usr;@@pwd')]]></text>
 					</layout>
-					<visibilities>
-						<role id="guests" visibility="true" />
-						<role id="everyone" visibility="false" />
-					</visibilities>
+					<visibility>
+						<role id="guests" visibility="true"></role>
+					</visibility>
 				</content>
 			</children>
 		</page>

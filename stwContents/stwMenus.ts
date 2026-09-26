@@ -57,6 +57,7 @@ export class STWMenus extends STWContent {
 		function subrender(option: ISTWOption, iteration: boolean = false): void {
 			let element = session.portal.find(session, option.ref || "");
 			let href = option.ref;
+			const parameters = option.parameters || "";
 
 			// If element is Portal or Area, use its mainpage if available and visible
 			if (element && "mainpage" in element && element.mainpage) {
@@ -71,13 +72,21 @@ export class STWMenus extends STWContent {
 				href = element.pathname(session);
 			}
 
+			if (href && parameters) {
+				href += `${href.includes("?") ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`;
+			}
+
 			const name = option?.name.get(session.lang) || element?.localize(session, "name") || href;
 
 			if (name === "-") {
 				body += iteration ? "<hr>" : "";
 			} else if (!element || element.isVisible(session)) {
 				if (element instanceof STWContent) {
-					body += `<li><article id="${newId()}" href="${element.uuid}${(new URL(_req.url)).search}"></article>`;
+						const search = new URL(_req.url).search;
+						const contentSearch = parameters
+							? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`
+							: search;
+						body += `<li><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
 				} else if (option.options?.length) {
 					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name}<i class="fa-light fa-angle-right"></i></div>`;
 					body += "<menu>", option.options.forEach(option => subrender(option, true)), body += "</menu>";

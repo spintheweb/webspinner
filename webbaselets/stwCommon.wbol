@@ -2,36 +2,29 @@
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerBB8QbSCr9y"
 	mainpage="p2QRzp9e4jh4XK8EEMPXEMH" langs="en">
 	<name>
-		<text xml:lang="en" slug="stw-commons"><![CDATA[STW Commons]]></text>
+		<text xml:lang="en" slug="stwc"><![CDATA[STW Commons]]></text>
 	</name>
 	<children>
 		<page uuid="p2QRzp9e4jh4XK8EEMPXEMH" origin="a6T6S55WbZjerBB8QbSCr9y">
 			<name>
 				<text xml:lang="en" slug="configuration"><![CDATA[Configuration]]></text>
 			</name>
-			<keywords>
-
-			</keywords>
-			<description>
-
-			</description>
 			<children>
 				<content uuid="c2mKzHtKJ9CAWaGfqxW60PS" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-					section="main" sequence="" class="stwForm">
+					section="main" class="stwForm">
 					<name>
 						<text xml:lang="en" slug="settings"><![CDATA[Settings]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Configuration" header="HOST is not set"')l('HOST')e('url;host')\a('required placeholder="e.g. www.spintheweb.org"')\rb(';stw;saveHost')t('Save Settings')]]></text>
 					</layout>
 				</content>
-				<content uuid="c3hT4AotxY6HUsbJ2a3QCxA" origin="a6T6S55WbZjerBB8QbSCr9y" type="serverside"
-					section="main" sequence="">
+				<content uuid="c3hT4AotxY6HUsbJ2a3QCxA" origin="a6T6S55WbZjerBB8QbSCr9y"
+					type="serverside"
+					section="main">
 					<name>
 						<text xml:lang="en" slug="save-host"><![CDATA[Save Host]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[[object Object]]]></text>
 					</layout>
@@ -39,7 +32,7 @@
 			</children>
 		</page>
 		<content uuid="c5TokLIuAijfTRXR4HqwejR" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-			section="stwShowModal" sequence="" class="stwForm">
+			section="stwShowModal" class="stwForm">
 			<name>
 				<text xml:lang="en" slug="password-recovery"><![CDATA[Password Recovery]]></text>
 			</name>
@@ -49,7 +42,7 @@
 			</layout>
 		</content>
 		<content uuid="c2hvVEcjC57XCDxmovj54PD" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-			section="main" sequence="" class="stwForm">
+			section="main" class="stwForm">
 			<name>
 				<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
 			</name>
@@ -57,9 +50,9 @@
 			<layout>
 				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stw;logon')t('Logon')t(' ')b(';stw;reset')t('Reset')\rt('Forgot password? ')a('/stwc/forgotpassword')t('click here')]]></text>
 			</layout>
-			<visibilities>
+			<visibility>
 				<role id="users" visibility="false" />
-			</visibilities>
+			</visibility>
 		</content>
 	</children>
 </webbaselet>

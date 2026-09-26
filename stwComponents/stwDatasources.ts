@@ -4,7 +4,7 @@
 import { STWSession } from "./stwSession.ts";
 import { STWPortal } from "../stwElements/stwPortal.ts";
 import { STWContent } from "../stwElements/stwContent.ts";
-import { wbpl } from "./stwWBPL.ts";
+import { WBPL } from "./stwWBPL.ts";
 import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { Client as MySQLClient } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
 import * as jsonataModule from "https://esm.sh/jsonata@1.8.7";
@@ -120,7 +120,7 @@ export class STWDatasources {
 			return { fields: [], rows: [] };
 		}
 
-		const cacheKey = `${content.uuid}:${wbpl(content.params, session.placeholders)}`;
+		const cacheKey = `${content.uuid}:${WBPL(content.params, session.placeholders)}`;
 
 		if (content.cache && queryCache.has(cacheKey)) {
 			const cached = queryCache.get(cacheKey)!;
@@ -150,7 +150,7 @@ export class STWDatasources {
 				const dsShell = datasource as ISTWDatasource;
 
 				const shellName = dsShell.host || dsShell.name || content.dsn; // executable or path
-				const cmdString = wbpl(content.query, session.placeholders).trim();
+				const cmdString = WBPL(content.query, session.placeholders).trim();
 				let args: string[] = [];
 
 				// Security: disallow sudo usage explicitly
@@ -217,7 +217,7 @@ export class STWDatasources {
 			} else if (datasource instanceof STWPortal) {
 				records = await fetchWebbaseData(session, content);
 			} else if (datasource instanceof MySQLClient) {
-				const sql = wbpl(content.query, session.placeholders);
+				const sql = WBPL(content.query, session.placeholders);
 				// try execute; on "closed" error, reconnect and retry once
 				try {
 					records = await datasource.execute(sql) as ISTWRecords;
@@ -279,7 +279,7 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
 	}
 
 	if (!isArray) {
-		const expr = jsonata(wbpl(content.query, session.placeholders));
+		const expr = jsonata(WBPL(content.query, session.placeholders));
 		result = expr.evaluate(STWPortal.wbol);
 
 		if (result instanceof Promise) {
@@ -319,10 +319,10 @@ async function fetchWebbaseData(session: STWSession, content: STWContent): Promi
  * @returns The result set
  */
 async function fetchAPIData(session: STWSession, content: STWContent, datasource: any): Promise<ISTWRecords> {
-	const query = wbpl(content.query, session.placeholders);
+	const query = WBPL(content.query, session.placeholders);
 	const expr = jsonata(query);
 
-	const response = await fetch(`${datasource.host}?${wbpl(content.params, session.placeholders)}`, {
+	const response = await fetch(`${datasource.host}?${WBPL(content.params, session.placeholders)}`, {
 		headers: { "Content-Type": datasource.contentType || "application/json" },
 	});
 	let json = await response.json();

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbase xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="wGGpiW7IjjrFqapqVuZopW"
 	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
-	<visibilities>
+	<visibility>
 		<role id="root" />
 		<role id="administrators" />
 		<role id="guests" />
@@ -9,7 +9,7 @@
 		<role id="developers" />
 		<role id="translators" />
 		<role id="seo" />
-	</visibilities>
+	</visibility>
 	<name>
 		<text xml:lang="en" slug="spin-the-web"><![CDATA[Spin the Web]]></text>
 	</name>
@@ -18,12 +18,6 @@
 			<name>
 				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
 			</name>
-			<keywords>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</keywords>
-			<description>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</description>
 			<children>
 				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
 					section="main" sequence="1" class="stwTable">
@@ -34,9 +28,10 @@
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Customers"')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+						<role id="users" />
+					</visibility>
 				</content>
 				<content uuid="cno61aDt5dXpvK93DcE96l" origin="wGGpiW7IjjrFqapqVuZopW" type="tree"
 					section="main" sequence="10" class="stwTree">
@@ -79,38 +74,36 @@
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="DB Schema" key="PATH"')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="false" />
-					</visibilities>
+					</visibility>
 				</content>
 				<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
 					section="main" sequence="2" class="stwForm">
 					<name>
 						<text xml:lang="en" slug="logoff"><![CDATA[Logoff]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[t('
 								<form action="/stw/logoff" method="post">
 								<button type="submit">Logoff</button>
 								</form>')]]></text>
 					</layout>
-					<visibilities>
-						<role id="guests" visibility="false" />
-					</visibilities>
+					<visibility>
+						<role id="guests" visibility="false"></role>
+					</visibility>
 				</content>
 				<content uuid="c4sHhyptkJDFXjfOgnM0lRD" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
 					section="header" sequence="1">
 					<name>
 						<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 					<options>
 						<option>
 							<text xml:lang="en"><![CDATA[Animals]]></text>
@@ -160,18 +153,17 @@
 					<name>
 						<text xml:lang="en" slug="tabs"><![CDATA[Tabs]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 					<options>
 						<option ref="c3YCLoAbUczj9NNvlOFO081" parameters="id=3">
 							<text xml:lang="en"><![CDATA[./public]]></text>
 						</option>
-						<option ref="c3YCLoAbUczjbaXTHruz8Yx">
+						<option ref="c3YCLoAbUczjbaXTHruz8Yx" parameters="what=3">
 						</option>
 					</options>
 				</content>
@@ -180,29 +172,27 @@
 					<name>
 						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')t('Submit')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 				</content>
 				<content uuid="c4sHhypzNzBJ7LpOv3ROBvX" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
 					section="main" sequence="9">
 					<name>
 						<text xml:lang="en" slug="explain"><![CDATA[Explain]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <b>HTML (HyperText Markup Language)</b> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, WBOL (Webbase Ontology Language)</b> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
+						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <strong>HTML (HyperText Markup Language)</strong> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, <strong>WBOL (Webbase Ontology Language)</strong> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 				</content>
 				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="aside-right" sequence="1">
+					section="rightSidebar" sequence="1">
 					<name>
 						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
 					</name>
@@ -210,22 +200,22 @@
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId"')l('City')hel('Tel.')e\a('type="tel"')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 				</content>
 				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
-					section="aside-left" sequence="1">
+					section="leftSidebar" sequence="1">
 					<name>
 						<text xml:lang="en" slug="calendar"><![CDATA[Calendar]]></text>
 					</name>
-					<query datasource=""><![CDATA[]]></query>
+
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('mode="month" key="date"')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 				</content>
 			</children>
 		</page>
@@ -233,25 +223,29 @@
 			<name>
 				<text xml:lang="en" slug="sales"><![CDATA[Sales]]></text>
 			</name>
-			<keywords>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</keywords>
-			<description>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</description>
-			<visibilities>
+			<visibility>
 				<role id="guests" visibility="true" />
-			</visibilities>
+			</visibility>
 			<children>
 				<content uuid="c3YCLoAbUczj9NNvlOFO081" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
 					sequence="1">
 					<name>
 						<text xml:lang="en" slug="files"><![CDATA[Files]]></text>
 					</name>
-					<query datasource="bash"><![CDATA[ls -l ./public]]></query>
+					<query datasource="bash"><![CDATA[ls -l ./public | awk '
+BEGIN {
+    print "["
+}
+NR>1 {
+    printf "%s{\"permissions\":\"%s\",\"links\":\"%s\",\"owner\":\"%s\",\"group\":\"%s\",\"size\":%s,\"month\":\"%s\",\"day\":\"%s\",\"time\":\"%s\",\"name\":\"%s\"}",
+        (NR>2?",":""), $1, $2, $3, $4, $5, $6, $7, $8, $9
+}
+END {
+    print "]"
+}'
+]]></query>
 				</content>
-				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list"
-					sequence="5">
+				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list" sequence="5">
 					<name>
 						<text xml:lang="en" slug="objects"><![CDATA[Objects]]></text>
 					</name>
@@ -259,9 +253,9 @@
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
 					</layout>
-					<visibilities>
+					<visibility>
 						<role id="guests" visibility="true" />
-					</visibilities>
+					</visibility>
 				</content>
 				<content uuid="c7mIXOTljyDnSgsnYFNOqrh" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
 					section="main" sequence="1">
@@ -297,15 +291,9 @@
 							<name>
 								<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 							</name>
-							<keywords>
-								<text xml:lang="en"><![CDATA[]]></text>
-							</keywords>
-							<description>
-								<text xml:lang="en"><![CDATA[]]></text>
-							</description>
-							<visibilities>
+							<visibility>
 								<role id="guests" visibility="true" />
-							</visibilities>
+							</visibility>
 						</page>
 					</children>
 				</area>
@@ -315,38 +303,30 @@
 			<name>
 				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 			</name>
-			<keywords>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</keywords>
-			<description>
-				<text xml:lang="en"><![CDATA[]]></text>
-			</description>
-			<visibilities>
+			<visibility>
 				<role id="guests" visibility="true" />
-			</visibilities>
+			</visibility>
 		</page>
 		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
 			section="header" sequence="2" class="stwBreadcrumbs">
 			<name>
 				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
 			</name>
-			<query datasource=""><![CDATA[]]></query>
 			<layout>
 				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
 			</layout>
-			<visibilities>
+			<visibility>
 				<role id="guests" visibility="true" />
-			</visibilities>
+			</visibility>
 		</content>
 		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
 			section="footer" sequence="1" class="stwLanguages">
 			<name>
 				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
 			</name>
-			<query datasource=""><![CDATA[]]></query>
-			<visibilities>
+			<visibility>
 				<role id="guests" visibility="true" />
-			</visibilities>
+			</visibility>
 		</content>
 	</children>
 </webbase>

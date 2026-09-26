@@ -2,7 +2,7 @@
 // Test suite: wbpl.test
 
 import { assertEquals } from "@std/assert";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 
 const placeholders: Map<string, string> = new Map([
 	["@user", "alice"],
@@ -52,7 +52,7 @@ Deno.test("examples", async () => {
 	log += "\nFailures:\n";
 
 	for (const [_i, ex] of examples.entries()) {
-		const actual = wbpl(ex.phrase, placeholders);
+		const actual = WBPL(ex.phrase, placeholders);
 		if (actual != ex.parsedPhrase) {
 			++fails;
 			log += `Phrase:   "${ex.phrase}"\nExpected: "${ex.parsedPhrase}"\nActual:   "${actual}"\n\n`;

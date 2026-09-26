@@ -25,7 +25,7 @@ import { ISTWElement, STWElement } from "./stwElement.ts";
 import { STWIndex } from "./stwIndex.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
 import { envGet } from "../stwComponents/stwConfig.ts";
-import { parseWBOL } from "../stwComponents/stwWBOL.ts";
+import { WBOL } from "../stwComponents/stwWBOL.ts";
 
 export interface ISTWPortal extends ISTWElement {
 	langs: string[];
@@ -34,7 +34,6 @@ export interface ISTWPortal extends ISTWElement {
 	version: string;
 }
 export class STWPortal extends STWElement {
-	static #wbol: ISTWPortal;
 	static #instance: STWPortal;
 	static index: Map<string, STWElement> = STWIndex as Map<string, STWElement>;
 
@@ -74,8 +73,8 @@ export class STWPortal extends STWElement {
 			console.log(`${new Date().toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
 
 			const webbase = envGet("WEBBASE") || "./.data/webbase.wbol";
-			this.#wbol = parseWBOL(webbase) as ISTWPortal;
-			STWPortal.#instance = new STWPortal(this.#wbol);
+			const wbol: ISTWPortal = WBOL(webbase);
+			STWPortal.#instance = new STWPortal(wbol);
 			if (!STWPortal.#instance)
 				throw new Error(
 					`Webbase '${webbase}' not found. Set WEBBASE="<path>" in the .env file or place the webbase in ${webbase}.`,
@@ -90,10 +89,6 @@ export class STWPortal extends STWElement {
 		return STWPortal.#instance;
 	}
 
-	static get wbol(): ISTWPortal {
-		return this.#wbol;
-	}
-
 	/**
 	 * Load Spin the Web Studio webbase, if it's already present, replace it.
 	 */
@@ -104,12 +99,12 @@ export class STWPortal extends STWElement {
 			if (URL.parse(filepath || ""))
 				fetch(new URL(filepath || ""))
 					.then(response => response.text())
-					.then(text => load(parseWBOL(text) as unknown as ISTWArea))
+					.then(text => load(WBOL(text) as unknown as ISTWArea))
 					.catch(_error => {
 						throw _error;
 					});
 			else
-				load(parseWBOL(filepath) as unknown as ISTWArea);
+				load(WBOL(filepath) as unknown as ISTWArea);
 		} catch (error) {
 			console.error(`${(error as Error).name}: ${(error as Error).message}`);
 		}
@@ -140,16 +135,17 @@ export class STWPortal extends STWElement {
 
 	// Find the element given an uuid or permalink
 	public find(session: STWSession, ref: string): STWElement | null {
-		if (ref.match(/^[xwapc][0-9a-zA-Z]{21,22}$/i)) {
-			return STWPortal.index.get(ref) || null;
+		const target = ref.split(/[?#]/, 1)[0];
+		if (target.match(/^[xwapc][0-9a-zA-Z]{21,22}$/i)) {
+			return STWPortal.index.get(target) || null;
 		}
-		if (ref === "/") {
+		if (target === "/") {
 			return STWPortal.index.get(STWPortal.#instance.mainpage) || null;
 		}
 		return STWPortal.#instance.recurse(
 			session,
 			STWPortal.#instance.children,
-			ref.indexOf("?") < 0 ? ref.split("/") : ref.substring(0, ref.indexOf("?")).split("/"),
+			target.split("/"),
 		);
 	}
 

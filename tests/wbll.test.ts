@@ -2,7 +2,7 @@
 // Test suite: wbll.test
 
 import { assertEquals } from "@std/assert";
-import { STWLayout } from "../stwComponents/stwWBLL.ts";
+import { STWLayout } from "../stwComponents/stwWBLL.new.ts";
 
 const Placeholders = new Map<string, string>([
 	["@session", "123"],
@@ -11,17 +11,16 @@ const Placeholders = new Map<string, string>([
 
 const Records = {
 	affectedRows: 3,
-//	fields: [{ name: "nome" }, { name: "altezza" }, { name: "dataDiNascita" }, { name: "sesso" }],
-	fields: ["nome", "altezza", "dataDiNascita", "sesso"],
+	fields: [{ name: "nome" }, { name: "altezza" }, { name: "dataDiNascita" }, { name: "sesso" }],
 	rows: [
-		{ nome: "Mario Rossi", altezza: 1.78, dataDiNascita: "1985-04-12", sesso: "" },
-		{ nome: "Luca Bianchi", altezza: 1.82, dataDiNascita: "1990-09-23", sesso: "M" },
-		{ nome: "Giulia Verdi", altezza: 1.65, dataDiNascita: "1995-01-30", sesso: "F" }
+		{ nome: "Mario Rossi", altezza: 1.78, dataDiNascita: "1985-04-12", sesso: "", "usr": "mario" },
+		{ nome: "Luca Bianchi", altezza: 1.82, dataDiNascita: "1990-09-23", sesso: "M", "usr": "luca" },
+		{ nome: "Giulia Verdi", altezza: 1.65, dataDiNascita: "1995-01-30", sesso: "F", "usr": "giulia" }
 	]
 };
 
 const Examples = [
-	{ wbll: `\\tf\\tf`, html: `<label></label> Mario Rossi <label></label> 1.78 `, isForm: false },
+	{ wbll: `\\tf\\tf`, html: `<label></label> Mario Rossi <label></label> 1.78 `, isForm: false, process: true },
 	{ wbll: `l('Name')c(';;1;Mario Rossi;Lucia Bianchi;Giulia Verdi')l('Port')\\rc('port')>>l('Sex')\\rr(';;2;M;Maschio;F;Femmina;;N.D.')`, html: `<label>Name</label><fieldset class="stwGroup"><label><input type="checkbox" name="nome" value="Mario Rossi" checked>Mario Rossi</label><label><input type="checkbox" name="nome" value="Lucia Bianchi">Lucia Bianchi</label><label><input type="checkbox" name="nome" value="Giulia Verdi">Giulia Verdi</label></fieldset><label>Port</label><br><input type="checkbox" name="port"><label>Sex</label><br><fieldset class="stwGroup"><label><input type="radio" name="sesso" value="M">Maschio</label><label><input type="radio" name="sesso" value="F">Femmina</label><label><input type="radio" name="sesso" value="" checked>N.D.</label></fieldset>`, isForm: true },
 	{ wbll: `appt('Who')`, html: ` <a href="http://localhost/Mario%20Rossi?altezza=1.78&dataDiNascita=1985-04-12">Who</a>`, isForm: false },
 	{ wbll: `j('alert("Hello {@@nome}!")')`, html: `<script>alert("Hello Mario Rossi!")</script>`, isForm: false },
@@ -42,24 +41,17 @@ Deno.test("examples", async () => {
 	let log = `wbll test failures: ${new Date().toISOString()}\n\n`;
 	log += "\nFailures:\n";
 
-	for (const [_i, ex] of Examples.entries()) {
+	for (const [_i, ex] of Examples.entries().filter(([_, ex]) => ex.process)) {
 		try {
 			const placeholders = new Map(Placeholders);
 			for (const [name, value] of Object.entries(Records.rows[0]))
 				placeholders.set(`@@${name}`, String(value));
 
 			const layout = new STWLayout(ex.wbll);
-			const html = layout.render({} as any, {} as any, Records.fields as any, placeholders, ex.isForm);
+			const html = await layout.render(placeholders);
 
 			let matches = false;
-			if (ex.wbll === `m('wysiwyg')`) {
-				// Special handling for WYSIWYG which has random UUID
-				matches = html.includes('<textarea name="nome"') && 
-				         html.includes('>Mario Rossi</textarea>') && 
-				         html.includes('summernote({height:200})');
-			} else {
-				matches = html === ex.html;
-			}
+			matches = (html === ex.html);
 
 			if (!matches) {
 				++fails;

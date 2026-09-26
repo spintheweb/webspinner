@@ -24,16 +24,17 @@ export class STWTabs extends STWContent {
 		super(content, { mode: "horizontal" });
 
 		if (content.options)
-			content.options.forEach((option: ISTWOption) => {
-				this.options.push({ name: new Map(Object.entries(option.name || {})), ref: option.ref || "" });
-			});
+			content.options.forEach((option: ISTWOption) => 
+				this.options.push({ name: new Map(Object.entries(option.name || {})), ref: option.ref || "", parameters: option.parameters || "" })
+			);
 	}
 
 	// deno-lint-ignore require-await
 	public override async render(_req: Request, session: STWSession): Promise<string> {
 		const layout = this.layout.get(session.lang) as STWLayout;
 
-		let body = "<div>", id = "";
+		const search = new URL(_req.url).search;
+		let body = "<div>", id = "", href = "";
 		this.options.forEach(option => {
 			if (option.name.get(session.lang) === "-")
 				body += `<dt style="flex-grow: 1;"></dt>`;
@@ -41,8 +42,15 @@ export class STWTabs extends STWContent {
 				const element = session.portal.find(session, option.ref || "");
 				if (element instanceof STWContent && element.isVisible(session)) {
 					const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
-					body += `<dt data-ref="${element.uuid}"${id ? "" : " class=\"stwSelected\""}>${name}${closable(session, element.uuid)}</dt>`;
-					id = id || element.uuid;
+					const contentSearch = option.parameters
+						? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}`
+						: search;
+					const contentHref = `${element.uuid}${contentSearch}`;
+					body += `<dt data-ref="${element.uuid}" data-href="${contentHref}"${id ? "" : " class=\"stwSelected\""}>${name}${closable(session, element.uuid)}</dt>`;
+					if (!id) {
+						id = element.uuid;
+						href = contentHref;
+					}
 				}
 			}
 		});
@@ -50,7 +58,7 @@ export class STWTabs extends STWContent {
 		if (!id)
 			return "";
 
-		body += `</div><dd><article id="${newId()}" href="${id}${(new URL(_req.url)).search}"><i class="fa-light fa-loader fa-spin"></i></article></dd>`;
+		body += `</div><dd><article id="${newId()}" href="${href}"><i class="fa-light fa-loader fa-spin"></i></article></dd>`;
 
 		// The STWTabs script selects the clicked tab and requests from the spinner the tab content
 		const mode = layout.settings.get("mode") || "horizontal";
@@ -76,7 +84,7 @@ export class STWTabs extends STWContent {
 							else {
 								event.currentTarget.querySelector("dt.stwSelected")?.classList.remove("stwSelected");
 								target.classList.add("stwSelected");
-								stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-ref"), options: { placeholder: "refreshSTWTab" } }));
+								stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-href"), options: { placeholder: "refreshSTWTab" } }));
 							}
 						}
 					});

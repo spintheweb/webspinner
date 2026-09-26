@@ -23,7 +23,7 @@ import { STWDatasources } from "../stwComponents/stwDatasources.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWElement, STWElement, STWLocalized } from "./stwElement.ts";
 import { STWLayout } from "../stwComponents/stwWBLL.ts";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
 
 /**
@@ -121,6 +121,8 @@ export abstract class STWContent<
 	}
 
 	public getLayout(session: STWSession): STWLayout {
+		if (!this.layout)
+			return new STWLayout("");
 		return this.layout.get(session.lang) || new STWLayout("");
 	}
 
@@ -197,7 +199,7 @@ export abstract class STWContent<
 			if (!bodyHtml) {
 				bodyHtml = layout?.settings.has("nodata")
 					? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${
-						wbpl(layout?.settings.get("nodata") || "", placeholders)
+						WBPL(layout?.settings.get("nodata") || "", placeholders)
 					}</article>`
 					: "";
 			} else {
@@ -206,7 +208,7 @@ export abstract class STWContent<
 				}">
 					${
 					layout?.settings.has("caption")
-						? `<h1>${collapsible()}${wbpl(layout?.settings.get("caption") || "", placeholders)}${
+						? `<h1>${collapsible()}${WBPL(layout?.settings.get("caption") || "", placeholders)}${
 							closable(this.section)
 						}</h1>`
 						: ""
@@ -214,13 +216,13 @@ export abstract class STWContent<
 					<div>
 					${
 					layout?.settings.has("header")
-						? `<header>${wbpl(layout?.settings.get("header") || "", placeholders)}</header>`
+						? `<header>${WBPL(layout?.settings.get("header") || "", placeholders)}</header>`
 						: ""
 				}
 					${bodyHtml}
 					${
 					layout?.settings.has("footer")
-						? `<footer>${wbpl(layout?.settings.get("footer") || "", placeholders)}</footer>`
+						? `<footer>${WBPL(layout?.settings.get("footer") || "", placeholders)}</footer>`
 						: ""
 				}
 					</div>

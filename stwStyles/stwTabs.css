@@ -22,6 +22,7 @@
 	display: inline-block;
 	padding: var(--padding-reduced) calc(2 * var(--padding));
 	cursor: pointer;
+	height: 1.5em;
 	background-color: var(--bg-faint);
 }
 

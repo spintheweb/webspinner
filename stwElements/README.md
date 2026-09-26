@@ -42,7 +42,3 @@ These classes are used throughout the Spin the Web platform for:
 - Building and manipulating the in-memory portal tree
 - Rendering and exporting portal structures
 - Providing a type-safe API for extensions and tools
-
----
-
-This folder is essential for the definition and manipulation of all WBOL-based portal structures in Spin the Web.

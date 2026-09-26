@@ -15,7 +15,7 @@ import { registerElement } from "../stwComponents/stwFactory.ts";
 import { STWContent, ISTWContent } from "../stwElements/stwContent.ts";
 import { STWLayout, ACTIONS, isTruthy } from "../stwComponents/stwWBLL.ts";
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 
 export class STWTable extends STWContent {
 	public constructor(content: ISTWContent) {
@@ -58,7 +58,7 @@ export class STWTable extends STWContent {
 				placeholders.set(`@@${name}`, String(value));
 			tr = layout.render(request, session, fields, placeholders, layout.acts(ACTIONS.stwany) && !isTruthy(layout.settings.get("disabled")));
 
-			body += `<tr ${wbpl(layout.groupAttributes, placeholders)}>`;
+			body += `<tr ${WBPL(layout.groupAttributes, placeholders)}>`;
 			tr.matchAll(/<label(.*?)>(.*?)<\/label>(.*?)(?=<label|$)/g).forEach(match => body += `<td${match[1].trim()}>${match[3].trim()}</td>`);
 
 			// If the layout includes a delete button, allow records deletion

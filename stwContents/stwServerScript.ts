@@ -15,7 +15,7 @@ import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWContent, STWContent } from "../stwElements/stwContent.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
-import { wbpl } from "../stwComponents/stwWBPL.ts";
+import { WBPL } from "../stwComponents/stwWBPL.ts";
 
 // deno-lint-ignore no-unversioned-import
 import * as path from "jsr:@std/path";
@@ -221,7 +221,7 @@ class DatasourceHelper {
      * Placeholders in the command will be replaced before execution.
      */
     async executeWBPL(dsn: string, command: string, placeholders: Map<string, string>): Promise<ISTWRecords> {
-        const processedCommand = wbpl(command, placeholders);
+        const processedCommand = WBPL(command, placeholders);
         return await this.execute(dsn, processedCommand);
     }
 }

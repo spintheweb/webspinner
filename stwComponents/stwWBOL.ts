@@ -25,22 +25,22 @@ import * as xml from "jsr:@std/xml";
  * @returns The parsed WBOL element tree.
  * @throws {Error} If the source has an unsupported root or child element.
  */
-export function parseWBOL(source: string): any {
+export function WBOL(source: string): any {
 	if (!source.startsWith('<'))
 		source = Deno.readTextFileSync(source);
 	const wbol = xml.parse(source);
 
 	switch (wbol.root.name.local) {
 		case 'webbase':
-			return parseWBOLFragment(wbol.root);
+			return WBOLFragment(wbol.root);
 		case 'webbaselet':
-			return parseWBOLFragment(wbol.root);
+			return WBOLFragment(wbol.root);
 		default:
 			throw new Error(`WBOL: unsupported root element ${wbol.root.name.local}`);
 	}
 }
 
-function parseWBOLFragment(element: xml.XmlElement): any {
+function WBOLFragment(element: xml.XmlElement): any {
 	let obj: any = {};
 
 	if (['webbase', 'webbaselet', 'area', 'page', 'content', 'shortcut'].findIndex(e => e === element.name.local) === -1)
@@ -78,16 +78,21 @@ function parseWBOLFragment(element: xml.XmlElement): any {
 			case 'options':
 				obj.options = parseOptions(child);
 				break;
+			case 'roles':
 			case 'visibilities':
+			case 'visibility':
 				obj.visibility = {};
-				child.children.filter(role => role.type === 'element' && role.name.local === 'role').forEach((role: any) =>
-					obj.visibility[role.attributes.id] = role.attributes.visibility
-				);
+				child.children.filter(role => role.type === 'element' && role.name.local === 'role').forEach((role: any) => {
+					if (element.name.local === 'webbase')
+						obj.visibility[role.attributes.id] = undefined; // For webbase, visibility is not explicitly set
+					else if (role.attributes.visibility === 'true' || role.attributes.visibility === 'false')
+						obj.visibility[role.attributes.id] = (role.attributes.visibility === 'true');
+				});
 				break;
 			case 'children':
 				obj.children = [];
 				child.children.filter(grandchild => grandchild.type === 'element').forEach(grandchild =>
-					obj.children.push(parseWBOLFragment(grandchild))
+					obj.children.push(WBOLFragment(grandchild))
 				);
 				break;
 			default:
