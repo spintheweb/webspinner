@@ -13,7 +13,6 @@
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
 import { STWContent, ISTWContent } from "../stwElements/stwContent.ts";
-import { STWLayout } from "../stwComponents/stwWBLL.ts";
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 
 export class STWCalendar extends STWContent {
@@ -21,19 +20,31 @@ export class STWCalendar extends STWContent {
 		super(content);
 	}
 
-	public override async render(request: Request, session: STWSession, records: ISTWRecords): Promise<string> {
-		let layout = this.getLayout(session);
-		const mode = layout.settings.get("mode") || "month";
-		const datetimeKey = layout.settings.get("key") || "date";
-		const today = new Date(layout.settings.get("date") || Date.now());
-
+	public override async render(_request: Request, session: STWSession, records: ISTWRecords): Promise<string> {
 		const fields = records.fields?.map(f => f.name) || Object.keys(records.rows?.[0] || {});
-		if (!layout.hasTokens) {
-			this.layout.set(session.lang, new STWLayout(layout.wbll + "lf".repeat(fields.length)));
-			layout = this.getLayout(session);
-		}
+		const firstRow = records.rows?.[0];
+		const firstPlaceholders = new Map(session.placeholders);
+		if (firstRow)
+			for (const [name, value] of Object.entries(firstRow))
+				firstPlaceholders.set(`@@${name}`, String(value));
 
-		const placeholders = new Map(session.placeholders);
+		const layout = this.getLayout(session, 'lf\\r'.repeat(fields.length));
+		const firstRender = await layout.render(fields, firstPlaceholders, session);
+		const settings = firstRender.settings;
+		const mode = String(settings.get("mode") ?? "month");
+		const datetimeKey = String(settings.get("key") ?? "date");
+
+		let today = new Date(String(settings.get("date")));
+		if (isNaN(today.getTime())) today = new Date();
+
+		const renderRow = async (row: Record<string, unknown>): Promise<string> => {
+			if (row === firstRow)
+				return firstRender.HTML;
+			const rowPlaceholders = new Map(session.placeholders);
+			for (const [name, value] of Object.entries(row))
+				rowPlaceholders.set(`@@${name}`, String(value));
+			return (await layout.render(fields, rowPlaceholders, session)).HTML;
+		};
 
 		// Index records by date (day or hour)
 		const recordMap: Record<string, any[]> = {};
@@ -64,10 +75,7 @@ export class STWCalendar extends STWContent {
 				const dateStr = day.toISOString().slice(0, 10);
 				body += `<div class="stwCalendarGroup" data-group="${dateStr}"><div class="stwCalendarDayHeader">${dateStr}</div>`;
 				for (const row of recordMap[dateStr] || []) {
-					const rowPlaceholders = new Map(placeholders);
-					for (const [name, value] of Object.entries(row))
-						rowPlaceholders.set(`@@${name}`, String(value));
-					body += await layout.render(request, session, fields, rowPlaceholders);
+					body += await renderRow(row);
 				}
 				body += `</div>`;
 			}
@@ -77,10 +85,7 @@ export class STWCalendar extends STWContent {
 				const hourStr = `${dateStr}T${String(h).padStart(2, "0")}`;
 				body += `<div class="stwCalendarGroup" data-group="${hourStr}"><div class="stwCalendarHourHeader">${hourStr}:00</div>`;
 				for (const row of recordMap[hourStr] || []) {
-					const rowPlaceholders = new Map(placeholders);
-					for (const [name, value] of Object.entries(row))
-						rowPlaceholders.set(`@@${name}`, String(value));
-					body += await layout.render(request, session, fields, rowPlaceholders);
+					body += await renderRow(row);
 				}
 				body += `</div>`;
 			}
@@ -95,7 +100,7 @@ export class STWCalendar extends STWContent {
 
 			// Build week day headers starting from firstDayOfWeek
 			const weekDays = [];
-			const baseDate = new Date(2020, 5, 7); // Sunday
+			const baseDate = new Date(); // Sunday
 			for (let i = 0; i < 7; i++) {
 				const day = new Date(baseDate);
 				day.setDate(baseDate.getDate() + ((i + firstDayOfWeek) % 7));
@@ -119,10 +124,7 @@ export class STWCalendar extends STWContent {
 				const isToday = dateStr === toLocalDateString(new Date(), session);
 				body += `<td${isToday ? ' class="stwCalendarToday"' : ''}><div class="stwCalendarDayNum">${day}</div>`;
 				for (const row of recordMap[dateStr] || []) {
-					const rowPlaceholders = new Map(placeholders);
-					for (const [name, value] of Object.entries(row))
-						rowPlaceholders.set(`@@${name}`, String(value));
-					body += `<div>` + await layout.render(request, session, fields, rowPlaceholders) + `</div>`;
+					body += `<div>` + await renderRow(row) + `</div>`;
 				}
 				body += `</td>`;
 				// If end of week, close row and start new

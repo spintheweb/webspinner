@@ -17,7 +17,6 @@ import { STWPortal } from "./stwElements/stwPortal.ts";
 import { handleHttp } from "./stwComponents/stwHttpHandler.ts";
 import { handleWebSocket } from "./stwComponents/stwWebSocket.ts";
 import project from "./deno.json" with { type: "json" };
-import { STWFactory } from "./stwComponents/stwFactory.ts";
 import { envGet, envSet, isDocker } from "./stwComponents/stwConfig.ts";
 import { newId } from "./stwComponents/stwIds.ts";
 
@@ -75,7 +74,7 @@ await loadSTWModules("./stwElements", [
 ]);
 await loadSTWModules("./stwContents");
 
-console.log(`${new Date().toISOString()}: Registered elements: ${Object.keys(STWFactory).length}`);
+// console.log(`${new Date().toISOString()}: Registered elements: ${Object.keys(STWFactory).length}`);
 
 /**
  * Contains presently active sessions {@linkcode STWSession}

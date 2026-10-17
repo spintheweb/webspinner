@@ -258,7 +258,7 @@ async function publishGitAndGithub() {
       `   \`\`\`bash ${basename(dockerShPath)}\`\`\``,
       `   - Maps host 8080 -> container 8080`,
       `   - Persists data: ./webspinner-data -> /app/.data`,
-      `   - Env: PORT, PORTAL_ROOT, WEBBASE, COMMON_WEBBASE, STUDIO_WEBBASE`,
+      `   - Env: PORT, PORTAL_ROOT, WEBBASE, COMMON_WEBBASE`,
       `3) (Optional) Verify checksums via the .sha256 files\n`,
       dockerNotesSection || null,
     ].filter(Boolean).join("\n");

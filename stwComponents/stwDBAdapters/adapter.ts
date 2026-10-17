@@ -2,7 +2,7 @@
 // Database adapter interface for Spin the Web
 
 export interface ISTWRecords {
-	fields: { name: string; type?: string }[];
+	fields: string[];
 	rows: Record<string, any>[];
 	affectedRows?: number;
 	stwOrigin?: string;

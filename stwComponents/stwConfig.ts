@@ -10,6 +10,10 @@ export function envGet(key: string, def?: string): string | undefined {
   return Deno.env.get(key) ?? cache.get(key) ?? def;
 }
 
+export function debugLog(...data: unknown[]): void {
+  if (envGet("STW_DEBUG") === "true") console.debug(...data);
+}
+
 export function envSet(key: string, value: string) {
   try { Deno.env.set(key, value); } catch { /* readonly in some envs */ }
   cache.set(key, value);

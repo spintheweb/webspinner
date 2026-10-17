@@ -17,6 +17,7 @@ import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
 import { WBPL } from "../stwComponents/stwWBPL.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
+import { debugLog } from "../stwComponents/stwConfig.ts";
 
 export class STWText extends STWContent {
 	public constructor(content: ISTWContent) {
@@ -29,13 +30,13 @@ export class STWText extends STWContent {
 		}
 
 		if (ref) {
-			console.debug(
+			debugLog(
 				`${new Date().toISOString()}: ${ref.uuid === this.uuid ? " ●" : "│└"} Text (${
 					this.pathname(session)
 				}) @${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		} else {
-			console.debug(
+			debugLog(
 				`${new Date().toISOString()}: ├─ Text (${
 					this.pathname(session)
 				}) @${this.section}.${this.sequence} [${this.uuid}]`,

@@ -11,9 +11,13 @@ import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { secureResponse } from "./stwResponse.ts";
 import { envGet } from "./stwConfig.ts";
 import { actionRouter, ActionContext } from "./stwActions.ts";
+import { handleWbolApi } from "./stwWBOLApi.ts";
 
 export async function handleHttp(request: Request, session: STWSession, sessionId: string): Promise<Response> {
 	const pathname = new URL(request.url).pathname;
+	if (pathname === "/wbol" || pathname.startsWith("/wbol/")) {
+		return await handleWbolApi(request, session);
+	}
 	const element = STWPortal.instance.find(session, pathname);
 
 	let response: Response = secureResponse(null, { status: 204 }); // Default: 204 No content

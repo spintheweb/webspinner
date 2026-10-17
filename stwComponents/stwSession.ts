@@ -8,6 +8,7 @@ import { envGet } from "./stwConfig.ts";
 export class STWSession {
 	sessionId: string;
 	remoteAddr: Deno.Addr;
+	baseurl: string = ""; // Base URL of the application (used to generate absolute URLs)
 	user: string; // User name
 	name!: string; // Full name
 	roles: string[]; // Roles played by the user. IMPORTANT: Security revolves around this aspect!
@@ -25,14 +26,15 @@ export class STWSession {
 	public constructor(sessionId: string, remoteAddr: Deno.Addr, portal: STWPortal) {
 		this.sessionId = sessionId;
 		this.remoteAddr = remoteAddr;
+		this.baseurl = envGet("HOST") || "";
 		this.user = "guest";
-		this.roles = ["guests","developers"]; // Default roles
+		this.roles = ["guests"];
 		this.lang = "en";
 		this.langs = ["en"];
 		this.tz = "UTC"; // Default timezone
 		this.placeholders = new Map<string, string>;
 		this.timestamp = Date.now();
-		this.dev = true;
+		this.dev = false;
 		this.portal = portal;
 		this.states = new Map<string, any>();
 		this.sockets = new Map();
@@ -41,7 +43,8 @@ export class STWSession {
 	}
 
 	/**
-	 * @param name Name of the placeholder, it has to start with either \@ (Cookie or Querystring), \@@ (Record) or \@@@ (Headers)
+	 * @param name Name of the placeholder, it has to start with either \@ (Querystring parameters or Cookie value), 
+	 * \@@ (Recordset Field, Session, Application or Server variables)
 	 * @returns The value of placeholder
 	 */
 	getPlaceholder(name: string): string {
@@ -51,27 +54,29 @@ export class STWSession {
 	 * Placeholders reppresent server side data accessible to contents. Each request received by the server resets the placeholder,
 	 * then, the content being rendered cycles each record of the record set. 
 	 * 
-	 * @param _obj Can be a request a string or an object (a row of a record set)
-	 * @param _value The value assigned _obj it it is a string
+	 * @param obj Can be a request a string or an object (a row of a record set)
+	 * @param value The value assigned obj if it is a string
 	 */
 	// deno-lint-ignore no-explicit-any
-	setPlaceholders(_obj: Request | string | any, _value: string = ""): void {
-		if (_obj instanceof Request) {
+	setPlaceholders(obj: Request | string | any, value: string = ""): void {
+		if (obj instanceof Request) {
 			this.placeholders.clear();
 
-			(new URL(_obj.url)).searchParams.forEach((value, key) => this.placeholders.set(`@${key}`, value));
+			const url = new URL(obj.url);
+			url.searchParams.forEach((value, key) => this.placeholders.set(`@${key}`, value));
 
-			const cookies = getCookies(_obj.headers);
+			const cookies = getCookies(obj.headers);
 			Object.keys(cookies).forEach(key => this.placeholders.set(`@${key}`, cookies[key]))
 
-			for (const [key, value] of _obj.headers)
-				this.placeholders.set(`@@@${key}`, value);
+			this.placeholders.set("@@query_string", url.search.slice(1));
+			for (const [key, value] of obj.headers)
+				this.placeholders.set(`@@${key}`, value);
 
-		} else if (typeof _obj === "string")
-			this.placeholders.set(`@@${_obj}`, _value);
+		} else if (typeof obj === "string")
+			this.placeholders.set(`@@${obj}`, value);
 
 		else
-			Object.keys(_obj).forEach(key => this.placeholders.set(`@@${key}`, _obj[key]))
+			Object.keys(obj).forEach(key => this.placeholders.set(`@@${key}`, obj[key]))
 	}
 
 	protected timeout(timer: number) {

@@ -26,6 +26,10 @@
 	background-color: var(--bg-faint);
 }
 
+.stwTabs dt[data-ref]:hover {
+	background-color: var(--special-hover);
+}
+
 .stwTabs i.fa-xmark {
 	float: inline-end;
 	line-height: var(--line-height);
@@ -43,4 +47,9 @@
 .stwTabs dd>article {
 	padding: var(--padding-reduced);
 	border: thin solid var(--border);
+}
+
+.stwTabs dd>article:not(:empty) {
+	min-height: 10rem;
+	overflow: auto;
 }

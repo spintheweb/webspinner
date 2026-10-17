@@ -26,11 +26,12 @@ export class STWMenus extends STWContent {
 		function loadOptions(options: ISTWOption[]): ISTWOption[] {
 			const _options: ISTWOption[] = [];
 			options.forEach((option: ISTWOption) =>
-				_options.push({ 
-					name: new Map(Object.entries(option.name || {})), 
-					ref: option.ref || "", 
+				_options.push({
+					name: new Map(Object.entries(option.name || {})),
+					ref: option.ref || "",
 					parameters: option.parameters || "",
-					options: loadOptions(option?.options || []) })
+					options: loadOptions(option?.options || [])
+				})
 			);
 			return _options;
 		}
@@ -46,11 +47,15 @@ export class STWMenus extends STWContent {
 		};
 	}
 
-	// deno-lint-ignore require-await
 	public override async render(_req: Request, session: STWSession): Promise<string> {
 		let body: string = "";
+
+		const layout = this.getLayout(session);
+		const firstRender = await layout.render([], session.placeholders, session);
+		const settings = firstRender.settings;
+
 		this.options.forEach(option => subrender(option));
-		if (this.layout.get(session.lang)?.settings.has("vertical"))
+		if (settings.has("vertical"))
 			return `<nav><menu><li style="width:2rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>`;
 		return `<nav><menu>${body}</menu></nav>`;
 
@@ -82,11 +87,11 @@ export class STWMenus extends STWContent {
 				body += iteration ? "<hr>" : "";
 			} else if (!element || element.isVisible(session)) {
 				if (element instanceof STWContent) {
-						const search = new URL(_req.url).search;
-						const contentSearch = parameters
-							? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`
-							: search;
-						body += `<li><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
+					const search = new URL(_req.url).search;
+					const contentSearch = parameters
+						? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`
+						: search;
+					body += `<li><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
 				} else if (option.options?.length) {
 					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name}<i class="fa-light fa-angle-right"></i></div>`;
 					body += "<menu>", option.options.forEach(option => subrender(option, true)), body += "</menu>";

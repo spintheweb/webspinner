@@ -13,7 +13,6 @@
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
 import { STWContent, ISTWContent } from "../stwElements/stwContent.ts";
-import { STWLayout } from "../stwComponents/stwWBLL.ts";
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import { WBPL } from "../stwComponents/stwWBPL.ts";
 
@@ -28,11 +27,8 @@ export class STWTree extends STWContent {
 		if (!records.fields?.length || !records.rows?.length) 
 			return layout.settings.get("nodata") || "";
 
-		const fields = records.fields.map(f => f.name) || Object.keys(records.rows[0] || {});
-		if (!layout.hasTokens) {
-			this.layout.set(session.lang, new STWLayout(layout.wbll + "f".repeat(fields.length)));
-			layout = this.getLayout(session);
-		}
+		const fields = records.fields?.map(f => f.name) || Object.keys(records.rows?.[0] || {});
+		layout = this.getLayout(session, "f".repeat(fields.length));
 
 		// Detect data format and convert to hierarchical if needed
 		if (!this.isHierarchicalData(records.rows) && !fields.includes(layout.settings.get("key") || "path"))

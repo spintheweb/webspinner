@@ -555,7 +555,6 @@ MAX_USERS=$MAX_USERS
 PORTAL_ROOT="./public"
 WEBBASE="./.data/webbase.wbol"
 COMMON_WEBBASE="./webbaselets/stwCommon.wbol"
-STUDIO_WEBBASE="./webbaselets/stwStudio.wbol"
 MAX_UPLOADSIZE=$MAX_UPLOADSIZE
 DATASOURCES="./.data/datasources.json"
 USERS="./.data/users.json"

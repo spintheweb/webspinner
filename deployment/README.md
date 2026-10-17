@@ -22,7 +22,25 @@ Notes:
 - Images are tagged locally as `ghcr.io/spintheweb/webspinner:latest` by default but are not pushed anywhere unless you explicitly use `--push`.
 - First run: if `PORTAL_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `PORTAL_DOMAIN` to proceed.
 - Persistent data: `./webspinner-data` on host is mounted to `/app/.data` in the container.
-- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE`, `STUDIO_WEBBASE`, and `PORTAL_DOMAIN`.
+- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE`, `PORTAL_DOMAIN`, and `STW_DEBUG`.
+- Set `STW_DEBUG=true` to enable request-level page and content trace logs; tracing is disabled by default.
+
+## Developer WBOL API
+
+Authenticated sessions with the `developers` role can manage the in-memory webbase at `/wbol`:
+
+- `GET /wbol` returns the portal tree; `GET /wbol/<uuid>` returns one element and its children.
+- `POST /wbol` creates an element. The JSON body contains `parentId` and an `element` definition accepted by the registered element constructor.
+- `PATCH /wbol/<uuid>` updates an element through its runtime update method. Include `parentId` to move it, with optional `position` for its new child index.
+- `DELETE /wbol/<uuid>` removes an element and its descendants.
+
+Root or administrator sessions can also manage accounts and configuration:
+
+- `GET /wbol/users` lists accounts without password hashes. `POST` creates an account; `PATCH /wbol/users/<user>` changes its name, email, password, or role assignments; `DELETE` removes it.
+- `GET /wbol/roles` lists known roles. `POST` with `{"role":"editors"}` creates one; `PATCH /wbol/roles/<role>` with `{"role":"new-name"}` renames it; `DELETE` removes it from accounts and in-memory visibility rules. Mandatory roles cannot be renamed or deleted.
+- `GET /wbol/datasources` lists datasource definitions with credentials redacted. `POST` creates one; `PATCH /wbol/datasources/<name>` updates it; `DELETE` removes it only when no content references it. Updated definitions are written to the configured `DATASOURCES` file and reloaded.
+
+Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Datasource passwords may be supplied when creating or updating a datasource, but are never returned by the API. The `developers` role is sufficient for webbase edits; account, role, and datasource management requires `root` or `administrators`.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
 
 ## Quick start (docker-compose)
@@ -90,4 +108,3 @@ Bundle contents:
 
 - Repo: https://github.com/spintheweb/webspinner
 - Releases: https://github.com/spintheweb/webspinner/releases
-

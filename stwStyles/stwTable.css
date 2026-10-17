@@ -1,36 +1,42 @@
 .stwTable table {
-    border-collapse: collapse;
-    width: 100%;
+	border-collapse: collapse;
+	width: 100%;
 }
 
 .stwTable thead td {
-    background-color: var(--special-hover);
-    color: var(--on-special);
+	background-color: var(--special-hover);
+	color: var(--on-special);
 }
 
 .stwTable th,
 .stwTable td {
-    border: thin solid var(--bg-faint);
-    padding: var(--padding-reduced);
+	border: thin solid var(--bg-faint);
+	padding: var(--padding-reduced);
 }
 
 .stwTable th {
-    padding: var(--padding);
-    background-color: var(--special);
-    color: var(--on-special);
+	padding: var(--padding);
+	background-color: var(--special);
+	color: var(--on-special);
+}
+
+.stwTable thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
 }
 
 .stwTable tr:nth-child(even) {
-    background: var(--bg-faint);
+	background: var(--bg-faint);
 }
 
-.stwTable tr:hover {
-    background: var(--special-hover);
-    color: var(--on-special);
+.stwTable tbody>tr:hover {
+	background: var(--special-hover);
 }
 
-.stwTable input[type="text"], .stwTable input:not([type]) {
-    width: -webkit-fill-available;
+.stwTable input[type="text"],
+.stwTable input:not([type]) {
+	width: -webkit-fill-available;
 }
 
 .stwTable button {

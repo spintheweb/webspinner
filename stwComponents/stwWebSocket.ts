@@ -112,7 +112,7 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 		console.error(error);
 	};
 	socket.onclose = () => {
-		console.log(`${new Date().toISOString()}: WebSocket closed for session: [${session.sessionId}] tab=[${tabId}]`);
+		// console.log(`${new Date().toISOString()}: WebSocket closed for session: [${session.sessionId}] tab=[${tabId}]`);
 
 		// Only remove if this is still the current socket for the tab
 		if (session.sockets.get(tabId) === socket) {

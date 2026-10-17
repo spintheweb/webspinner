@@ -18,6 +18,7 @@
 import { serveFile } from "@std/http/file-server";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
+import { debugLog } from "../stwComponents/stwConfig.ts";
 import { STWElement, ISTWElement } from "./stwElement.ts";
 import { STWContent } from "./stwContent.ts";
 
@@ -68,7 +69,7 @@ export class STWPage extends STWElement {
 	 * @returns - A response for the request
 	 */
 	public override serve(req: Request, session: STWSession): Promise<Response> {
-		console.debug(`${new Date().toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
+		debugLog(`${new Date().toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
 
 		return serveFile(req, `./public/${this.template}`);
 	}

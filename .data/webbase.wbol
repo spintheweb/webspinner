@@ -165,7 +165,17 @@
 						</option>
 						<option ref="c3YCLoAbUczjbaXTHruz8Yx" parameters="what=3">
 						</option>
+						<option ref="c4sHhypzM1UjizY20C0N9LP" parameters="what=3">
+						</option>
 					</options>
+				</content>
+				<content uuid="c4sHhypzM1UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="geomap">
+					<name>
+						<text xml:lang="en" slug="code-editor"><![CDATA[Map]]></text>
+					</name>
+					<visibility>
+						<role id="guests" visibility="true" />
+					</visibility>
 				</content>
 				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
 					section="main" sequence="11">
@@ -173,7 +183,7 @@
 						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')t('Submit')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')p('fufi;what')q('@@query_string')t('Submit')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -211,7 +221,7 @@
 					</name>
 
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('mode="month" key="date"')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="date"')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -245,7 +255,8 @@ END {
 }'
 ]]></query>
 				</content>
-				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list" sequence="5">
+				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list"
+					sequence="5">
 					<name>
 						<text xml:lang="en" slug="objects"><![CDATA[Objects]]></text>
 					</name>

@@ -48,7 +48,7 @@
 			</name>
 			<query datasource="json"><![CDATA[{"usr":"john","pwd":"smith"}]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stw;logon')t('Logon')t(' ')b(';stw;reset')t('Reset')\rt('Forgot password? ')a('/stwc/forgotpassword')t('click here')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stw;logon')t('Logon')t(' ')b(';stw;reset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
 			</layout>
 			<visibility>
 				<role id="users" visibility="false" />

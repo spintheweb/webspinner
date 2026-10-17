@@ -15,6 +15,7 @@ import { registerElement } from "../stwComponents/stwFactory.ts";
 import { STWContent, ISTWContent } from "../stwElements/stwContent.ts";
 import { STWIndex } from "../stwElements/stwIndex.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
+import { debugLog } from "../stwComponents/stwConfig.ts";
 
 export interface ISTWShortcut extends ISTWContent {
 	ref: string;
@@ -34,7 +35,7 @@ export class STWShortcut extends STWContent {
 		if (!(ref instanceof STWContent) || !this.isVisible(_session) || !ref || ref instanceof STWShortcut)
 			return new Promise<Response>(resolve => resolve(secureResponse(null, { status: 204 }))); // 204 No content
 
-		console.debug(`${new Date().toISOString()}: ├┬ ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
+		debugLog(`${new Date().toISOString()}: ├┬ ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
 
 		return ref.serve(_req, _session, this);
 	}

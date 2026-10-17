@@ -5,6 +5,7 @@ import { STWSession } from "./stwSession.ts";
 import { STWDatasources } from "./stwDatasources.ts";
 import { ACTIONS } from "./stwWBLL.ts";
 import type { STWContent } from "../stwElements/stwContent.ts";
+import { STWSecurity } from "./stwSecurity.ts";
 
 export interface ActionContext {
   req: Request;
@@ -353,8 +354,13 @@ export class STWActionRouter {
       };
     }
 
-    // TODO: Implement actual authentication logic
-    // For now, stub implementation
+    if (!await STWSecurity.authenticate(session, username, password)) {
+      return {
+        ok: false,
+        error: { name: "InvalidCredentials", message: "Invalid username or password" },
+      };
+    }
+
     session.placeholders.set("USER", username);
     session.placeholders.set("AUTHENTICATED", "true");
     
@@ -373,6 +379,10 @@ export class STWActionRouter {
     
     session.placeholders.delete("USER");
     session.placeholders.delete("AUTHENTICATED");
+    session.user = "guest";
+    session.name = "guest";
+    session.roles = ["guests"];
+    session.dev = false;
     
     return {
       ok: true,

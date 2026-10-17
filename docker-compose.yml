@@ -31,7 +31,6 @@ services:
       - PORTAL_ROOT=./public
       - WEBBASE=./.data/webbase.wbol
       - COMMON_WEBBASE=./webbaselets/stwCommon.wbol
-      - STUDIO_WEBBASE=./webbaselets/stwStudio.wbol
       
       # Upload Configuration
       - MAX_UPLOADSIZE=200

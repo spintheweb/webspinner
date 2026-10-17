@@ -23,8 +23,8 @@ import { STWDatasources } from "../stwComponents/stwDatasources.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWElement, STWElement, STWLocalized } from "./stwElement.ts";
 import { STWLayout } from "../stwComponents/stwWBLL.ts";
-import { WBPL } from "../stwComponents/stwWBPL.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
+import { debugLog } from "../stwComponents/stwConfig.ts";
 
 /**
  * The contents that use this interface are: {@linkcode STWMenus} and {@linkcode STWTabs}
@@ -88,16 +88,12 @@ export abstract class STWContent<
 		this.contentType = content.contentType || "text/html; charset=utf-8"; // marker property used for duck-typing
 
 		if (!["Text", "ClientScript", "Shortcut"].includes(this.type) && content.layout) {
-			this.layout = new Map();
+			this.layout = new Map<string, STWLayout>();
 			for (const [lang, wbll] of Object.entries(content.layout)) {
 				try {
 					this.layout.set(lang, new STWLayout(wbll));
 				} catch (error) {
-					throw SyntaxError(
-						`${this.type} (${this.name.entries().next().value}) §${this.section}.${this.sequence} [${this.uuid}]\n └ Layout: ${
-							(error as Error).message
-						}`,
-					);
+					throw SyntaxError(`${this.type} (${this.name.entries().next().value}) §${this.section}.${this.sequence} [${this.uuid}]\n └ Layout: ${(error as Error).message}`);
 				}
 			}
 		} else if (content.layout) {
@@ -115,15 +111,19 @@ export abstract class STWContent<
 			dsn: this.dsn,
 			command: this.query,
 			params: this.params,
-			layout: this.layout.get(session.lang)?.wbll || "",
+			layout: this.layout.get(session.lang),
 			contentType: this.contentType,
 		};
 	}
 
-	public getLayout(session: STWSession): STWLayout {
-		if (!this.layout)
-			return new STWLayout("");
-		return this.layout.get(session.lang) || new STWLayout("");
+	public getLayout(session: STWSession, defaultLayout = ""): STWLayout {
+		let layout = this.layout?.get(session.lang);
+		if (!layout || (layout.justSettings && defaultLayout)) {
+			layout = new STWLayout((layout?.wbll || "") + defaultLayout);
+			this.layout = new Map<string, STWLayout>();
+			this.layout.set(session.lang, layout);
+		}
+		return layout;
 	}
 
 	public override localize(
@@ -162,70 +162,51 @@ export abstract class STWContent<
 		}
 	}
 
-	public override async serve(req: Request, session: STWSession, ref: STWContent | undefined): Promise<Response> {
-		if (!ref && !this.isVisible(session)) {
-			return new Promise<Response>((resolve) => resolve(secureResponse(null, { status: 204 }))); // 204 No content
-		}
+	public override async serve(request: Request, session: STWSession, ref: STWContent | undefined): Promise<Response> {
+		if (!ref && !this.isVisible(session))
+			return secureResponse(null, { status: 204 }); // 204 No content
 
 		if (ref) {
-			console.debug(
-				`${new Date().toISOString()}: ${ref.uuid === this.uuid ? " ●" : "│└"} ${this.type} (${
-					this.pathname(session)
+			debugLog(
+				`${new Date().toISOString()}: ${ref.uuid === this.uuid ? " ●" : "│└"} ${this.type} (${this.pathname(session)
 				}) §${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		} else {
-			console.debug(
-				`${new Date().toISOString()}: ├─ ${this.type} (${
-					this.pathname(session)
+			debugLog(
+				`${new Date().toISOString()}: ├─ ${this.type} (${this.pathname(session)
 				}) §${this.section}.${this.sequence} [${this.uuid}]`,
 			);
 		}
 
-		const layout = this.layout?.get(session.lang);
-
-		let bodyHtml = "", records: TRecords;
+		let settings: Map<string, string | number | boolean>, HTML: string, records: TRecords;
+		const layout = this.getLayout(session);
 		try {
+			// Load data set
 			records = await STWDatasources.command(session, this) as TRecords;
 
+			// Transfer first record to placeholders
 			const placeholders = new Map(session.placeholders);
-			if (records.rows?.length) {
-				for (const [name, value] of Object.entries(records.rows[0])) {
-					placeholders.set(`@@${name}`, String(value));
-				}
-			}
+			if (records.rows.length)
+				records.fields.forEach(field => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
+			
+			// Determine content settings
+			settings = (await layout.render(records.fields, placeholders, session)).settings;
 
-			bodyHtml = await this.render(req, session, records);
+			// Determine content visibility
+			if (settings.get("visible") === "false")
+				return secureResponse(null, { status: 204 }); // 204 No content
 
-			if (!bodyHtml) {
-				bodyHtml = layout?.settings.has("nodata")
-					? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${
-						WBPL(layout?.settings.get("nodata") || "", placeholders)
-					}</article>`
-					: "";
+			// Render
+			HTML = await this.render(request, session, records);
+
+			if (!HTML) {
+				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
-				bodyHtml = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${
-					(ref || this).cssClass || "stw" + this.type
-				}">
-					${
-					layout?.settings.has("caption")
-						? `<h1>${collapsible()}${WBPL(layout?.settings.get("caption") || "", placeholders)}${
-							closable(this.section)
-						}</h1>`
-						: ""
-				}
-					<div>
-					${
-					layout?.settings.has("header")
-						? `<header>${WBPL(layout?.settings.get("header") || "", placeholders)}</header>`
-						: ""
-				}
-					${bodyHtml}
-					${
-					layout?.settings.has("footer")
-						? `<footer>${WBPL(layout?.settings.get("footer") || "", placeholders)}</footer>`
-						: ""
-				}
-					</div>
+				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">
+					${settings.has("caption") ? `<h1>${collapsible()}${settings.get("caption") || ""}${closable(this.section)}</h1>` : "" }
+					${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
+					${HTML}
+					${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
 				</article>`;
 			}
 		} catch (error) {
@@ -237,7 +218,7 @@ export abstract class STWContent<
 				}
 				return JSON.stringify(filtered, null, 2);
 			};
-			bodyHtml = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">
+			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">
 				<h1><i class="fa-light fa-bug"></i> Error</h1>
 				<header>${(error as Error).message}</header>
 				<pre>${safeStringify(this)}</pre>
@@ -249,29 +230,23 @@ export abstract class STWContent<
 			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
-			body: bodyHtml,
+			body: HTML,
 		};
-		if (layout?.settings.get("visible") === "false") {
-			return new Promise<Response>((resolve) => resolve(secureResponse(null, { status: 204 }))); // 204 No content
-		}
-		return new Promise<Response>((resolve) =>
-			resolve(secureResponse(JSON.stringify(data), { headers: { "Content-Type": this.contentType } }))
-		);
+		return secureResponse(JSON.stringify(data), { headers: { "Content-Type": this.contentType } });
 
 		function collapsible(): string {
-			return layout?.settings.has("collapsible")
+			return settings.has("collapsible")
 				? `<i class="fa-light fa-angle-down" onclick="stwToggleCollapse(event)"></i> `
 				: "";
 		}
 		function closable(section: string): string {
-			return section.startsWith("stwShow")
-				? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>`
-				: "";
+			return section.startsWith("stwShow") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
 		}
 	}
 
-	public async render(_req: Request, _session: STWSession, _record: TRecords): Promise<string> {
-		return await Promise.resolve(`Render ${this.constructor.name}`);
+	// deno-lint-ignore require-await
+	public async render(_request: Request, _session: STWSession, _record: TRecords): Promise<string> {
+		return `Render ${this.constructor.name}`;
 	}
 
 	public override update(session: STWSession, data: any): void {

@@ -183,7 +183,7 @@ function stwStartWebsocket() {
 			article.removeAttribute("href");
 		});
 
-		// Load content script
+		// Load content link+script
 		document.body.querySelectorAll("script").forEach((script) => {
 			if (document.head.querySelector(`script[name="${script.getAttribute("name")}"]`)) {
 				if (typeof script.onload === "function") {

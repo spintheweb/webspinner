@@ -9,6 +9,15 @@
 		"database": "webspinner"
 	},
 	{
+		"name": "mysqlsample",
+		"type": "mysql",
+		"host": "81.88.53.84",
+		"port": 3306,
+		"user": "qt3ul9nb_sampledb",
+		"password": "j6iZUT%8ro2$t&",
+		"database": "qt3ul9nb_sampledb"
+	},
+	{
 		"name": "objects",
 		"type": "api",
 		"host": "https://api.restful-api.dev/objects",

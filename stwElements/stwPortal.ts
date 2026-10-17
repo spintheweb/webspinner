@@ -81,7 +81,6 @@ export class STWPortal extends STWElement {
 				);
 
 			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol"); // guid = a6T6S55WbZjerBB8QbSCr9y
-			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol"); // guid = a6T6S55WbZjerGVamxGi8kA
 
 			if (envGet("DEBUG") === "true")
 				STWPortal.watchWebbases();
@@ -182,7 +181,7 @@ export class STWPortal extends STWElement {
 		super.update(session, data);
 
 		this.langs = data.langs || this.langs;
-		this.datasources = new Map(Object.entries(data.datasources || {}));
+		if (data.datasources) this.datasources = new Map(Object.entries(data.datasources));
 		this.mainpage = data.mainpage || this.mainpage;
 		this.version = data.version || this.version;
 	}
@@ -231,7 +230,6 @@ export class STWPortal extends STWElement {
 		const webbasePath = [
 			envGet("WEBBASE") || "./.data/webbase.wbol",
 			envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol",
-			envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol",
 		];
 		let reloadTimeout: ReturnType<typeof setTimeout> | undefined;
 

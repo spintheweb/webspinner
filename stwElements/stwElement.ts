@@ -178,10 +178,10 @@ export abstract class STWElement<TExtra = unknown> {
 	}
 
 	public update(session: STWSession, data: any): void {
-		this.localize(session, "name", data.name || "");
-		this.localize(session, "slug", data.slug || "");
-		this.keywords.set(session.lang, data.keywords || "");
-		this.description.set(session.lang, data.description || "");
+		this.updateLocalizedField(session, "name", data.name);
+		this.updateLocalizedField(session, "slug", data.slug);
+		this.updateLocalizedField(session, "keywords", data.keywords);
+		this.updateLocalizedField(session, "description", data.description);
 		this.modified = Date.now();
 
 		if (data.visibility) {
@@ -190,7 +190,7 @@ export abstract class STWElement<TExtra = unknown> {
 				if (typeof visible === "undefined" || visible === null) {
 					this.visibility.delete(role);
 				} else {
-					this.visibility.set(role, true);
+					this.visibility.set(role, Boolean(visible));
 				}
 			}
 		}
@@ -198,7 +198,60 @@ export abstract class STWElement<TExtra = unknown> {
 		// TODO: children
 	}
 
+	private updateLocalizedField(
+		session: STWSession,
+		field: "name" | "slug" | "keywords" | "description",
+		value: unknown,
+	): void {
+		if (typeof value === "string") {
+			if (field === "name" || field === "slug") this.localize(session, field, value);
+			else this[field].set(session.lang, value);
+			return;
+		}
+		if (typeof value !== "object" || value === null || Array.isArray(value)) return;
+
+		const entries = Object.entries(value);
+		if (!entries.every((entry): entry is [string, string] => typeof entry[1] === "string")) {
+			throw new TypeError(`${field} must be a string or a map of language codes to strings`);
+		}
+		this[field].clear();
+		for (const [lang, localizedValue] of entries) {
+			this[field].set(
+				lang,
+				field === "slug" ? localizedValue.replace(/[^a-z0-9_]/gi, "").toLowerCase() : localizedValue,
+			);
+		}
+	}
+
 	public serve(_req: Request, _session: STWSession, _ref?: STWContent): Promise<Response> {
 		return Promise.resolve(secureResponse("Not implemented", { status: 501 }));
 	}
+}
+
+export function serializeSTWElement(element: STWElement): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(element)) {
+		if (key === "parent") continue;
+		if (key === "children") {
+			result.children = element.children.map(serializeSTWElement);
+		} else if (key === "type" && "contentType" in element) {
+			result.type = "Content";
+			result.subtype = value;
+		} else {
+			result[key] = serializeElementValue(value);
+		}
+	}
+	return result;
+}
+
+function serializeElementValue(value: unknown): unknown {
+	if (value instanceof Map) {
+		return Object.fromEntries([...value].map(([key, entry]) => [key, serializeElementValue(entry)]));
+	}
+	if (Array.isArray(value)) return value.map(serializeElementValue);
+	if (typeof value === "object" && value !== null) {
+		if ("wbll" in value && typeof value.wbll === "string") return value.wbll;
+		return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, serializeElementValue(entry)]));
+	}
+	return value;
 }
