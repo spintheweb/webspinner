@@ -13,9 +13,6 @@ import * as jsonataModule from "https://esm.sh/jsonata@1.8.7";
 const jsonata = (jsonataModule as { default?: (expr: string) => any }).default ??
 	(jsonataModule as unknown as (expr: string) => any);
 
-// Global cache for query results
-const queryCache = new Map<string, { data: ISTWRecords; timestamp: number }>();
-
 interface ISTWDatasource {
 	type: "json" | "api" | "mysql" | "postgres" | "mongodb" | "shell"; // Datasource type
 	host?: string; // Server hostname (api, db)
@@ -104,7 +101,7 @@ export class STWDatasources {
 		this.datasources.clear();
 		this.mysqlConfigs.clear();
 		this.#initializationPromise = null;
-		queryCache.clear();
+
 		if (closeErrors.length > 0) {
 			throw new AggregateError(closeErrors, "One or more MySQL connections could not be closed");
 		}
@@ -207,38 +204,17 @@ export class STWDatasources {
 		}
 	}
 
-	// deno-lint-ignore require-await
 	static async query(session: STWSession, dsn: string, query: string): Promise<ISTWRecords> {
-		return this.execute(session, { dsn, query, params: "" });
+		return await this.execute(session, { dsn, query, params: "" });
 	}
 
 	static async command(session: STWSession, content: STWContent): Promise<ISTWRecords> {
-		if (!content.dsn) {
-			return { fields: [], rows: [{}] };
-		}
-
-		const cacheKey = `${content.uuid}:${WBPL(content.params, session.placeholders)}`;
-
-		if (content.cache && queryCache.has(cacheKey)) {
-			const cached = queryCache.get(cacheKey)!;
-			const isCacheValid = content.cache === -1 || (Date.now() - cached.timestamp < content.cache * 1000);
-			if (isCacheValid) {
-				return cached.data;
-			}
-		}
-
-		const records = await this.execute(session, content);
-
-		if (content.cache) {
-			queryCache.set(cacheKey, { data: records, timestamp: Date.now() });
-		}
-
-		return records;
+		return await this.execute(session, content);
 	}
 
 	private static async execute(session: STWSession, content: DatasourceQuery): Promise<ISTWRecords> {
 		if (!content.dsn) {
-			return { fields: [], rows: [{}] };
+			return { affectedRows: 0, fields: [], rows: [{}] };
 		}
 
 		let records: ISTWRecords = { affectedRows: 0, fields: [], rows: [{}] };

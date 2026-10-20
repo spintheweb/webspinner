@@ -24,9 +24,9 @@
 					<name>
 						<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers LIMIT 3]]></query>
+					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers WHERE [customername like '%@txt%']]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Customers"')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="5"')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -183,7 +183,19 @@
 						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')p('fufi;what')q('@@query_string')t('Submit')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')p('fufi;what')q('.')t('Submit')]]></text>
+					</layout>
+					<visibility>
+						<role id="guests" visibility="true" />
+					</visibility>
+				</content>
+				<content uuid="c4sHhyqzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
+					section="main" sequence="11">
+					<name>
+						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b(';stwsearch')t('search')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -208,7 +220,8 @@
 					</name>
 					<query datasource="mysqlsample"><![CDATA[select * from offices]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId"')l('City')hel('Tel.')e\a('type="tel"')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text>
+						<!--text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId"')l('City')hel('Tel.')e('tel')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text-->
+						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />

@@ -78,6 +78,12 @@ export abstract class STWElement<TExtra = unknown> {
 		}
 	}
 
+	public getData(session: STWSession, key: "name" | "slug" | "keywords" | "description"): string {
+		if (["name", "slug", "keywords", "description"].includes(key))
+			return this.localize(session, key)
+		return "";
+	}
+
 	public getExtra(): TExtra | undefined { return this.extra; }
 	public setExtra(extra: TExtra): void { this.extra = extra; this.modified = Date.now(); }
 
@@ -86,9 +92,8 @@ export abstract class STWElement<TExtra = unknown> {
 	 * @returns Return a / separated reverse chain of slugs of this element up to the root element
 	 */
 	public pathname(session: STWSession): string {
-		if (this.parent) {
+		if (this.parent)
 			return this.parent.pathname(session) + "/" + this.localize(session, "slug");
-		}
 		return "";
 	}
 
@@ -227,6 +232,7 @@ export abstract class STWElement<TExtra = unknown> {
 		return Promise.resolve(secureResponse("Not implemented", { status: 501 }));
 	}
 }
+
 
 export function serializeSTWElement(element: STWElement): Record<string, unknown> {
 	const result: Record<string, unknown> = {};

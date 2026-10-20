@@ -24,6 +24,7 @@ type WBLLRuntime = {
 	RenderIn: string; // Possible values: ul -> li, ol -> li, menu -> li, thead -> tr\th, tbody, tfoot -> tr\td
 	Wrappers: string[]; // Pending wrapper elements
 	FormFields: number;
+	Actions: ACTIONS;
 	Settings: Map<string, string | boolean | number>;
 	Index: number; // Parsing position within the WBLL code for error reporting
 };
@@ -112,6 +113,7 @@ export class STWLayout {
 			Session: session,
 			Fields: fields,
 			FormFields: 0,
+			Actions: ACTIONS.stwnone,
 			Placeholders: placeholders,
 			HTML: "",
 			RenderIn: renderIn,
@@ -216,11 +218,14 @@ class AnchorSymbol extends BaseSymbol {
 
 		url = url || Field(runtime);
 
-		try { this.url = new URL(url); } catch { this.url = new URL(url, `http://${runtime.Session.baseurl}`); }
+		try { this.url = new URL(url); } catch { this.url = new URL(url, `https://${runtime.Session.baseurl}`); }
 		this.text = url;
 		this.attrs.set("href", this.url.toString());
 	}
 	p(args: string, index: number, runtime: WBLLRuntime): this {
+		if (args === ".")
+			return this.q(args, index, runtime);
+
 		runtime.Index = index;
 		args = WBPL(args, runtime.Placeholders) || Field(runtime, ";");
 
@@ -231,7 +236,11 @@ class AnchorSymbol extends BaseSymbol {
 	}
 	q(args: string, index: number, runtime: WBLLRuntime): this {
 		runtime.Index = index;
-		args = WBPL(args, runtime.Placeholders);
+		if (args === ".")
+			args = String(runtime.Placeholders.get("@@query_string"));
+		else
+			args = WBPL(args, runtime.Placeholders);
+
 		try {
 			const qs = (args || Field(runtime) || "").trim().replace(/^\?/, "");
 			const params = new URLSearchParams(qs);
@@ -289,6 +298,38 @@ class AnchorSymbol extends BaseSymbol {
 		return this;
 	}
 }
+type LabelMode = "header" | "cell" | "form";
+class LabelSymbol extends BaseSymbol {
+	private readonly mode: LabelMode;
+
+	constructor(args: string, runtime: WBLLRuntime) {
+		const mode: LabelMode = runtime.RenderIn === "thead"
+			? "header"
+			: runtime.RenderIn === "tbody" || runtime.RenderIn === "tfoot"
+				? "cell"
+				: "form";
+
+		const tagName = mode === "header" ? "th" : mode === "cell" ? "td" : "label";
+		super(mode === "cell" ? undefined : args, tagName, runtime);
+		this.mode = mode;
+
+		if (mode === "cell") {
+			runtime.Wrappers.push("td");
+			return;
+		}
+		this.text = args || (
+			mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime)
+		);
+		if (mode === "form") {
+			runtime.Wrappers.push("label");
+			this.attrs.set("for", `stwE${runtime.FormFields}`);
+		}
+	}
+
+	override toString(): string {
+		return this.mode === "cell" ? RootSymbol.prototype.toString.call(this) : super.toString();
+	}
+}
 class FormSymbol extends BaseSymbol {
 	constructor(args: string | undefined, tagName = "input", runtime: WBLLRuntime) {
 		super(args, tagName, runtime);
@@ -296,9 +337,9 @@ class FormSymbol extends BaseSymbol {
 		if (!this.attrs.has("type") && this.args[0])
 			this.attrs.set("type", this.args[0]);
 		if (!this.attrs.has("id"))
-			this.attrs.set("id", `stw${runtime.FormFields}`);
+			this.attrs.set("id", `stwE${runtime.FormFields}`);
 		if (!this.attrs.has("name"))
-			this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stw${runtime.FormFields}`);
+			this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stwE${runtime.FormFields}`);
 		if (!this.attrs.has("value"))
 			this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] ? this.args[2] : Field(runtime));
 		++runtime.FormFields;
@@ -350,12 +391,31 @@ class ButtonSymbol extends FormSymbol {
 		super(args, tagName, runtime);
 		this.attrs.delete("type");
 
-		try { this.url = new URL(this.args[0]); } catch { this.url = new URL(this.args[0] ?? "", `http://${runtime.Session.baseurl}`); }
+		try { this.url = new URL(this.args[0]); } catch { this.url = new URL(this.args[0] ?? "", `https://${runtime.Session.baseurl}`); }
+
+		const action = this.action(this.args[1]);
 		this.attrs.set("formaction", this.url.toString());
+		if (action & (ACTIONS.stwsearch | ACTIONS.stwfilter)) {
+			this.attrs.delete("name");
+			this.attrs.set("formmethod", "GET");
+		} else if (action & ACTIONS.stwdelete) {
+			this.attrs.set("formmethod", "DELETE");
+		} else if (action & ACTIONS.stwupdate) {
+			this.attrs.set("formmethod", "PATCH");
+		} else if (action & ACTIONS.stwinsert) {
+			this.attrs.set("formmethod", "PUT");
+		} else
+			this.attrs.set("formmethod", "POST");
+		runtime.Actions |= action;
+
+		this.attrs.delete("value");
 		this.attrs.set("type", "submit");
 		this.text = "";
 	}
 	p(args: string, index: number, runtime: WBLLRuntime): this {
+		if (args === ".")
+			return this.q(args, index, runtime);
+
 		runtime.Index = index;
 		args = WBPL(args, runtime.Placeholders);
 
@@ -366,7 +426,12 @@ class ButtonSymbol extends FormSymbol {
 	}
 	q(args: string, index: number, runtime: WBLLRuntime): this {
 		runtime.Index = index;
-		args = WBPL(args, runtime.Placeholders);
+
+		if (args === ".")
+			args = String(runtime.Placeholders.get("@@query_string"));
+		else
+			args = WBPL(args, runtime.Placeholders);
+
 		try {
 			const qs = (args ?? "").trim().replace(/^\?/, "");
 			const params = new URLSearchParams(qs);
@@ -382,6 +447,12 @@ class ButtonSymbol extends FormSymbol {
 		const symbol = WBLL.t(args, index, runtime);
 		this.text = symbol.text;
 		return this;
+	}
+
+	private action(value: string): ACTIONS {
+		value = (value || "").toLocaleLowerCase();
+		const action = Object.entries(ACTIONS).find(([name, member]) => name === value && typeof member === "number")?.[1];
+		return typeof action === "number" ? action : ACTIONS.stwnone;
 	}
 }
 type ChoiceItem = { value: string; label: string; group?: string };
@@ -512,7 +583,7 @@ class EmbedSymbol extends BaseSymbol {
 	constructor(args: string | undefined, tagName: string = "", runtime: WBLLRuntime) {
 		super(args, tagName, runtime);
 
-		try { this.url = new URL(this.args[0]); } catch { this.url = new URL(this.args[0], runtime.Session.baseurl); }
+		try { this.url = new URL(this.args[0]); } catch { this.url = new URL(this.args[0], `https://${runtime.Session.baseurl}`); }
 		if (tagName === "embed") {
 			this.attrs.set("src", this.url.toString());
 			this.attrs.set("type", "text/html");
@@ -672,30 +743,14 @@ function k(args: string, index: number, runtime: WBLLRuntime): void {
 	if (symbol.args[0] || runtime.Fields[runtime.FldIndex]) // If no key is provided use the current field name
 		runtime.Placeholders.set(`@@${symbol.args[0] || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
 }
-function l(args: string, index: number, runtime: WBLLRuntime): RootSymbol | TextSymbol {
+function l(args: string, index: number, runtime: WBLLRuntime): LabelSymbol {
 	runtime.Index = index;
 	closeAllBlocks(runtime);
 	args = WBPL(args, runtime.Placeholders);
-
-	if (runtime.RenderIn === "thead") {
-		args = args || runtime.Fields[runtime.FldIndex];
-		return new TextSymbol(args, "th", runtime);
-	} else if (runtime.RenderIn === "tbody" || runtime.RenderIn === "tfoot") {
-		runtime.Wrappers.push("td");
-		return new RootSymbol("", "td", runtime);
-	}
-
-	runtime.Wrappers.push("label");
-	const symbol = new TextSymbol(args, "label", runtime);
-	symbol.attrs.set("for", `stw${runtime.FormFields}`);
-	return symbol;
+	return new LabelSymbol(args, runtime);
 }
-function L(args: string, index: number, runtime: WBLLRuntime): RootSymbol | TextSymbol {
-	const symbol = l(args, index, runtime);
-	if (runtime.RenderIn === "thead") {
-		symbol.text = `<span>${symbol.text} TODO</span>`; // TODO: In table contents columns are orderable and filterable.
-	}
-	return symbol;
+function L(args: string, index: number, runtime: WBLLRuntime): LabelSymbol {
+	return l(args, index, runtime);
 }
 function m(args: string, index: number, runtime: WBLLRuntime): TextAreaSymbol {
 	runtime.Index = index;

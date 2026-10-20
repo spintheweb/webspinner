@@ -62,7 +62,7 @@ function _enableStudio() {
 
 	// If WS is open, load studio interface; else defer to onopen
 	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
-		stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false } }));
+		stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
 	} else {
 		// flag for onopen
 		window._stwStudioPending = true;
@@ -111,12 +111,13 @@ function stwStartWebsocket() {
 				tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				placeholder: "",
 			},
+			search: window.location.search
 		}));
 
 		// If studio is active or pending, load its interface
 		if (document.getElementById("stwStudio") || window._stwStudioPending || _hasStudioCookie()) {
 			window._stwStudioPending = false;
-			stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false } }));
+			stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
 		}
 
 		document.querySelectorAll("[lang]").forEach((element) => element.setAttribute("lang", "en-US"));
@@ -127,9 +128,7 @@ function stwStartWebsocket() {
 		const data = JSON.parse(event.data);
 
 		if (data.method === "PATCH") {
-			stwWS.send(
-				JSON.stringify({ method: "PATCH", resource: data.id, options: { placeholder: data.placeholder } }),
-			);
+			stwWS.send(JSON.stringify({ method: "PATCH", resource: data.id, options: { placeholder: data.placeholder }, search: window.location.search }));
 			return;
 		}
 
@@ -178,13 +177,14 @@ function stwStartWebsocket() {
 					method: "PATCH",
 					resource: article.getAttribute("href"),
 					options: { placeholder: article.id },
+					search: window.location.search
 				}),
 			);
 			article.removeAttribute("href");
 		});
 
 		// Load content link+script
-		document.body.querySelectorAll("script").forEach((script) => {
+		document.body.querySelectorAll("script").forEach(script => {
 			if (document.head.querySelector(`script[name="${script.getAttribute("name")}"]`)) {
 				if (typeof script.onload === "function") {
 					script.onload();
@@ -194,15 +194,13 @@ function stwStartWebsocket() {
 
 			const loadScript = document.createElement("script");
 			loadScript.setAttribute("name", script.getAttribute("name") || "");
-			if (script.src) {
+			if (script.src)
 				loadScript.src = script.src;
-			} else {
+			else
 				loadScript.textContent = script.textContent;
-			}
 			document.head.appendChild(loadScript);
-			if (typeof script.onload === "function") {
+			if (typeof script.onload === "function")
 				script.onload();
-			}
 			script.remove();
 		});
 
@@ -231,12 +229,11 @@ function stwStartWebsocket() {
 function stwToggleCollapse(event) {
 	event.preventDefault();
 	const el = event.currentTarget;
-	el.querySelector("i.fa-light").classList.toggle("fa-angle-down");
-	if (el.querySelector("i.fa-light").classList.toggle("fa-angle-right")) {
-		el.nextElementSibling.classList.add("stwHide");
-	} else {
-		el.nextElementSibling.classList.remove("stwHide");
-	}
+	el.classList.replace('stwCollapsed', 'stwExpanded') || el.classList.replace('stwExpanded', 'stwCollapsed');
+	if (el.classList.contains("stwCollapsed"))
+		el.closest("article").querySelectorAll(":scope>:not(h1)").forEach(child => child.classList.add("stwHide"));
+	else
+		el.closest("article").querySelectorAll(":scope>:not(h1)").forEach(child => child.classList.remove("stwHide"));
 }
 
 // Open content properties when studio mode is enabled with Alt+click
@@ -250,6 +247,7 @@ document.addEventListener("click", function (e) {
 				method: "PATCH",
 				resource: `/stws/editcontent?uuid=${article.id}`,
 				options: { placeholder: "" },
+				search: window.location.search
 			}),
 		);
 	}
@@ -271,7 +269,7 @@ function _stwHandleNavClick(event) {
 
 	event.preventDefault();
 	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
-		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {} }));
+		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {}, search: window.location.search }));
 	} else {
 		window.location.href = a.getAttribute("href");
 	}

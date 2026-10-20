@@ -3,8 +3,8 @@
 	width: 100%;
 }
 
-.stwTable thead td {
-	background-color: var(--special-hover);
+.stwTable thead td, .stwTable tfoot td {
+	background-color: var(--special);
 	color: var(--on-special);
 }
 

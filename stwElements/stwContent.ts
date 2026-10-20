@@ -45,7 +45,7 @@ export interface ISTWContentWithOptions extends ISTWContent<any, any, any> {
 
 export interface ISTWContent<TRow = Record<string, unknown>, TState = unknown, TRecords extends ISTWRecords = ISTWRecords> extends ISTWElement<any> { // extra handled by base element
 	subtype: string;
-	cssClass: string;
+	class: string;
 	section: string;
 	sequence: number;
 	dsn: string;
@@ -77,7 +77,7 @@ export abstract class STWContent<
 		super(content);
 
 		this.type = content.subtype;
-		this.cssClass = content.cssClass || "";
+		this.cssClass = content.class || "";
 		this.section = content.section || "";
 		this.sequence = content.sequence || 0.0;
 		this.dsn = content.dsn || "";
@@ -203,7 +203,7 @@ export abstract class STWContent<
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
 				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">
-					${settings.has("caption") ? `<h1>${collapsible()}${settings.get("caption") || ""}${closable(this.section)}</h1>` : "" }
+					${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : "" }
 					${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
 					${HTML}
 					${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
@@ -235,9 +235,7 @@ export abstract class STWContent<
 		return secureResponse(JSON.stringify(data), { headers: { "Content-Type": this.contentType } });
 
 		function collapsible(): string {
-			return settings.has("collapsible")
-				? `<i class="fa-light fa-angle-down" onclick="stwToggleCollapse(event)"></i> `
-				: "";
+			return settings.has("collapsible") ? ` class="stwExpanded" onclick="stwToggleCollapse(event)"` : "";
 		}
 		function closable(section: string): string {
 			return section.startsWith("stwShow") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";

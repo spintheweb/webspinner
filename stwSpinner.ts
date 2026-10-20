@@ -138,9 +138,8 @@ Deno.serve(serverOptions, async (request: Request, info: Deno.ServeHandlerInfo):
 
 	session.setPlaceholders(request);
 
-	if (request.headers.get("upgrade") === "websocket") {
+	if (request.headers.get("upgrade") === "websocket")
 		return handleWebSocket(request, session, stwSessions);
-	} else {
-		return await handleHttp(request, session, sessionId);
-	}
+
+	return await handleHttp(request, session, sessionId);
 });

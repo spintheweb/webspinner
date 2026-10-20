@@ -14,11 +14,11 @@ const Records = {
 	rows: [
 		{ nome: "Giancarlo Trevisan", altezza: 1.83, dataDiNascita: "1964-03-11", sesso: "M", "usr": "gtrevisan" },
 		{ nome: "Mario Rossi", altezza: 1.78, dataDiNascita: "1985-04-12", sesso: "", "usr": "mario" },
-//		{ nome: "Luca Bianchi", altezza: 1.82, dataDiNascita: "1990-09-23", sesso: "M", "usr": "luca" },
+		//		{ nome: "Luca Bianchi", altezza: 1.82, dataDiNascita: "1990-09-23", sesso: "M", "usr": "luca" },
 	]
 };
 
-const Layout = '' /* `
+const Layout = `
 l('Utente')e(';;;Ciao;Come;Stai')<\\n
 \\s('caption="@@nome"')
 \\A('title="@@nome"')\\tf\\tf\\tf<<<\\t
@@ -40,10 +40,10 @@ j('function foo() { alert("Hello, {@@nome}!"); }')
 <l('Sesso c')c(';;2;M;Maschio;F;Femmina;;N.D.')
 l('Note')m//\\a('style="width:100%"')\\n
 l('Presente')c\\n
-b(';Salva;;stw;insert;')
+b(';stwSearch')t('Search')
 j('function foo2() { alert("Salvataggio completato!"); }')
 l('Progress [0, 1]')x('0.5')\\a('style="color:AccentColor; background-color:GrayText;min-width:10rem"')\\n // AccentColor, Highlight, GrayText, Canvas, CanvasText
-`*/;
+`;
 
 Deno.test("examples", async () => {
 	let log = `<h1>WBLL tests: ${new Date().toISOString()}</h1>\n`;
@@ -66,7 +66,12 @@ Deno.test("examples", async () => {
 				log += `${key}=${value || ""}, `;
 
 			const timer = performance.now();
-			render = await layout.render(Records.fields, placeholders, undefined, 'li');
+			render = await layout.render(
+				Records.fields,
+				placeholders,
+				{ baseurl: "file:///D:/Projects/spintheweb/webspinner/tests/wbll.test.html", lang: "en", tz: "UTC" },
+				'li'
+			);
 			const elapsed = performance.now() - timer;
 
 			// Handle settings that may have been set during rendering, such as scripts
@@ -77,7 +82,7 @@ Deno.test("examples", async () => {
 			log += `<dt>Render Time</dt><dd>${elapsed.toFixed(2)} ms</dd>`;
 
 			log += `<dt>HTML</dt>
-			<dd style="display:flex; flex-wrap:wrap;">${html}</dd>
+			<dd style="display:flex; flex-wrap:wrap;"><form>${html}</form></dd>
 			</dl>`;
 		}
 

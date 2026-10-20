@@ -20,14 +20,11 @@ export class STWGeomap extends STWContent {
 		super(content);
 	}
 
-/*
-			<link name="STWGeomap" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-			<script name="STWGeomap" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-*/
-
 	// deno-lint-ignore require-await
 	public override async render(_request: Request, _session: STWSession, _records: ISTWRecords): Promise<string> {
 		return `<div id="Map${this.uuid}"></div>
+			<link name="APISTWGeomap" rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+			<script name="APISTWGeomap" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 			<script name="STWGeomap" onload="fnSTWGeomap('Map${this.uuid}')">
 				function fnSTWGeomap(id) {
 					const map = L.map(id).setView([45.4064, 11.8768], 13);

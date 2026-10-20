@@ -118,10 +118,9 @@ function buildEnvironment(session: STWSession, records: ISTWRecords): Record<str
 	// Add common placeholders as individual env vars for convenience
 	const commonKeys = ["HOST", "USER", "LANG", "THEME", "PORTAL", "PAGE"];
 	for (const key of commonKeys) {
-		const value = session.placeholders.get(key);
-		if (value) {
+		const value = session.getPlaceholder(key);
+		if (value)
 			env[`STW_PH_${key}`] = value;
-		}
 	}
 
 	return env;

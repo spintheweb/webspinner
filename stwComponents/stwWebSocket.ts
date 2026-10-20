@@ -41,12 +41,13 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 
 	socket.onmessage = async event => {
 		// deno-lint-ignore no-explicit-any
-		const data: { method: string, resource: string, options: any } = JSON.parse(event.data);
+		const data: { method: string, resource: string, options: any, search: string } = JSON.parse(event.data);
 
-		// Create a synthetic request for this message to establish the correct URL context.
-		const syntheticRequest = new Request(new URL(data.resource, request.url), {
-			headers: request.headers // Preserve original headers to maintain cookies.
-		});
+		const url = new URL(data.resource, request.url);
+		for (const [key, value] of new URLSearchParams(data.search)) {
+			url.searchParams.set(key, value);
+		}
+		const syntheticRequest = new Request(url, { headers: request.headers }); // Preserve original headers to maintain cookies.
 
 		// Update the session's placeholders with the context of this specific message.
 		session.setPlaceholders(syntheticRequest);
