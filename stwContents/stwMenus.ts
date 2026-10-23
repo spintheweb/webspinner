@@ -47,7 +47,7 @@ export class STWMenus extends STWContent {
 		};
 	}
 
-	public override async render(_req: Request, session: STWSession): Promise<string> {
+	public override async render(request: Request, session: STWSession): Promise<string> {
 		let body: string = "";
 
 		const layout = this.getLayout(session);
@@ -87,7 +87,7 @@ export class STWMenus extends STWContent {
 				body += iteration ? "<hr>" : "";
 			} else if (!element || element.isVisible(session)) {
 				if (element instanceof STWContent) {
-					const search = new URL(_req.url).search;
+					const search = new URL(request.url).search;
 					const contentSearch = parameters
 						? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`
 						: search;

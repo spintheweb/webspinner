@@ -19,6 +19,12 @@
 	color: white;
 }
 
+.stwNoData {
+	border: thin solid var(--special);
+	border-radius: 0.5rem;
+	padding: 0.5rem;
+}
+
 .stwError h1 {
 	color: white;
 	line-height: 1.5rem;
@@ -44,8 +50,16 @@ fieldset.stwGroup {
 	font-family: "Font Awesome 7 Pro";
 	font-weight: var(--fa-style);
 	font-size: smaller;
-	margin-right: 8px;
+	display: inline-block;
+	width: 1.5rem;
 }
 .stwExpanded::before {
 	content: "\f107";
+}
+.stwOrderBy {
+	float:right;
+	cursor: pointer;
+}
+.stwOrdered {
+	color: CanvasText;
 }

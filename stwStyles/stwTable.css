@@ -4,8 +4,8 @@
 }
 
 .stwTable thead td, .stwTable tfoot td {
-	background-color: var(--special);
-	color: var(--on-special);
+	background-color: var(--special-hover);
+	color: CanvasText;
 }
 
 .stwTable th,
@@ -30,7 +30,7 @@
 	background: var(--bg-faint);
 }
 
-.stwTable tbody>tr:hover {
+.stwTable tbody tr:hover {
 	background: var(--special-hover);
 }
 

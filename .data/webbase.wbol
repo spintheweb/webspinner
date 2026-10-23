@@ -14,25 +14,143 @@
 		<text xml:lang="en" slug="spin-the-web"><![CDATA[Spin the Web]]></text>
 	</name>
 	<children>
-		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+		<content uuid="c4sHhyptkJDFXjfOgnM0lRD" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
+			section="header" sequence="1">
 			<name>
-				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
+				<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
+			</name>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
+			</layout>
+			<visibility>
+				<role id="guests" visibility="true" />
+			</visibility>
+			<options>
+				<option>
+					<text xml:lang="en"><![CDATA[Animals]]></text>
+					<options>
+						<option ref="/home">
+							<text xml:lang="en"><![CDATA[Dogs]]></text>
+						</option>
+						<option ref="/home">
+							<text xml:lang="en"><![CDATA[Cats]]></text>
+						</option>
+						<option>
+							<text xml:lang="en"><![CDATA[Bears]]></text>
+							<options>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Dogs]]></text>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Cats]]></text>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Bears]]></text>
+								</option>
+								<option ref="-"></option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Orcas]]></text>
+								</option>
+								<option ref="/home">
+									<text xml:lang="en"><![CDATA[Whales]]></text>
+								</option>
+							</options>
+						</option>
+						<option ref="/home">
+							<text xml:lang="en"><![CDATA[Orcas]]></text>
+						</option>
+						<option ref="/home">
+							<text xml:lang="en"><![CDATA[Whales]]></text>
+						</option>
+					</options>
+				</option>
+				<option ref="/sales">
+					<text xml:lang="en"><![CDATA[Sales]]></text>
+				</option>
+				<option ref="/customers">
+					<text xml:lang="en"><![CDATA[Customers]]></text>
+				</option>
+				<option ref="wGGpiW7IjjrFqapqVuZopW" parameters="txt=@txt"></option>
+				<option ref="https://www.keyvisions.it"></option>
+				<option ref="c2hvVEcjC57XCDxmovj54PD"></option>
+			</options>
+		</content>
+		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
+			section="header" sequence="2" class="stwBreadcrumbs">
+			<name>
+				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
+			</name>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
+			</layout>
+			<visibility>
+				<role id="guests" visibility="true" />
+			</visibility>
+		</content>
+		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
+			section="footer" sequence="1" class="stwLanguages">
+			<name>
+				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
+			</name>
+			<visibility>
+				<role id="guests" visibility="true" />
+			</visibility>
+		</content>
+		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" tamplate="index.html">
+			<name>
+				<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
 			</name>
 			<children>
-				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="main" sequence="1" class="stwTable">
+				<content uuid="c4sHhyqzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
+					section="main" sequence="1">
 					<name>
-						<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
+						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b('/customers;stwsearch')\a('style="margin-right:0.5rem" ')b(';stwreset')]]></text>
+					</layout>
+					<visibility>
+						<role id="guests" visibility="true" />
+					</visibility>
+				</content>
+				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					section="main" sequence="2" class="stwTable">
+					<name>
+						<text xml:lang="en" slug="list"><![CDATA[Customers]]></text>
 					</name>
 					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers WHERE [customername like '%@txt%']]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="5"')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="10" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers')pel('Contact last name;2')el('Contact name')eleb(';stwfilter')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
 						<role id="users" />
 					</visibility>
 				</content>
+				<content uuid="cGGpiZrNdTKE3Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
+					section="main" sequence="3">
+					<name>
+						<text xml:lang="en" slug="customer"><![CDATA[Customer]]></text>
+					</name>
+					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fas fa-fw fa-user"></i> @@customerName' ')>>
+							l('Contact last name')\tf\n
+							l('Contact name')\tf\n
+							l\tf]]></text>
+					</layout>
+					<visibility>
+						<role id="guests" visibility="true" />
+						<role id="users" />
+					</visibility>
+				</content>
+			</children>
+		</page>
+		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+			<name>
+				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
+			</name>
+			<children>
 				<content uuid="cno61aDt5dXpvK93DcE96l" origin="wGGpiW7IjjrFqapqVuZopW" type="tree"
 					section="main" sequence="10" class="stwTree">
 					<name>
@@ -93,61 +211,6 @@
 						<role id="guests" visibility="false"></role>
 					</visibility>
 				</content>
-				<content uuid="c4sHhyptkJDFXjfOgnM0lRD" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
-					section="header" sequence="1">
-					<name>
-						<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
-					</layout>
-					<visibility>
-						<role id="guests" visibility="true" />
-					</visibility>
-					<options>
-						<option>
-							<text xml:lang="en"><![CDATA[Animals]]></text>
-							<options>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Dogs]]></text>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Cats]]></text>
-								</option>
-								<option>
-									<text xml:lang="en"><![CDATA[Bears]]></text>
-									<options>
-										<option ref="/home">
-											<text xml:lang="en"><![CDATA[Dogs]]></text>
-										</option>
-										<option ref="/home">
-											<text xml:lang="en"><![CDATA[Cats]]></text>
-										</option>
-										<option ref="/home">
-											<text xml:lang="en"><![CDATA[Bears]]></text>
-										</option>
-										<option ref="-"></option>
-										<option ref="/home">
-											<text xml:lang="en"><![CDATA[Orcas]]></text>
-										</option>
-										<option ref="/home">
-											<text xml:lang="en"><![CDATA[Whales]]></text>
-										</option>
-									</options>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Orcas]]></text>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Whales]]></text>
-								</option>
-							</options>
-						</option>
-						<option ref="wGGpiW7IjjrFqapqVuZopW" parameters="txt=@txt"></option>
-						<option ref="https://www.keyvisions.it"></option>
-						<option ref="c2hvVEcjC57XCDxmovj54PD"></option>
-					</options>
-				</content>
 				<content uuid="c4sHhypzM0UjizY20BICPrH" origin="wGGpiW7IjjrFqapqVuZopW" type="tabs"
 					section="main" sequence="10">
 					<name>
@@ -189,18 +252,6 @@
 						<role id="guests" visibility="true" />
 					</visibility>
 				</content>
-				<content uuid="c4sHhyqzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
-					section="main" sequence="11">
-					<name>
-						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b(';stwsearch')t('search')]]></text>
-					</layout>
-					<visibility>
-						<role id="guests" visibility="true" />
-					</visibility>
-				</content>
 				<content uuid="c4sHhypzNzBJ7LpOv3ROBvX" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
 					section="main" sequence="9">
 					<name>
@@ -220,7 +271,9 @@
 					</name>
 					<query datasource="mysqlsample"><![CDATA[select * from offices]]></query>
 					<layout>
-						<!--text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId"')l('City')hel('Tel.')e('tel')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text-->
+						<!--text
+						xml:lang="en"><![CDATA[\s('caption="Offices"
+						key="officeId"')l('City')hel('Tel.')e('tel')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text-->
 						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
 					</layout>
 					<visibility>
@@ -331,26 +384,5 @@ END {
 				<role id="guests" visibility="true" />
 			</visibility>
 		</page>
-		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
-			section="header" sequence="2" class="stwBreadcrumbs">
-			<name>
-				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
-			</name>
-			<layout>
-				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
-			</layout>
-			<visibility>
-				<role id="guests" visibility="true" />
-			</visibility>
-		</content>
-		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
-			section="footer" sequence="1" class="stwLanguages">
-			<name>
-				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
-			</name>
-			<visibility>
-				<role id="guests" visibility="true" />
-			</visibility>
-		</content>
 	</children>
 </webbase>

@@ -50,25 +50,25 @@ export class STWTree extends STWContent {
 		let body = "";
 		if (treeData)
 			body = `<ul>${renderNode(treeData)}</ul>
-			<script name="STWTree" onload="fnSTWTree('${this.uuid}')">
-				function fnSTWTree(id) {
-					self.document.getElementById(id).addEventListener("click", event => {
-						event.stopImmediatePropagation();
-						const li = event.target.closest("li");
-						if (!li) return;
-						const i = li.querySelector("i");
-						event.currentTarget.querySelector("div.stwSelected")?.classList.remove("stwSelected");
-						li.firstElementChild?.classList.add("stwSelected");
-						if (event.target.tagName !== "I") return;
-						if (li.querySelector("ul") && i) {
-							event.preventDefault();
-							li.querySelector("ul").style.display = i.classList.contains("fa-angle-down") ? "none" : "block";
-							i.classList.toggle("fa-angle-down");
-							i.classList.toggle("fa-angle-right");
-						}
-					});
-				}
-			</script>`;
+<script name="STWTree" onload="fnSTWTree('${this.uuid}')">
+	function fnSTWTree(id) {
+		self.document.getElementById(id).addEventListener("click", event => {
+			event.stopImmediatePropagation();
+			const li = event.target.closest("li");
+			if (!li) return;
+			const i = li.querySelector("i");
+			event.currentTarget.querySelector("div.stwSelected")?.classList.remove("stwSelected");
+			li.firstElementChild?.classList.add("stwSelected");
+			if (event.target.tagName !== "I") return;
+			if (li.querySelector("ul") && i) {
+				event.preventDefault();
+				li.querySelector("ul").style.display = i.classList.contains("fa-angle-down") ? "none" : "block";
+				i.classList.toggle("fa-angle-down");
+				i.classList.toggle("fa-angle-right");
+			}
+		});
+	}
+</script>`;
 
 		// Ensure async contract maintained with a microtask await (lint requirement)
 		await Promise.resolve();

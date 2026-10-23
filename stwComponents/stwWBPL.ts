@@ -29,7 +29,7 @@ export function WBPL(text: string, placeholders: Map<string, string | boolean | 
 	result = result.replace(/(['"])(@{1,3}[a-zA-Z0-9_$.]*[a-zA-Z0-9_])\1\.\.\./gm,
 		(_, quote, ph) => {
 			const val: string = placeholders.get(ph)?.toString() ?? '';
-			if (!val) return EMPTY;
+			if (!val) return quote + EMPTY + quote;
 			return VALUED + val.split(',')
 				.map(v => quote + v.replace(new RegExp(quote, 'gm'), quote + quote) + quote)
 				.join(',');
@@ -39,7 +39,7 @@ export function WBPL(text: string, placeholders: Map<string, string | boolean | 
 	result = result.replace(/(['"])(@{1,3}[a-zA-Z0-9_$.]*[a-zA-Z0-9_])\1/gm,
 		(_, quote, ph) => {
 			const val: string = placeholders.get(ph)?.toString() ?? '';
-			if (!val) return EMPTY;
+			if (!val) return quote + EMPTY + quote;
 			return VALUED + quote + val.replace(new RegExp(quote, 'gm'), quote + quote) + quote;
 		});
 

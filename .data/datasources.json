@@ -1,14 +1,5 @@
 [
 	{
-		"name": "postgres",
-		"type": "postgresql",
-		"host": "datasources.spintheweb.org",
-		"port": 5432,
-		"user": "webspinner",
-		"password": "ofsOGjGqV9y3UleceIOevGItA",
-		"database": "webspinner"
-	},
-	{
 		"name": "mysqlsample",
 		"type": "mysql",
 		"host": "81.88.53.84",

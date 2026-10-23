@@ -61,33 +61,33 @@ export class STWTabs extends STWContent {
 		// The STWTabs script selects the clicked tab and requests from the spinner the tab content
 		const mode = settings.get("mode") || "horizontal";
 		return `<dl class="stw${String(mode)[0].toUpperCase()}Tabs">${body}</dl>
-			<script name="STWTabs" onload="fnSTWTabs('${this.uuid}')">
-				function fnSTWTabs(id) {
-					const tabs = self.document.getElementById(id);
-					tabs.querySelector("dl").addEventListener("click", event => {
-						event.stopImmediatePropagation();
-						
-						if (event.target.tagName === "I" && event.target.classList.contains("fa-xmark")) {
-							event.currentTarget.querySelector("article").remove();
-							event.target.closest("dt").previousElementSibling?.click();
-							event.target.closest("dt").remove();
-							return;
-						}
+<script name="STWTabs" onload="fnSTWTabs('${this.uuid}')">
+	function fnSTWTabs(id) {
+		const tabs = self.document.getElementById(id);
+		tabs.querySelector("dl").addEventListener("click", event => {
+			event.stopImmediatePropagation();
+			
+			if (event.target.tagName === "I" && event.target.classList.contains("fa-xmark")) {
+				event.currentTarget.querySelector("article").remove();
+				event.target.closest("dt").previousElementSibling?.click();
+				event.target.closest("dt").remove();
+				return;
+			}
 
-						const target = event.target.closest("dt");
-						if (target && target.hasAttribute("data-ref")) {
-							event.currentTarget.querySelector("dd").innerHTML = '<article id="refreshSTWTab"></article>';
-							if (target.classList.contains("stwSelected"))
-								target.classList.remove("stwSelected");
-							else {
-								event.currentTarget.querySelector("dt.stwSelected")?.classList.remove("stwSelected");
-								target.classList.add("stwSelected");
-								stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-href"), options: { placeholder: "refreshSTWTab" } }));
-							}
-						}
-					});
+			const target = event.target.closest("dt");
+			if (target && target.hasAttribute("data-ref")) {
+				event.currentTarget.querySelector("dd").innerHTML = '<article id="refreshSTWTab"></article>';
+				if (target.classList.contains("stwSelected"))
+					target.classList.remove("stwSelected");
+				else {
+					event.currentTarget.querySelector("dt.stwSelected")?.classList.remove("stwSelected");
+					target.classList.add("stwSelected");
+					stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-href"), options: { placeholder: "refreshSTWTab" } }));
 				}
-			</script>`;
+			}
+		});
+	}
+</script>`;
 
 		async function closable(session: STWSession, id: string): Promise<string> {
 			const tab = STWIndex.get(id) as STWContent | undefined;

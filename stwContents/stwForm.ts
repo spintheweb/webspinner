@@ -27,10 +27,13 @@ export class STWForm extends STWContent {
 
 		const placeholders = new Map(session.placeholders);
 		for (const row of records.rows) {
-			records.fields.forEach(field => placeholders.set(`@@${field}`, row[field] || ""));
+			records.fields.forEach(field => { if (!field.startsWith("stw")) placeholders.set(`@@${field}`, row[field] || "") });
 			body += (await layout.render(records.fields, placeholders, session)).HTML;
 		}
 
+		if (body === "")
+			return "";
+		
 		return `<form method="${this.section === "stwShowModal" ? "dialog" : "post"}">
 			${body.indexOf('formmethod="GET"') == -1 ? `<input type="hidden" name="stwOrigin" value="${this.uuid}">` : ''}
 			${body}

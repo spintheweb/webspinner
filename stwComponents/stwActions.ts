@@ -3,7 +3,7 @@
 import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { STWSession } from "./stwSession.ts";
 import { STWDatasources } from "./stwDatasources.ts";
-import { ACTIONS } from "./stwWBLL.ts";
+import { FLAGS } from "./stwWBLL.ts";
 import type { STWContent } from "../stwElements/stwContent.ts";
 import { STWSecurity } from "./stwSecurity.ts";
 

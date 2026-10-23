@@ -1,5 +1,5 @@
 .stwMenus>div {
-	overflow:unset;
+	overflow: unset;
 }
 
 .stwMenus a {
@@ -31,17 +31,17 @@
 	min-width: 0 !important;
 }
 
-.stwMenus menu li:has(menu) > div {
-  position: relative;
-  padding-right: 2rem;
+.stwMenus menu li:has(menu)>div {
+	position: relative;
+	padding-right: 2rem;
 }
 
 .stwMenus menu li:has(menu) .fa-angle-right {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
+	position: absolute;
+	right: 0.75rem;
+	top: 50%;
+	transform: translateY(-50%);
+	pointer-events: none;
 }
 
 .stwMenus menu li>menu {
@@ -49,7 +49,7 @@
 	position: absolute;
 	background-color: var(--bg-faint);
 	padding: var(--padding) 0;
-	z-index: 1;
+	z-index: 10;
 	border: thin solid;
 }
 
@@ -68,6 +68,5 @@
 }
 
 .stwMenus menu li:not(:has(article)):hover {
-  background-color: var(--special-hover);
-  color: var(--on-special);
+	background-color: var(--special-hover);
 }

@@ -268,11 +268,10 @@ function _stwHandleNavClick(event) {
 	if (!href || !href.startsWith("/")) return;
 
 	event.preventDefault();
-	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
-		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {}, search: window.location.search }));
-	} else {
+//	if (stwWS && stwWS.readyState === WebSocket.OPEN)
+//		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {}, search: window.location.search }));
+//	else
 		window.location.href = a.getAttribute("href");
-	}
 }
 
 // Attach once, capture

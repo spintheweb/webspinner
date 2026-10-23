@@ -24,12 +24,14 @@ type WBLLRuntime = {
 	RenderIn: string; // Possible values: ul -> li, ol -> li, menu -> li, thead -> tr\th, tbody, tfoot -> tr\td
 	Wrappers: string[]; // Pending wrapper elements
 	FormFields: number;
-	Actions: ACTIONS;
+	Flags: FLAGS;
 	Settings: Map<string, string | boolean | number>;
+	Actions: string;
+	Cols: number;
 	Index: number; // Parsing position within the WBLL code for error reporting
 };
 
-export enum ACTIONS {
+export enum FLAGS {
 	stwnone = 0,
 	stwinsert = 1,
 	stwupdate = 2,
@@ -40,6 +42,8 @@ export enum ACTIONS {
 	stwlogon = 64,
 	stwlogoff = 128,
 	stwpwdreset = 256,
+	stwreset = 512,
+	stwtfoot = 1024,
 	stwany = ~0,
 }
 
@@ -77,7 +81,7 @@ export class STWLayout {
 				if (["<", ">"].includes(pattern[0].at(0) ?? ""))
 					code.push(`WBLL.$mc(${(pattern[0].at(0) === "<" ? -1 : 1) * pattern[0].length}, ${expression.index}, runtime)`);
 				else {
-					const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
+					const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] != null ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
 
 					if (pattern[0].match(/(p|q|\\a)/) || (code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyz]/)) && !closed) {
 						code[code.length - 1] = code[code.length - 1] + `.${fragment}`;
@@ -113,17 +117,31 @@ export class STWLayout {
 			Session: session,
 			Fields: fields,
 			FormFields: 0,
-			Actions: ACTIONS.stwnone,
+			Flags: FLAGS.stwnone,
 			Placeholders: placeholders,
 			HTML: "",
 			RenderIn: renderIn,
 			Wrappers: [],
 			FldIndex: 0,
 			Settings: new Map(),
+			Actions: "",
+			Cols: 1,
 			Index: 0,
 		};
 		try {
 			await this.renderer(WBLL, WBPL, runtime);
+
+			if (renderIn === "thead" && (runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter))) {
+				runtime.RenderIn = "tbody";
+				runtime.FormFields = 0;
+				runtime.FldIndex = 0;
+				runtime.Actions = "";
+				await this.renderer(WBLL, WBPL, runtime);
+				runtime.HTML += `<tr><td colspan="${runtime.Cols}">${runtime.Actions}</td></tr>`
+			}
+			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwtfoot))
+				return { settings: runtime.Settings, HTML: "" };
+
 			return { settings: runtime.Settings, HTML: runtime.HTML };
 		} catch (_err) {
 			const index = runtime.Index;
@@ -310,16 +328,24 @@ class LabelSymbol extends BaseSymbol {
 				: "form";
 
 		const tagName = mode === "header" ? "th" : mode === "cell" ? "td" : "label";
-		super(mode === "cell" ? undefined : args, tagName, runtime);
+		super(args, tagName, runtime);
 		this.mode = mode;
 
+		this.runtime.Flags |= this.args[2] ? FLAGS.stwtfoot : 0;
+
 		if (mode === "cell") {
+			this.runtime.Cols++;
 			runtime.Wrappers.push("td");
 			return;
 		}
-		this.text = args || (
-			mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime)
-		);
+		if (runtime.RenderIn === "tfoot")
+			this.text = this.args[2] || this.args[0] || "";
+		else
+			this.text = this.args[0] || (args == null ? (mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime)) : "");
+
+		if (runtime.RenderIn === "thead" && this.args[1] != null)
+			this.text += `<span class="stwOrderBy" data-orderby="${this.args[1] || runtime.Fields[runtime.FldIndex]}"><i class="fas fa-fw fa-angle-up"></i><i class="fas fa-fw fa-angle-down"></i></span>`;
+
 		if (mode === "form") {
 			runtime.Wrappers.push("label");
 			this.attrs.set("for", `stwE${runtime.FormFields}`);
@@ -348,9 +374,6 @@ class FormSymbol extends BaseSymbol {
 			this.attrs.set("disabled", this.runtime.Settings.get("disabled") ?? true);
 	}
 	override toString(): string {
-		if (this instanceof ButtonSymbol && this.runtime.Settings.get("disabled"))
-			return "";
-
 		let fragment = "";
 		if (this.tagName === "input" && this.args[3]) {
 			this.attrs.set("list", `${this.attrs.get("id") ?? "Fld0"}_options`);
@@ -389,28 +412,34 @@ class ButtonSymbol extends FormSymbol {
 	url: URL;
 	constructor(args: string | undefined, tagName = "button", runtime: WBLLRuntime) {
 		super(args, tagName, runtime);
-		this.attrs.delete("type");
+		this.attrs.set("type", "submit");
+		this.attrs.delete("value");
 
 		try { this.url = new URL(this.args[0]); } catch { this.url = new URL(this.args[0] ?? "", `https://${runtime.Session.baseurl}`); }
 
 		const action = this.action(this.args[1]);
 		this.attrs.set("formaction", this.url.toString());
-		if (action & (ACTIONS.stwsearch | ACTIONS.stwfilter)) {
+		if (action & (FLAGS.stwsearch | FLAGS.stwfilter)) {
+			this.text = action & FLAGS.stwsearch ? "Search" : "Filter"; // While searching resets the querystring filtering replaces the querystring value
 			this.attrs.delete("name");
 			this.attrs.set("formmethod", "GET");
-		} else if (action & ACTIONS.stwdelete) {
+		} else if (action & FLAGS.stwdelete) {
+			this.text = "Delete";
 			this.attrs.set("formmethod", "DELETE");
-		} else if (action & ACTIONS.stwupdate) {
+		} else if (action & FLAGS.stwupdate) {
+			this.text = "Update";
 			this.attrs.set("formmethod", "PATCH");
-		} else if (action & ACTIONS.stwinsert) {
+		} else if (action & FLAGS.stwinsert) {
+			this.text = "Insert";
 			this.attrs.set("formmethod", "PUT");
-		} else
+		} else if (action & FLAGS.stwreset) {
+			this.text = "Reset";
+			this.attrs.set("type", "reset");
+		} else {
+			this.text = "Submit";
 			this.attrs.set("formmethod", "POST");
-		runtime.Actions |= action;
-
-		this.attrs.delete("value");
-		this.attrs.set("type", "submit");
-		this.text = "";
+		}
+		runtime.Flags |= action;
 	}
 	p(args: string, index: number, runtime: WBLLRuntime): this {
 		if (args === ".")
@@ -449,10 +478,19 @@ class ButtonSymbol extends FormSymbol {
 		return this;
 	}
 
-	private action(value: string): ACTIONS {
+	override toString(): string {
+		const fragment = super.toString();
+		if (this.runtime.Settings.get("disabled") || this.runtime.RenderIn === "tbody") {
+			this.runtime.Actions += fragment;
+			return "";
+		}
+		return fragment;
+	}
+
+	private action(value: string): FLAGS {
 		value = (value || "").toLocaleLowerCase();
-		const action = Object.entries(ACTIONS).find(([name, member]) => name === value && typeof member === "number")?.[1];
-		return typeof action === "number" ? action : ACTIONS.stwnone;
+		const action = Object.entries(FLAGS).find(([name, member]) => name === value && typeof member === "number")?.[1];
+		return typeof action === "number" ? action : FLAGS.stwnone;
 	}
 }
 type ChoiceItem = { value: string; label: string; group?: string };
@@ -746,7 +784,8 @@ function k(args: string, index: number, runtime: WBLLRuntime): void {
 function l(args: string, index: number, runtime: WBLLRuntime): LabelSymbol {
 	runtime.Index = index;
 	closeAllBlocks(runtime);
-	args = WBPL(args, runtime.Placeholders);
+	if (args != null)
+		args = WBPL(args, runtime.Placeholders);
 	return new LabelSymbol(args, runtime);
 }
 function L(args: string, index: number, runtime: WBLLRuntime): LabelSymbol {
