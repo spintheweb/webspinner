@@ -56,7 +56,7 @@ export class STWTabs extends STWContent {
 		if (!id)
 			return "";
 
-		body += `</div><dd><article id="${newId()}" href="${href}"><i class="fa-light fa-loader fa-spin"></i></article></dd>`;
+		body += `</div><dd><article id="${newId()}" href="${href}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
 
 		// The STWTabs script selects the clicked tab and requests from the spinner the tab content
 		const mode = settings.get("mode") || "horizontal";

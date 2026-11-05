@@ -4,8 +4,16 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Spin the Web</title>
+	<meta name="ai-generated" content="false">
+	<title>Spin the Web Labs</title>
 	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+
+	<meta property="og:title" content="Spin the Web Labs">
+	<meta property="og:description"
+		content="Discover the capabilities of the Spin the Web Project through interactive labs, practical demonstrations, and real-world experiments.">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://labs.spintheweb.org">
+	<meta property="og:image" content="https://labs.spintheweb.org/media/social-preview-image.png">
 
 	<script src="https://kit.fontawesome.com/a29c3d2fa4.js" crossorigin="anonymous"></script>
 	<link href="/styles/style.css" rel="stylesheet">
@@ -14,13 +22,47 @@
 </head>
 
 <body>
-	<header id="header"></header>
+	<header data-section id="header"></header>
 	<div style="display: flex; gap:0.5rem; height: 100vh; align-items: flex-start;">
-		<aside id="leftSidebar" style="position: relative; display: flex; flex-direction: column;"></aside>
-		<main id="main" style="position: relative; display: flex; flex-direction: column; overflow-x: auto; width:100%;"></main>
-		<aside id="rightSidebar" style="position: relative; display: flex; flex-direction: column;"></aside>
+		<aside data-section id="leftSidebar" style="position: relative; display: flex; flex-direction: column;"></aside>
+		<main data-section id="main"
+			style="position: relative; display: flex; flex-direction: column; overflow-x: auto; width:100%;"></main>
+		<aside data-section id="rightSidebar" style="position: relative; display: flex; flex-direction: column;"></aside>
 	</div>
-	<footer id="footer"></footer>
+	<footer data-section id="footer"></footer>
+
+	<style>
+		article:hover::after {
+			content: "ⓘ";
+			position: absolute;
+			right: 0;
+			color: CanvasText;
+			font-size: 2rem;
+			cursor: pointer;
+			z-index: 10;
+		}
+
+		article:hover article:hover::after {
+			display: none;
+		}
+	</style>
+	<script>
+		document.addEventListener("click", (e) => {
+			const article = e.target.closest("article");
+			if (!article) return;
+
+			e.stopImmediatePropagation();
+			const rect = article.getBoundingClientRect();
+
+			// Icon occupies roughly the rightmost 20px
+			const clickedIcon =
+				e.clientX > rect.right - 20;
+
+			if (clickedIcon) {
+				alert(`Clicked id: ${article.id}`);
+			}
+		});
+	</script>
 </body>
 
 </html>

@@ -28,18 +28,20 @@ export class STWTable extends STWContent {
 		placeholders.set("@@stwuuid", this.uuid);
 		if (placeholders.has(`@stwO${this.uuid}`))
 			placeholders.set("@stworderby", placeholders.get(`@stwO${this.uuid}`) || "");
-		records.fields.forEach(field => { if (!field.startsWith("stw")) placeholders.set(`@@${field}`, records.rows[0]?.[field] || "") });
+		records.fields.forEach(field => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
 
 		const layout = this.getLayout(session, "lf".repeat(records.fields.length));
 		let { settings, HTML: body } = await layout.render(records.fields, placeholders, session, "thead");
 
-		let row = 0;
+		let row = 0, rows = Number(settings.get("rows"));
+		rows = rows > 0 ? rows : 25;
+
 		body = `<thead>${body}</thead><tbody>`;
 		while (true) {
 			body += (await layout.render(records.fields, placeholders, session, "tbody")).HTML;
-			if (++row >= records.rows.length || row >= Number(settings.get("rows") || 25))
+			if (++row >= records.rows.length || row >= rows)
 				break;
-			records.fields.forEach(field => { if (!field.startsWith("stw")) placeholders.set(`@@${field}`, records.rows[row]?.[field] || "") });
+			records.fields.forEach(field => placeholders.set(`@@${field}`, records.rows[row]?.[field] || ""));
 		}
 		body += `</tbody><tfoot>${(await layout.render(records.fields, placeholders, session, "tfoot")).HTML}</tfoot>`;
 

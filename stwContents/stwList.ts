@@ -30,14 +30,16 @@ export class STWList extends STWContent {
 		const layout = this.getLayout(session, "f".repeat(records.fields.length));
 		let { settings, HTML: body } = await layout.render(records.fields, placeholders, session, "li");
 
-		let row = 0;
+		let row = 0, rows = Number(settings.get("rows"));
+		rows = rows > 0 ? rows : 25;
+
 		while (true) {
-			body += (await layout.render(records.fields, placeholders, session, "li")).HTML;
-			if (++row >= records.rows.length || row >= Number(settings.get("rows") || 25))
+			if (++row >= records.rows.length || row >= rows)
 				break;
 			records.fields.forEach(field => placeholders.set(`@@${field}`, records.rows[row]?.[field] || ""));
+			body += (await layout.render(records.fields, placeholders, session, "li")).HTML;
 		}
-		return `<ul>${body}</ul>`;
+		return `<ul>${body}</ul>`; // Ordered list
 	}
 }
 

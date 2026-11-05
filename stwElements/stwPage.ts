@@ -30,7 +30,7 @@ export class STWPage extends STWElement {
 
 	public constructor(page: ISTWPage) {
 		super(page);
-		this.template = page.template || "/index.html";
+		this.template = page.template || "index.html";
 	}
 
 	public override toLocalizedJSON(session: STWSession): object {
@@ -44,18 +44,18 @@ export class STWPage extends STWElement {
 	 * Given a page, determine all the visible contents: these are not only its children, but also 
 	 * contents that are direct children of the parents areas up to the portal.
 	 * 
-	 * @param _session The current session
+	 * @param session The current session
 	 * @returns String array of contents ids
 	 */
-	public contents(_session: STWSession, recurse: boolean = true): string[] {
-		const contents = this.children.filter(content => !/(stwShowModal|stwShow)/.test((content as unknown as STWContent).section) && content.isVisible(_session) & 1).map(content => content.uuid);
+	public contents(session: STWSession, recurse: boolean = true): string[] {
+		const contents = this.children.filter(content => !/(stwShowModal|stwShow)/.test((content as unknown as STWContent).section) && content.isVisible(session) & 1).map(content => content.uuid);
 		if (recurse)
 			climb(this.parent, contents, recurse);
 		return contents;
 
 		function climb(element: STWElement, contents: string[], recurse: boolean): void {
 			if (element) {
-				element.children.filter(content => (content as unknown as STWContent).section && content.isVisible(_session) & 1).map(content => contents.push(content.uuid));
+				element.children.filter(content => (content as unknown as STWContent).section && content.isVisible(session) & 1).map(content => contents.push(content.uuid));
 				climb(element.parent, contents, recurse);
 			}
 		}

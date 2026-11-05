@@ -12,8 +12,11 @@
 
 let stwWS;
 let stwReconnectTimer = null;
+let stwSections;
 
 window.addEventListener("load", () => {
+	stwSections = [...document.body.querySelectorAll("[data-section]")].map(el => el.id);
+
 	stwStartWebsocket();
 	if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
 		_enableStudio();

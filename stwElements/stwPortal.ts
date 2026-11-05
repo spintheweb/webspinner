@@ -81,6 +81,7 @@ export class STWPortal extends STWElement {
 				);
 
 			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol"); // guid = a6T6S55WbZjerBB8QbSCr9y
+			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol"); // guid = a6T6S55WbZjerGVamxGi8kA
 
 			if (envGet("DEBUG") === "true")
 				STWPortal.watchWebbases();

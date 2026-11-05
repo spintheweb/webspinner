@@ -13,7 +13,7 @@ import { WBPL } from "./stwWBPL.ts";
 
 const WBLL = { a, A, b, c, d, D, e, f, h, i, j, k, l, L, m, n, o, O, r, s, S, t, u, v, w, x, y, z, $s, $A, $r, $n, $t, $mc };
 
-type FormattingSession = Pick<STWSession, "baseurl" | "lang" | "tz">;
+type FormattingSession = Pick<STWSession, "placeholders" | "baseurl" | "lang" | "tz">;
 
 type WBLLRuntime = {
 	Session: FormattingSession;
@@ -29,6 +29,8 @@ type WBLLRuntime = {
 	Actions: string;
 	Cols: number;
 	Index: number; // Parsing position within the WBLL code for error reporting
+	Downgrade: boolean;
+	Mode: FLAGS;
 };
 
 export enum FLAGS {
@@ -43,7 +45,9 @@ export enum FLAGS {
 	stwlogoff = 128,
 	stwpwdreset = 256,
 	stwreset = 512,
-	stwtfoot = 1024,
+	stwsummary = 1024,
+	stwnovalue = FLAGS.stwinsert | FLAGS.stwfilter | FLAGS.stwsearch,
+	stwcud = FLAGS.stwinsert | FLAGS.stwupdate | FLAGS.stwdelete,
 	stwany = ~0,
 }
 
@@ -111,7 +115,7 @@ export class STWLayout {
 		this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
 	}
 
-	async render(fields: string[], placeholders: Map<string, string>, session: FormattingSession = { baseurl: "", lang: "en", tz: "UTC" }, renderIn: string = ""):
+	async render(fields: string[], placeholders: Map<string, string>, session: FormattingSession = { placeholders: placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn: string = ""):
 		Promise<{ settings: Map<string, string | boolean | number>, HTML: string }> {
 		const runtime: WBLLRuntime = {
 			Session: session,
@@ -124,9 +128,11 @@ export class STWLayout {
 			Wrappers: [],
 			FldIndex: 0,
 			Settings: new Map(),
-			Actions: "",
+			Actions: "", // Filtering, CRUD, Summary
 			Cols: 1,
 			Index: 0,
+			Downgrade: false, // From table to form
+			Mode: FLAGS.stwnone,
 		};
 		try {
 			await this.renderer(WBLL, WBPL, runtime);
@@ -136,10 +142,14 @@ export class STWLayout {
 				runtime.FormFields = 0;
 				runtime.FldIndex = 0;
 				runtime.Actions = "";
+				runtime.Mode = FLAGS.stwnovalue;
 				await this.renderer(WBLL, WBPL, runtime);
 				runtime.HTML += `<tr><td colspan="${runtime.Cols}">${runtime.Actions}</td></tr>`
 			}
-			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwtfoot))
+			if (renderIn === "thead" && runtime.Flags & FLAGS.stwinsert) {
+				runtime.HTML += `<tr><td colspan="${runtime.Cols}">...</td></tr>`
+			}
+			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
 				return { settings: runtime.Settings, HTML: "" };
 
 			return { settings: runtime.Settings, HTML: runtime.HTML };
@@ -174,7 +184,12 @@ class RootSymbol {
 		return `<${this.tagName}${htmlAttrs}>`;
 	}
 	$(): void {
-		if (this.runtime.RenderIn != "thead" || (this.runtime.RenderIn == "thead" && this.tagName == "th"))
+		if (!["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn))
+			this.runtime.HTML += this.toString();
+		else if (this.runtime.RenderIn === "thead") {
+			if (this instanceof LabelSymbol)
+				this.runtime.HTML += this.toString();
+		} else if (this.runtime.RenderIn !== "tfoot")
 			this.runtime.HTML += this.toString();
 	}
 }
@@ -331,7 +346,7 @@ class LabelSymbol extends BaseSymbol {
 		super(args, tagName, runtime);
 		this.mode = mode;
 
-		this.runtime.Flags |= this.args[2] ? FLAGS.stwtfoot : 0;
+		this.runtime.Flags |= this.args[2] ? FLAGS.stwsummary : 0;
 
 		if (mode === "cell") {
 			this.runtime.Cols++;
@@ -367,7 +382,7 @@ class FormSymbol extends BaseSymbol {
 		if (!this.attrs.has("name"))
 			this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stwE${runtime.FormFields}`);
 		if (!this.attrs.has("value"))
-			this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] ? this.args[2] : Field(runtime));
+			this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] || (runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter | FLAGS.stwinsert)) ? this.args[2] ?? "" : Field(runtime));
 		++runtime.FormFields;
 
 		if (this.runtime.Settings.has("disabled"))
@@ -479,8 +494,11 @@ class ButtonSymbol extends FormSymbol {
 	}
 
 	override toString(): string {
+		if (this.runtime.Settings.get("disabled"))
+			return "";
+
 		const fragment = super.toString();
-		if (this.runtime.Settings.get("disabled") || this.runtime.RenderIn === "tbody") {
+		if (["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn)) {
 			this.runtime.Actions += fragment;
 			return "";
 		}
@@ -651,6 +669,8 @@ class EmbedSymbol extends BaseSymbol {
 		return this;
 	}
 	override async $(): Promise<void> {
+		if (this.runtime.Downgrade)
+			return;
 		if (this.tagName === "embed")
 			this.runtime.HTML += super.toString();
 		else {
@@ -778,8 +798,12 @@ function k(args: string, index: number, runtime: WBLLRuntime): void {
 	runtime.Index = index;
 	args = WBPL(args, runtime.Placeholders);
 	const symbol = new TextSymbol(args, undefined, runtime);
-	if (symbol.args[0] || runtime.Fields[runtime.FldIndex]) // If no key is provided use the current field name
-		runtime.Placeholders.set(`@@${symbol.args[0] || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+
+	const name = symbol.args[0];
+	if ((name && !name.toLocaleLowerCase().startsWith("stw")) || runtime.Fields[runtime.FldIndex]) { // If no key is provided use the current field name
+		runtime.Session.placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+		runtime.Placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+	}
 }
 function l(args: string, index: number, runtime: WBLLRuntime): LabelSymbol {
 	runtime.Index = index;
@@ -862,8 +886,11 @@ function v(args: string, index: number, runtime: WBLLRuntime): TextSymbol {
 	else
 		symbol.text = symbol.args[2] ?? "";
 
-	if (symbol.args[1])
-		runtime.Placeholders.set(`@@${symbol.args[1]}`, symbol.args[2]);
+	const name = symbol.args[1];
+	if (name && !name.toLowerCase().startsWith("stw")) {
+		runtime.Session.placeholders.set(`@@${name}`, symbol.args[2]);
+		runtime.Placeholders.set(`@@${name}`, symbol.args[2]);
+	}
 	return symbol;
 }
 function w(args: string, index: number, runtime: WBLLRuntime): FormSymbol {
@@ -915,20 +942,28 @@ function $r(attrs: string, index: number, runtime: WBLLRuntime): RootSymbol {
 
 	return symbol;
 }
+// TODO: thead and tfoot do not allow
 function $n(attrs: string, index: number, runtime: WBLLRuntime): RootSymbol {
 	runtime.Index = index;
 	closeAllBlocks(runtime);
 
 	attrs = WBPL(attrs, runtime.Placeholders);
-	if (runtime.RenderIn !== "tbody") {
+	if (!["thead", "tbody", "tfoot"].includes(runtime.RenderIn)) {
 		attrs = `style="display:flex;flex-basis:100%;" ${attrs || ""}`;
 		runtime.Wrappers.push("div");
 		return new RootSymbol(`class="stwLine"${attrs || ""}`, "div", runtime);
 	}
 
+	if (["thead", "tfoot"].includes(runtime.RenderIn)) {
+		runtime.RenderIn = "";
+		runtime.Downgrade = true;
+		return new RootSymbol("", "", runtime);
+	}
+
 	runtime.HTML += new RootSymbol(attrs, "tr", runtime).toString();
 	runtime.Wrappers.push("tr", "td");
-	return new RootSymbol("", "td", runtime);
+
+	return new RootSymbol(`colspan="${runtime.Cols}"`, "td", runtime);
 }
 function $t(attrs: string, index: number, runtime: WBLLRuntime): RootSymbol {
 	runtime.Index = index;
@@ -1026,7 +1061,7 @@ function closeBlock(runtime: WBLLRuntime): void {
 		runtime.HTML += `</${tagName}>`;
 }
 function closeAllBlocks(runtime: WBLLRuntime): void {
-	while (runtime.Wrappers.length)
+	while (runtime.Wrappers.length && !(runtime.RenderIn.startsWith("t") && runtime.Wrappers[0] === "tr"))
 		closeBlock(runtime);
 }
 function Field(runtime: WBLLRuntime, separator: string = ""): string {

@@ -36,6 +36,13 @@
 	word-break: break-word;
 }
 
+.stwLoading {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	font-size: xx-large;
+}
+
 fieldset.stwGroup {
 	display: flex;
 	gap: 1rem;
@@ -45,21 +52,25 @@ fieldset.stwGroup {
 	margin: 0;
 }
 
-.stwCollapsed::before, .stwExpanded::before {
-	content:"\f105";
+.stwCollapsed::before,
+.stwExpanded::before {
+	content: "\f105";
 	font-family: "Font Awesome 7 Pro";
 	font-weight: var(--fa-style);
 	font-size: smaller;
 	display: inline-block;
 	width: 1.5rem;
 }
+
 .stwExpanded::before {
 	content: "\f107";
 }
+
 .stwOrderBy {
-	float:right;
+	float: right;
 	cursor: pointer;
 }
+
 .stwOrdered {
 	color: CanvasText;
 }

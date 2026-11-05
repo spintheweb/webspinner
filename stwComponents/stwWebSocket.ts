@@ -82,8 +82,13 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 				finalData.push({ method: "DELETE", id: resource });
 			} else {
 				const content = found as STWContent;
-				const response = await content.serve(syntheticRequest, session, data.method === "PATCH" ? content : undefined);
+				const response = await content.serve(
+					syntheticRequest, 
+					session, 
+					data.method === "PATCH" && data.options.sections?.includes(content.section) ? content : undefined
+				);
 				if (response.status === 200) {
+					console.log(content.type, content.getData(session, "name"), content.section, data.options.sections);
 					finalData.push(await response.json());
 				} else {
 					finalData.push({ method: "DELETE", id: content.uuid });

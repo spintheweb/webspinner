@@ -21,8 +21,8 @@ export class STWCalendar extends STWContent {
 	}
 
 	public override async render(_request: Request, session: STWSession, records: ISTWRecords): Promise<string> {
-		const fields = records.fields?.map(f => f.name) || Object.keys(records.rows?.[0] || {});
-		const firstRow = records.rows?.[0];
+		const fields = records.fields;
+		const firstRow = records.rows[0];
 		const firstPlaceholders = new Map(session.placeholders);
 		if (firstRow)
 			for (const [name, value] of Object.entries(firstRow))

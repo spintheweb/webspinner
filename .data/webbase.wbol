@@ -76,7 +76,7 @@
 			</options>
 		</content>
 		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
-			section="header" sequence="2" class="stwBreadcrumbs">
+			section="header" sequence="2">
 			<name>
 				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
 			</name>
@@ -87,8 +87,8 @@
 				<role id="guests" visibility="true" />
 			</visibility>
 		</content>
-		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
-			section="footer" sequence="1" class="stwLanguages">
+		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="languages"
+			section="footer" sequence="1">
 			<name>
 				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
 			</name>
@@ -96,7 +96,7 @@
 				<role id="guests" visibility="true" />
 			</visibility>
 		</content>
-		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" tamplate="index.html">
+		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
 			</name>
@@ -104,7 +104,7 @@
 				<content uuid="c4sHhyqzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
 					section="main" sequence="1">
 					<name>
-						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
+						<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 					</name>
 					<layout>
 						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b('/customers;stwsearch')\a('style="margin-right:0.5rem" ')b(';stwreset')]]></text>
@@ -114,13 +114,13 @@
 					</visibility>
 				</content>
 				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="main" sequence="2" class="stwTable">
+					section="main" sequence="2">
 					<name>
 						<text xml:lang="en" slug="list"><![CDATA[Customers]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers WHERE [customername like '%@txt%']]]></query>
+					<query datasource="mysqlsample"><![CDATA[SELECT 'fufi' as stwFufi, customers.* FROM customers WHERE [customername like '%@txt%']]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="10" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers')pel('Contact last name;2')el('Contact name')eleb(';stwfilter')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="3" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers/customer')pfl('Contact last name;')el('Contact name;;sum')flfb(';stwsearch')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -146,7 +146,7 @@
 				</content>
 			</children>
 		</page>
-		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
 			</name>
@@ -234,7 +234,7 @@
 				</content>
 				<content uuid="c4sHhypzM1UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="geomap">
 					<name>
-						<text xml:lang="en" slug="code-editor"><![CDATA[Map]]></text>
+						<text xml:lang="en" slug="map"><![CDATA[Map]]></text>
 					</name>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -295,7 +295,7 @@
 				</content>
 			</children>
 		</page>
-		<page uuid="p76qSPuePylfg88klSQBx5r" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+		<page uuid="p76qSPuePylfg88klSQBx5r" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="sales"><![CDATA[Sales]]></text>
 			</name>
@@ -342,12 +342,12 @@ END {
 					<query datasource="mysqlsample"><![CDATA[select *, 'collapsible' as foo from employees limit 3]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Employees" key="employeeNumber" @@foo ')
-								l('Name')a('dashboard')pp('fufi;@@foo')ff
+								l('Name;1')a('dashboard')pp('fufi;@@foo')ff
 								l('Ext.')f
-								l('eMail')a('mailto:@@email')f
+								l('eMail;2')a('mailto:@@email')f
 								lf
 								lf
-								l('Title')f]]></text>
+								l('Title;3')f]]></text>
 					</layout>
 				</content>
 			</children>
@@ -363,8 +363,7 @@ END {
 						<text xml:lang="en" slug="area"><![CDATA[Area]]></text>
 					</name>
 					<children>
-						<page uuid="p3ACYHuY1IOe1UCmBuXClNc" origin="ayfpEhe2ISsKb9NiVLcw5y"
-							template="index.html">
+						<page uuid="p3ACYHuY1IOe1UCmBuXClNc" origin="ayfpEhe2ISsKb9NiVLcw5y">
 							<name>
 								<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 							</name>
@@ -376,7 +375,7 @@ END {
 				</area>
 			</children>
 		</area>
-		<page uuid="pBMD2db90OORrnHEXlmSiq" origin="wGGpiW7IjjrFqapqVuZopW" template="index.html">
+		<page uuid="pBMD2db90OORrnHEXlmSiq" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 			</name>

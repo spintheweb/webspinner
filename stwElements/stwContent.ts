@@ -183,12 +183,13 @@ export abstract class STWContent<
 		try {
 			// Load data set
 			records = await STWDatasources.command(session, this) as TRecords;
+			records.fields = records.fields.filter(field => !field.toLowerCase().startsWith("stw")); // Fields that start with stw are not allowed
 
 			// Transfer first record to placeholders
 			const placeholders = new Map(session.placeholders);
 			if (records.rows.length)
 				records.fields.forEach(field => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
-			
+
 			// Determine content settings
 			settings = (await layout.render(records.fields, placeholders, session)).settings;
 
@@ -203,7 +204,7 @@ export abstract class STWContent<
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
 				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">
-					${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : "" }
+					${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}
 					${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
 					${HTML}
 					${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
