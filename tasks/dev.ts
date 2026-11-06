@@ -2,7 +2,7 @@
 // Build/development task: dev
 
 // Runs all development tasks in parallel (e.g., CSS watcher, etc.)
-// Usage: $ deno run --allow-read --allow-write tasks/dev.ts
+// Usage: node tasks/dev.ts
 
 // Import the merge-css watcher as a promise
 import "./merge-css.ts";

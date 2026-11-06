@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // MongoDB adapter for Spin the Web
 
-import { MongoClient } from "npm:mongodb";
-import { ISTWAdapter, ISTWRecords } from "./adapter.ts";
+import { MongoClient } from "mongodb";
+import type { ISTWAdapter, ISTWRecords } from "./adapter.ts";
 
 export class STWMongoAdapter implements ISTWAdapter {
   private client: MongoClient;
@@ -30,7 +30,7 @@ export class STWMongoAdapter implements ISTWAdapter {
    */
   async listObjects(): Promise<ISTWRecords> {
     const collections = await this.db.listCollections().toArray();
-    const fields = [{ name: "name", type: "string" }];
+    const fields = ["name"];
     const rows = collections.map((col: any) => ({ name: col.name }));
     return {
       affectedRows: rows.length,
@@ -46,11 +46,14 @@ export class STWMongoAdapter implements ISTWAdapter {
   async getObjectDetails(collectionName: string): Promise<ISTWRecords> {
     const collection = this.db.collection(collectionName);
     const doc = await collection.findOne();
-    const fields = doc ? Object.keys(doc).map(k => ({ name: k, type: typeof doc[k] })) : [];
+    const fields = ["name", "type"];
+    const rows = doc
+      ? Object.keys(doc).map(name => ({ name, type: typeof doc[name] }))
+      : [];
     return {
-      affectedRows: fields.length,
+      affectedRows: rows.length,
       fields,
-      rows: fields,
+      rows,
     };
   }
 
@@ -63,13 +66,13 @@ export class STWMongoAdapter implements ISTWAdapter {
     const commands = batch.split(';').map(cmd => cmd.trim()).filter(cmd => cmd);
     const results: ISTWRecords[] = [];
     for (const cmd of commands) {
-      let result: ISTWRecords | null = null;
+      let result: ISTWRecords;
       try {
         const obj = JSON.parse(cmd);
         const collection = this.db.collection(obj.collection || this.config.collection);
         if (obj.find) {
           const docs = await collection.find(obj.find).toArray();
-          const fields = docs.length > 0 ? Object.keys(docs[0]).map(k => ({ name: k, type: typeof docs[0][k] })) : [];
+          const fields = docs.length > 0 ? Object.keys(docs[0]) : [];
           result = { affectedRows: docs.length, fields, rows: docs };
         } else if (obj.insert) {
           const res = await collection.insertOne(obj.insert);

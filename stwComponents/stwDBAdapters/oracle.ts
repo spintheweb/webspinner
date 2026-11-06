@@ -4,6 +4,7 @@
 // Oracle adapter (CLI via SQLcl). Requires `sql` in PATH.
 // Supports: execute (batch script), listObjects, getObjectDetails.
 import { ISTWAdapter, ISTWRecords } from "./adapter.ts";
+import { runCommand } from "../stwNode.ts";
 
 export type OracleMode = "cli";
 
@@ -96,30 +97,17 @@ export class STWOracleAdapter implements ISTWAdapter {
       "",
     ].join("\n");
 
-    const cmd = new Deno.Command(this.config.sqlclCommand, {
-      args: [conn],
-      stdin: "piped",
-      stdout: "piped",
-      stderr: "piped",
-      env: this.config.env,
+    const { code, stdout: out, stderr: err } = await runCommand(this.config.sqlclCommand, [conn], {
+      input: script,
+      env: { ...process.env, ...this.config.env },
     });
-
-    const child = cmd.spawn();
-    const writer = child.stdin.getWriter();
-    const encoder = new TextEncoder();
-    await writer.write(encoder.encode(script));
-    await writer.close();
-
-    const { code, stdout, stderr } = await child.output();
-    const out = new TextDecoder().decode(stdout);
-    const err = new TextDecoder().decode(stderr);
     if (code !== 0) {
       throw new Error(err || `SQLcl exited with code ${code}`);
     }
 
     const rows = this.parseSqlclJson(out);
     const fields = rows.length > 0
-      ? Object.keys(rows[0]).map((k) => ({ name: k }))
+      ? Object.keys(rows[0])
       : [];
     return { rows: rows as Record<string, any>[], fields, affectedRows: rows.length };
   }

@@ -1,9 +1,9 @@
-// file: cie_oidc_deno.ts
+// CIE OIDC demonstration server
+import { createServer } from "node:http";
 
-// Configurazione (usa Deno.env per produzione)
-const CLIENT_ID = Deno.env.get("CIE_CLIENT_ID") ?? "INSERISCI_CLIENT_ID";
-const CLIENT_SECRET = Deno.env.get("CIE_CLIENT_SECRET") ?? "INSERISCI_CLIENT_SECRET";
-const REDIRECT_URI = Deno.env.get("CIE_REDIRECT_URI") ?? "https://tuo-portale.it/callback";
+const CLIENT_ID = process.env.CIE_CLIENT_ID ?? "INSERISCI_CLIENT_ID";
+const CLIENT_SECRET = process.env.CIE_CLIENT_SECRET ?? "INSERISCI_CLIENT_SECRET";
+const REDIRECT_URI = process.env.CIE_REDIRECT_URI ?? "https://tuo-portale.it/callback";
 
 // Endpoint OIDC CIE
 const CIE_AUTH_ENDPOINT =
@@ -111,20 +111,24 @@ async function callbackHandler(req: Request): Promise<Response> {
   });
 }
 
-// Server Deno minimale
-Deno.serve((req) => {
-  const url = new URL(req.url);
+const server = createServer(async (incoming, outgoing) => {
+  const url = new URL(incoming.url ?? "/", `http://${incoming.headers.host ?? "localhost"}`);
+  const request = new Request(url, { method: incoming.method, headers: incoming.headers as HeadersInit });
+  let response: Response;
 
   if (url.pathname === "/login") {
-    return loginHandler(req);
+    response = loginHandler(request);
+  } else if (url.pathname === "/callback") {
+    response = await callbackHandler(request);
+  } else {
+    response = new Response(
+      `CIE OIDC demo attiva.\n\n- /login    → redirect a "Entra con CIE"\n- /callback → endpoint di ritorno`,
+      { headers: { "Content-Type": "text/plain; charset=utf-8" } },
+    );
   }
-
-  if (url.pathname === "/callback") {
-    return callbackHandler(req);
-  }
-
-  return new Response(
-    `CIE OIDC demo attiva.\n\n- /login    → redirect a "Entra con CIE"\n- /callback → endpoint di ritorno`,
-    { headers: { "Content-Type": "text/plain; charset=utf-8" } },
-  );
+  const headers = Object.fromEntries(response.headers.entries());
+  outgoing.writeHead(response.status, headers);
+  outgoing.end(await response.text());
 });
+
+server.listen(Number(process.env.PORT ?? 8000), process.env.HOST ?? "127.0.0.1");

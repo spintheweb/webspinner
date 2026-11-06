@@ -33,23 +33,24 @@ type WBLLRuntime = {
 	Mode: FLAGS;
 };
 
-export enum FLAGS {
-	stwnone = 0,
-	stwinsert = 1,
-	stwupdate = 2,
-	stwdelete = 4,
-	stwsearch = 8,
-	stwfilter = 16,
-	stwsubmit = 32,
-	stwlogon = 64,
-	stwlogoff = 128,
-	stwpwdreset = 256,
-	stwreset = 512,
-	stwsummary = 1024,
-	stwnovalue = FLAGS.stwinsert | FLAGS.stwfilter | FLAGS.stwsearch,
-	stwcud = FLAGS.stwinsert | FLAGS.stwupdate | FLAGS.stwdelete,
-	stwany = ~0,
-}
+export const FLAGS = {
+	stwnone: 0,
+	stwinsert: 1,
+	stwupdate: 2,
+	stwdelete: 4,
+	stwsearch: 8,
+	stwfilter: 16,
+	stwsubmit: 32,
+	stwlogon: 64,
+	stwlogoff: 128,
+	stwpwdreset: 256,
+	stwreset: 512,
+	stwsummary: 1024,
+	stwnovalue: 25,
+	stwcud: 7,
+	stwany: -1,
+} as const;
+export type FLAGS = number;
 
 export class STWLayout {
 	wbll: string;

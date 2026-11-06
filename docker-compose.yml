@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: deployment/Dockerfile
       args:
-        DENO_VERSION: ${DENO_VERSION:-2.3.0}
+        NODE_VERSION: ${NODE_VERSION:-26}
     image: "ghcr.io/spintheweb/webspinner:${WEBSPINNER_IMAGE_TAG:-latest}"
     container_name: webspinner
     restart: unless-stopped

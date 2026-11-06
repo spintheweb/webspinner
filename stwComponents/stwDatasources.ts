@@ -6,12 +6,12 @@ import { STWContent } from "../stwElements/stwContent.ts";
 import { WBPL } from "./stwWBPL.ts";
 import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { envGet } from "./stwConfig.ts";
-import { dirname } from "@std/path";
-import { Client as MySQLClient } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
-import * as jsonataModule from "https://esm.sh/jsonata@1.8.7";
-
-const jsonata = (jsonataModule as { default?: (expr: string) => any }).default ??
-	(jsonataModule as unknown as (expr: string) => any);
+import { dirname } from "node:path";
+import { readFileSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createConnection, type Connection } from "mysql2/promise";
+import jsonata from "jsonata";
+import { isNotFoundError, runCommand } from "./stwNode.ts";
 
 interface ISTWDatasource {
 	type: "json" | "api" | "mysql" | "postgres" | "mongodb" | "shell"; // Datasource type
@@ -26,7 +26,7 @@ interface ISTWDatasource {
 type DatasourceQuery = Pick<STWContent, "dsn" | "query" | "params">;
 
 export class STWDatasources {
-	static datasources: Map<string, MySQLClient | ISTWDatasource> = new Map();
+	static datasources: Map<string, Connection | ISTWDatasource> = new Map();
 	static #initializationPromise: Promise<void> | null = null;
 	// Keep DSN settings to reconnect when needed
 	private static mysqlConfigs = new Map<string, any>();
@@ -34,26 +34,26 @@ export class STWDatasources {
 	static async getConfigurations(): Promise<Record<string, unknown>[]> {
 		const path = envGet("DATASOURCES") || "./.data/datasources.json";
 		try {
-			const configurations: unknown = JSON.parse(await Deno.readTextFile(path));
+			const configurations: unknown = JSON.parse(await readFile(path, "utf8"));
 			if (!Array.isArray(configurations)) throw new TypeError("Datasource configuration must be a JSON array");
 			return configurations as Record<string, unknown>[];
 		} catch (error) {
-			if (error instanceof Deno.errors.NotFound) return [];
+			if (isNotFoundError(error)) return [];
 			throw error;
 		}
 	}
 
 	static async saveConfigurations(configurations: Record<string, unknown>[]): Promise<void> {
 		const path = envGet("DATASOURCES") || "./.data/datasources.json";
-		await Deno.mkdir(dirname(path), { recursive: true });
+		await mkdir(dirname(path), { recursive: true });
 		let previousConfiguration: string | null;
 		try {
-			previousConfiguration = await Deno.readTextFile(path);
+			previousConfiguration = await readFile(path, "utf8");
 		} catch (error) {
-			if (!(error instanceof Deno.errors.NotFound)) throw error;
+			if (!isNotFoundError(error)) throw error;
 			previousConfiguration = null;
 		}
-		await Deno.writeTextFile(path, JSON.stringify(configurations, null, 2));
+		await writeFile(path, JSON.stringify(configurations, null, 2));
 		try {
 			await this.resetRuntime();
 			await this.initialize(true);
@@ -66,9 +66,9 @@ export class STWDatasources {
 			}
 			try {
 				if (previousConfiguration === null) {
-					await Deno.remove(path);
+					await rm(path);
 				} else {
-					await Deno.writeTextFile(path, previousConfiguration);
+					await writeFile(path, previousConfiguration);
 				}
 				await this.initialize();
 			} catch (restoreError) {
@@ -90,9 +90,9 @@ export class STWDatasources {
 	private static async resetRuntime(): Promise<void> {
 		const closeErrors: unknown[] = [];
 		for (const datasource of this.datasources.values()) {
-			if (datasource instanceof MySQLClient) {
+			if (isMySQLConnection(datasource)) {
 				try {
-					await datasource.close();
+					await datasource.end();
 				} catch (error) {
 					closeErrors.push(error);
 				}
@@ -114,9 +114,7 @@ export class STWDatasources {
 
 				let datasources: any[] = [];
 				try {
-					datasources = JSON.parse(
-						Deno.readTextFileSync(envGet("DATASOURCES") || "./.data/datasources.json"),
-					);
+					datasources = JSON.parse(readFileSync(envGet("DATASOURCES") || "./.data/datasources.json", "utf8"));
 				} catch (error) {
 					if (strict) throw error;
 					console.error(
@@ -136,18 +134,13 @@ export class STWDatasources {
 								break;
 							case "mysql": {
 								this.mysqlConfigs.set(settings.name, settings);
-								const client = new MySQLClient();
-								try {
-									await client.connect({
-										hostname: settings.host,
-										username: settings.user,
-										password: settings.password,
-										db: settings.database,
-									});
-								} catch (error) {
-									await client.close();
-									throw error;
-								}
+								const client = await createConnection({
+									host: settings.host,
+									port: settings.port ?? 3306,
+									user: settings.user,
+									password: settings.password,
+									database: settings.database,
+								});
 								this.datasources.set(settings.name, client);
 								break;
 							}
@@ -175,9 +168,9 @@ export class STWDatasources {
 	}
 
 	// Ensure a live MySQL connection; reconnect if needed
-	private static async getMySqlClient(name: string): Promise<MySQLClient | null> {
+	private static async getMySqlClient(name: string): Promise<Connection | null> {
 		const ds = this.datasources.get(name);
-		if (!(ds instanceof MySQLClient)) return null;
+		if (!isMySQLConnection(ds)) return null;
 
 		// Probe connection
 		try {
@@ -188,12 +181,12 @@ export class STWDatasources {
 			const cfg = this.mysqlConfigs.get(name);
 			if (!cfg) return null;
 			try {
-				const client = new MySQLClient();
-				await client.connect({
-					hostname: cfg.host,
-					username: cfg.user,
+				const client = await createConnection({
+					host: cfg.host,
+					port: cfg.port ?? 3306,
+					user: cfg.user,
 					password: cfg.password,
-					db: cfg.database,
+					database: cfg.database,
 				});
 				this.datasources.set(name, client);
 				return client;
@@ -257,10 +250,9 @@ export class STWDatasources {
 				}
 
 				try {
-					const command = new Deno.Command(shellName, { args });
-					const output = await command.output();
-					const stdout = new TextDecoder().decode(output.stdout).trim();
-					const stderr = new TextDecoder().decode(output.stderr).trim();
+					const output = await runCommand(shellName, args);
+					const stdout = output.stdout.trim();
+					const stderr = output.stderr.trim();
 
 					// Attempt to parse stdout as JSON for structured rows; fallback to plain text
 					let rows: Record<string, any>[] = [], fields: string[] = [];
@@ -298,20 +290,18 @@ export class STWDatasources {
 					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
 					records = { affectedRows: 0, fields: [], rows: [{}] };
 				}
-			} else if (datasource instanceof MySQLClient) {
+			} else if (isMySQLConnection(datasource)) {
 				const sql = WBPL(content.query, session.placeholders);
 				// try execute; on "closed" error, reconnect and retry once
 				try {
-					const result = await datasource.execute(sql);
-					records = { ...result, fields: (result.fields ?? []).map(field => field.name) } as ISTWRecords;
+					records = await executeMySQL(datasource, sql);
 				} catch (error) {
 					const msg = error instanceof Error ? error.message : String(error);
 					if (/closed/i.test(msg) || /gone away/i.test(msg)) {
 						const client = await this.getMySqlClient(content.dsn);
 						if (client) {
 							try {
-								const result = await client.execute(sql);
-								records = { ...result, fields: (result.fields ?? []).map(field => field.name) } as ISTWRecords;
+								records = await executeMySQL(client, sql);
 							} catch (e2) {
 								console.warn(
 									`MySQL query failed after reconnect for dsn "${content.dsn}": ${e2 instanceof Error ? e2.message : String(e2)
@@ -338,6 +328,23 @@ export class STWDatasources {
 
 		return records;
 	}
+}
+
+function isMySQLConnection(value: unknown): value is Connection {
+	return value !== null && value !== undefined && typeof value === "object" && "execute" in value && "end" in value;
+}
+
+async function executeMySQL(client: Connection, sql: string): Promise<ISTWRecords> {
+	const [result, fieldPackets] = await client.execute(sql);
+	const rows = Array.isArray(result) ? result as Record<string, unknown>[] : [];
+	const affectedRows = Array.isArray(result)
+		? rows.length
+		: Number((result as { affectedRows?: number }).affectedRows ?? 0);
+	return {
+		affectedRows,
+		fields: fieldPackets.map(field => field.name),
+		rows,
+	};
 }
 
 /**

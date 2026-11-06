@@ -8,7 +8,6 @@
  *
  * GNU GPLv3 License. Copyright (c) 2024-2025 Giancarlo Trevisan
  */
-// deno-lint-ignore-file
 
 let stwWS;
 let stwReconnectTimer = null;

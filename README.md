@@ -17,6 +17,18 @@ A Webbase is a declarative WBOL model that defines a portal’s structure, navig
 
 A Webbaselet is a standalone module that describes a functionality—e.g., a webmail client (POP3/SMTP), an ERP client, or a BPMS client—that can be linked to a Webbase. Each integrates with its backend while presenting a uniform UX within the portal.
 
+## Run Webspinner
+
+Webspinner requires Node.js 22.18 or later. From this repository:
+
+```bash
+npm ci
+npm run build
+npm start
+```
+
+The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `CERTFILE` and `KEYFILE` in the environment or `.env` file to configure the listener.
+
 ## Learn more
 Explore WBOL and the Webspinner architecture:
 

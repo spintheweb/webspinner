@@ -1,4 +1,6 @@
 /.vscode
+node_modules/
+dist/
 /.cert/*.pem
 /tests/*.log
 /WIP

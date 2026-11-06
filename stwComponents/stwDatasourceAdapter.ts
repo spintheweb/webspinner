@@ -5,6 +5,7 @@ import { ISTWRecords } from "./stwDBAdapters/adapter.ts";
 import { STWSession } from "./stwSession.ts";
 import { STWContent } from "../stwElements/stwContent.ts";
 import { WBPL } from "./stwWBPL.ts";
+import { runCommand } from "./stwNode.ts";
 
 // Core shapes
 export interface STWAdapterConfig {
@@ -104,10 +105,9 @@ export const ShellAdapter: STWAdapter<STWAdapterConfig> = {
 		}
 
 		try {
-			const command = new Deno.Command(shellName!, { args });
-			const output = await command.output();
-			const stdout = new TextDecoder().decode(output.stdout).trim();
-			const stderr = new TextDecoder().decode(output.stderr).trim();
+			const output = await runCommand(shellName!, args);
+			const stdout = output.stdout.trim();
+			const stderr = output.stderr.trim();
 
 			if (stdout) {
 				try {

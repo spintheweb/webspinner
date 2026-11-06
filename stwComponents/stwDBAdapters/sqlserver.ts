@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SQL Server database adapter for Spin the Web
 
-import { ISTWAdapter, ISTWRecords } from "./adapter.ts";
-import { connect } from "https://deno.land/x/odbc@v2.4.1/mod.ts";
+import sql from "mssql";
+import type { ConnectionPool } from "mssql";
+import type { ISTWAdapter, ISTWRecords } from "./adapter.ts";
 
 export class STWMSSQLAdapter implements ISTWAdapter {
-  private connection: any | null = null;
+  private connection: ConnectionPool | null = null;
 
   constructor(private config: {
     server: string;
@@ -18,7 +19,13 @@ export class STWMSSQLAdapter implements ISTWAdapter {
     const { server, user, password, database } = this.config;
     // DSN-less connection string. Requires msodbcsql18 + unixODBC/ODBC manager installed.
     const connStr = `Driver={ODBC Driver 18 for SQL Server};Server=${server};Database=${database};Uid=${user};Pwd=${password};Encrypt=Yes;TrustServerCertificate=Yes`;
-    this.connection = await connect({ connectionString: connStr });
+    this.connection = await new sql.ConnectionPool({
+      server,
+      user,
+      password,
+      database,
+      options: { encrypt: true, trustServerCertificate: true },
+    }).connect();
   }
 
   async close(): Promise<void> {
@@ -60,10 +67,9 @@ export class STWMSSQLAdapter implements ISTWAdapter {
     if (!this.connection) throw new Error("SQL Server not connected");
     try {
       // Attempt to execute full batch; depending on driver/API, this may return only last result set
-      const res: any = await this.connection.query(batch);
-      const rows: Record<string, any>[] = (res?.rows ?? res) as Record<string, any>[];
-      const first: Record<string, any> = rows?.[0] ?? {};
-      const fields = Object.keys(first).map((name) => ({ name }));
+      const res = await this.connection.request().query(batch);
+      const rows = res.recordset ?? [];
+      const fields = Object.keys(res.recordset?.columns ?? {});
       return [{ rows, fields, affectedRows: Array.isArray(rows) ? rows.length : 0 }];
     } catch (_e) {
       // Fallback: split statements and execute sequentially
@@ -71,10 +77,9 @@ export class STWMSSQLAdapter implements ISTWAdapter {
       const results: ISTWRecords[] = [];
       for (const sqlText of statements) {
         try {
-          const res: any = await this.connection.query(sqlText);
-          const rows: Record<string, any>[] = (res?.rows ?? res) as Record<string, any>[];
-          const first: Record<string, any> = rows?.[0] ?? {};
-          const fields = Object.keys(first).map((name) => ({ name }));
+          const res = await this.connection.request().query(sqlText);
+          const rows = res.recordset ?? [];
+          const fields = Object.keys(res.recordset?.columns ?? {});
           results.push({ rows, fields, affectedRows: Array.isArray(rows) ? rows.length : 0 });
         } catch (err) {
           results.push({ affectedRows: 0, fields: [], rows: [{ error: (err as Error).message }] });

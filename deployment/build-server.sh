@@ -42,7 +42,7 @@ fi
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Determine default version from deno.json and allow override
+# Determine default version from package.json and allow override
 ensure_v() {
   case "$1" in
     v*) echo "$1" ;;
@@ -51,9 +51,8 @@ ensure_v() {
 }
 
 DEFAULT_VERSION="v0.0.0"
-if [ -f "$REPO_ROOT/deno.json" ]; then
-  # Try to parse semver from deno.json without requiring jq
-  BASE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][0-9.]*\)".*/\1/p' "$REPO_ROOT/deno.json" | head -n1)
+if [ -f "$REPO_ROOT/package.json" ]; then
+  BASE_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([0-9][0-9.]*\)".*/\1/p' "$REPO_ROOT/package.json" | head -n1)
   if [ -n "$BASE_VERSION" ]; then
     DEFAULT_VERSION=$(ensure_v "$BASE_VERSION")
   fi
@@ -92,9 +91,7 @@ mkdir -p "$PAYLOAD_DIR"
 echo -e "${BLUE}Step 1: Creating payload archive...${NC}"
 
 # Copy runtime files to payload directory
-cp -r stwComponents "$PAYLOAD_DIR/"
-cp -r stwContents "$PAYLOAD_DIR/"
-cp -r stwElements "$PAYLOAD_DIR/"
+cp -r dist "$PAYLOAD_DIR/"
 cp -r stwStyles "$PAYLOAD_DIR/"
 cp -r webbaselets "$PAYLOAD_DIR/"
 cp -r public "$PAYLOAD_DIR/"
@@ -102,9 +99,7 @@ cp -r public "$PAYLOAD_DIR/"
 if [ -d ".data" ]; then
   cp -r .data "$PAYLOAD_DIR/"
 fi
-cp stwSpinner.ts "$PAYLOAD_DIR/"
-cp deno.json "$PAYLOAD_DIR/"
-cp deno.lock "$PAYLOAD_DIR/" 2>/dev/null || true
+cp package.json package-lock.json "$PAYLOAD_DIR/"
 cp LICENSE "$PAYLOAD_DIR/"
 cp README.md "$PAYLOAD_DIR/"
 
@@ -183,37 +178,27 @@ fi
 
 # Check prerequisites
 
-if ! command -v deno &> /dev/null; then
-  echo "Installing Deno..."
-    
-  # Detect architecture
-  ARCH=$(uname -m)
-  case "$ARCH" in
-    x86_64) DENO_ARCH="x86_64-unknown-linux-gnu" ;;
-    aarch64|arm64) DENO_ARCH="aarch64-unknown-linux-gnu" ;;
-    *) echo -e "${RED}Error: Unsupported architecture: $ARCH${NC}"; exit 1 ;;
+if ! command -v node &> /dev/null || ! node -e 'const [major,minor]=process.versions.node.split(".").map(Number);process.exit(major>22 || (major===22 && minor>=18) ? 0 : 1)'; then
+  echo "Installing Node.js 26..."
+  case "$(uname -m)" in
+    x86_64) NODE_ARCH="x64" ;;
+    aarch64|arm64) NODE_ARCH="arm64" ;;
+    *) echo -e "${RED}Error: Unsupported architecture: $(uname -m)${NC}"; exit 1 ;;
   esac
-    
-  # Download latest Deno release directly to /usr/local/bin
-  DENO_URL="https://github.com/denoland/deno/releases/latest/download/deno-${DENO_ARCH}.zip"
-    
+  NODE_VERSION="26.13.0"
+  NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
   if command -v curl &> /dev/null; then
-    curl -fsSL "$DENO_URL" -o /tmp/deno.zip
+    curl -fsSL "$NODE_URL" -o /tmp/node.tar.xz
   elif command -v wget &> /dev/null; then
-    wget -qO /tmp/deno.zip "$DENO_URL"
+    wget -qO /tmp/node.tar.xz "$NODE_URL"
   else
-    echo -e "${RED}Error: Neither curl nor wget found. Cannot auto-install Deno.${NC}"
+    echo -e "${RED}Error: Neither curl nor wget found. Cannot install Node.js.${NC}"
     exit 1
   fi
-    
-  # Extract to /usr/local/bin
-  unzip -q -o /tmp/deno.zip -d /usr/local/bin
-  chmod +x /usr/local/bin/deno
-  rm /tmp/deno.zip
-    
-  # Verify installation
-  if ! command -v deno &> /dev/null; then
-    echo -e "${RED}Error: Deno installation failed.${NC}"
+  tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+  rm /tmp/node.tar.xz
+  if ! command -v node &> /dev/null; then
+    echo -e "${RED}Error: Node.js installation failed.${NC}"
     exit 1
   fi
 fi
@@ -361,13 +346,10 @@ tail -n+$ARCHIVE_LINE "$0" | base64 -d | tar -xzf - -C "$TEMP_EXTRACT" --strip-c
 # In upgrade mode, selectively copy files
 if [ "$UPGRADE_MODE" = true ]; then
   # Update core Webspinner files only
-  cp -r "$TEMP_EXTRACT/stwSpinner.ts" "$INSTALL_DIR/"
-  cp -r "$TEMP_EXTRACT/stwComponents" "$INSTALL_DIR/"
-  cp -r "$TEMP_EXTRACT/stwContents" "$INSTALL_DIR/"
-  cp -r "$TEMP_EXTRACT/stwElements" "$INSTALL_DIR/"
+  rm -rf "$INSTALL_DIR/dist"
+  cp -r "$TEMP_EXTRACT/dist" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/stwStyles" "$INSTALL_DIR/"
-  cp -r "$TEMP_EXTRACT/deno.json" "$INSTALL_DIR/"
-  cp -r "$TEMP_EXTRACT/deno.lock" "$INSTALL_DIR/" 2>/dev/null || true
+  cp "$TEMP_EXTRACT/package.json" "$TEMP_EXTRACT/package-lock.json" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/LICENSE" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/README.md" "$INSTALL_DIR/"
     
@@ -422,6 +404,9 @@ fi
 
 # Clean up temp directory
 rm -rf "$TEMP_EXTRACT"
+cd "$INSTALL_DIR"
+npm ci --omit=dev
+cd - >/dev/null
 
 # Function to generate nginx configuration
 generate_nginx_config() {
@@ -673,7 +658,7 @@ After=network.target
 Type=simple
 User=$SUDO_USER
 WorkingDirectory=$INSTALL_DIR
-ExecStart=/usr/local/bin/deno run --allow-net --allow-read --allow-write --allow-env --allow-run stwSpinner.ts
+ExecStart=/usr/bin/env node dist/stwSpinner.js
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -693,7 +678,7 @@ if [ "$SERVICE_INSTALL" = false ]; then
   cat > "$INSTALL_DIR/start.sh" << 'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
-deno run --allow-net --allow-read --allow-write --allow-env --allow-run stwSpinner.ts
+node dist/stwSpinner.js
 EOF
   chmod +x "$INSTALL_DIR/start.sh"
 fi
@@ -807,7 +792,7 @@ Production-ready self-extracting installer for Linux systems. Includes complete 
 
 - Spin the Web framework
 - public directory
-- Deno runtime
+- Node.js runtime
 - nginx reverse proxy
 - Let's Encrypt SSL/TLS
 - PostgreSQL database

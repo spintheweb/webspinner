@@ -3,7 +3,10 @@
 
 import { STWSession } from "./stwSession.ts";
 import { envGet } from "./stwConfig.ts";
-import { dirname } from "@std/path";
+import { dirname } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { isNotFoundError } from "./stwNode.ts";
 import { STWElement } from "../stwElements/stwElement.ts";
 import { STWIndex } from "../stwElements/stwIndex.ts";
 
@@ -127,39 +130,39 @@ export const STWSecurity = new class {
 	private async readUsers(): Promise<ISTWUser[]> {
 		const path = envGet("USERS") || "./.data/users.json";
 		try {
-			const users: unknown = JSON.parse(await Deno.readTextFile(path));
+			const users: unknown = JSON.parse(await readFile(path, "utf8"));
 			if (!Array.isArray(users)) throw new TypeError("Users file must contain a JSON array");
 			return users as ISTWUser[];
 		} catch (error) {
-			if (error instanceof Deno.errors.NotFound) return [];
+			if (isNotFoundError(error)) return [];
 			throw error;
 		}
 	}
 
 	private async writeUsers(users: ISTWUser[]): Promise<void> {
 		const path = envGet("USERS") || "./.data/users.json";
-		await Deno.mkdir(dirname(path), { recursive: true });
-		await Deno.writeTextFile(path, JSON.stringify(users, null, 2));
+		await mkdir(dirname(path), { recursive: true });
+		await writeFile(path, JSON.stringify(users, null, 2));
 	}
 
 	private async readRoles(): Promise<string[]> {
 		const path = envGet("ROLES") || "./.data/roles.json";
 		try {
-			const roles: unknown = JSON.parse(await Deno.readTextFile(path));
+			const roles: unknown = JSON.parse(await readFile(path, "utf8"));
 			if (!Array.isArray(roles) || !roles.every((role) => typeof role === "string")) {
 				throw new TypeError("Roles file must contain an array of role names");
 			}
 			return roles;
 		} catch (error) {
-			if (error instanceof Deno.errors.NotFound) return [];
+			if (isNotFoundError(error)) return [];
 			throw error;
 		}
 	}
 
 	private async writeRoles(roles: string[]): Promise<void> {
 		const path = envGet("ROLES") || "./.data/roles.json";
-		await Deno.mkdir(dirname(path), { recursive: true });
-		await Deno.writeTextFile(path, JSON.stringify(roles, null, 2));
+		await mkdir(dirname(path), { recursive: true });
+		await writeFile(path, JSON.stringify(roles, null, 2));
 	}
 
 	private async writeRoleUserState(roles: string[], users: ISTWUser[]): Promise<void> {
@@ -176,12 +179,12 @@ export const STWSecurity = new class {
 			for (const [path, contents] of [[rolesPath, previousRoles], [usersPath, previousUsers]] as const) {
 				try {
 					if (contents === null) {
-						await Deno.remove(path);
+						await rm(path);
 					} else {
-						await Deno.writeTextFile(path, contents);
+						await writeFile(path, contents);
 					}
 				} catch (restoreError) {
-					if (!(contents === null && restoreError instanceof Deno.errors.NotFound)) {
+					if (!(contents === null && isNotFoundError(restoreError))) {
 						restoreErrors.push(restoreError);
 					}
 				}
@@ -198,9 +201,9 @@ export const STWSecurity = new class {
 
 	private async readOptionalFile(path: string): Promise<string | null> {
 		try {
-			return await Deno.readTextFile(path);
+			return await readFile(path, "utf8");
 		} catch (error) {
-			if (error instanceof Deno.errors.NotFound) return null;
+			if (isNotFoundError(error)) return null;
 			throw error;
 		}
 	}
@@ -228,7 +231,7 @@ export const STWSecurity = new class {
 
 	async addUser(user: string, name: string, password: string, roles: string, email: string): Promise<void> {
 		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users: ISTWUser[] = JSON.parse(Deno.readTextFileSync(usersDB)) || [];
+		const users: ISTWUser[] = JSON.parse(readFileSync(usersDB, "utf8")) || [];
 
 		if (users.find((p) => p.user === user)) {
 			throw new Error("User already exists");
@@ -250,14 +253,14 @@ export const STWSecurity = new class {
 
 		const hashedPassword = `${toHex(salt.buffer)}:${toHex(derivedBits)}`;
 		users.push({ user, name, password: hashedPassword, roles, email });
-		Deno.writeTextFileSync(usersDB, JSON.stringify(users, null, 2));
+		writeFileSync(usersDB, JSON.stringify(users, null, 2));
 	}
 
 	removeUser(): void {}
 
 	async addRoles(user: string, rolesToAdd: string): Promise<void> {
 		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users: ISTWUser[] = JSON.parse(await Deno.readTextFile(usersDB));
+		const users: ISTWUser[] = JSON.parse(await readFile(usersDB, "utf8"));
 
 		const person = users.find((p) => p.user === user);
 		if (!person) {
@@ -270,12 +273,12 @@ export const STWSecurity = new class {
 		newRoles.forEach((role) => existingRoles.add(role.trim()));
 
 		person.roles = Array.from(existingRoles).join(",");
-		await Deno.writeTextFile(usersDB, JSON.stringify(users, null, 2));
+		await writeFile(usersDB, JSON.stringify(users, null, 2));
 	}
 
 	async removeRoles(user: string, rolesToRemove: string): Promise<void> {
 		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users: ISTWUser[] = JSON.parse(await Deno.readTextFile(usersDB));
+		const users: ISTWUser[] = JSON.parse(await readFile(usersDB, "utf8"));
 
 		const person = users.find((p) => p.user === user);
 		if (!person || !person.roles) {
@@ -288,7 +291,7 @@ export const STWSecurity = new class {
 		toRemove.forEach((role) => existingRoles.delete(role.trim()));
 
 		person.roles = Array.from(existingRoles).join(",");
-		await Deno.writeTextFile(usersDB, JSON.stringify(users, null, 2));
+		await writeFile(usersDB, JSON.stringify(users, null, 2));
 	}
 
 	async authenticate(session: STWSession, user: string, password: string): Promise<boolean> {
@@ -301,7 +304,7 @@ export const STWSecurity = new class {
 		}
 
 		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users: ISTWUser[] = JSON.parse(Deno.readTextFileSync(usersDB));
+		const users: ISTWUser[] = JSON.parse(readFileSync(usersDB, "utf8"));
 
 		const person = users.find((person) => person.user === user);
 

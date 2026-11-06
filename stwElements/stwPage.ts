@@ -7,7 +7,7 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwPage
- * @requires @std/http/file-server
+ * @requires ../stwComponents/stwNode.ts
  * @requires ../stwComponents/stwSession.ts
  * @requires ../stwComponents/stwFactory.ts
  * @requires ./stwElement.ts
@@ -15,7 +15,7 @@
  * @license GPL-3.0-or-later
  */
 
-import { serveFile } from "@std/http/file-server";
+import { serveFile } from "../stwComponents/stwNode.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { registerElement } from "../stwComponents/stwFactory.ts";
 import { debugLog } from "../stwComponents/stwConfig.ts";

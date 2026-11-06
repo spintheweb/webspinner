@@ -55,7 +55,7 @@ In VS Code, you can also run the tasks:
 - "Docker: Compose Up" to start
 - "Docker: Compose Down" to stop and remove volumes
 
-The compose file builds using `deployment/Dockerfile` and will accept a `DENO_VERSION` build arg (defaults to a sensible version). You can set an environment variable to override.
+The compose file builds using `deployment/Dockerfile` and accepts a `NODE_VERSION` build argument (defaults to Node.js 26). You can set an environment variable to override.
 
 ## Native Linux server (optional)
 
@@ -70,7 +70,7 @@ sudo bash deployment/server.sh
 ## Maintainers: build (and optionally push) the Docker image
 
 Use `deployment/build-docker.sh` to build locally or build-and-push to GHCR. It:
-- Reads the Deno version from `deployment/.deno-version` (fallback to root `.deno-version` or `2.3.0`)
+- Uses Node.js 26 by default; `--node` selects another major version
 - Builds multi-arch images (linux/amd64, linux/arm64) using Buildx
 - Tags with the current git tag (if present) and `latest`; or `--tag` may be provided explicitly
 
@@ -83,8 +83,8 @@ bash deployment/build-docker.sh
 # Build and push to GHCR (requires auth; optional, for later when publishing)
 bash deployment/build-docker.sh --push
 
-# Specify tag and Deno version explicitly
-bash deployment/build-docker.sh --tag v2.0.0 --deno 2.5.6
+# Specify tag and Node.js major version explicitly
+bash deployment/build-docker.sh --tag v2.0.0 --node 26
 ```
 
 Buildx is required. Docker Desktop includes Buildx; otherwise install and create a builder.
@@ -94,7 +94,7 @@ Buildx is required. Docker Desktop includes Buildx; otherwise install and create
 Create a single-stack ZIP bundle:
 
 ```bash
-deno task release
+npm run release
 ```
 
 Output: `deployment/release/webspinner-stack-<version>.zip` (+ `.sha256`)

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // MySQL database adapter for Spin the Web
 
-import { Client } from "https://deno.land/x/mysql@v2.12.1/mod.ts";
-import { ISTWAdapter, ISTWRecords } from "./adapter.ts";
+import { createConnection, type Connection } from "mysql2/promise";
+import type { ISTWAdapter, ISTWRecords } from "./adapter.ts";
 
 export class STWMySQLAdapter implements ISTWAdapter {
-	private client: Client;
+	private client: Connection | null = null;
 
 	constructor(private config: {
 		hostname: string;
@@ -14,32 +14,33 @@ export class STWMySQLAdapter implements ISTWAdapter {
 		password: string;
 		db: string;
 	}) {
-		this.client = new Client();
 	}
 
 	async connect(): Promise<void> {
-		await this.client.connect({
-			hostname: this.config.hostname,
+		this.client = await createConnection({
+			host: this.config.hostname,
 			port: this.config.port ?? 3306,
-			username: this.config.username,
+			user: this.config.username,
 			password: this.config.password,
-			db: this.config.db,
+			database: this.config.db,
 		});
 	}
 
 	async query(sql: string): Promise<ISTWRecords> {
-		const result = await this.client.execute(sql);
-		const rows = result.rows ?? [{}];
-		const fields = (result.fields ?? []).map(field => field.name);
+		if (!this.client) throw new Error("MySQL is not connected");
+		const [result, fieldPackets] = await this.client.execute(sql);
+		const rows = Array.isArray(result) ? result as Record<string, unknown>[] : [];
+		const fields = fieldPackets.map(field => field.name);
 		return {
-			affectedRows: rows.length,
+			affectedRows: Array.isArray(result) ? rows.length : Number((result as { affectedRows?: number }).affectedRows ?? 0),
 			fields,
 			rows,
 		};
 	}
 
 	async close(): Promise<void> {
-		await this.client.close();
+		await this.client?.end();
+		this.client = null;
 	}
 
 	/**
@@ -73,13 +74,11 @@ export class STWMySQLAdapter implements ISTWAdapter {
 	async execute(batch: string): Promise<ISTWRecords[]> {
 		try {
 			// Attempt to execute the full batch as a script
-			const result = await this.client.execute(batch);
-			const rows = result.rows ?? [];
-			const fields = (result.fields ?? []).map(field => field.name);
+			const rows = await this.query(batch);
 			return [{
-				affectedRows: rows.length,
-				fields,
-				rows,
+				affectedRows: rows.affectedRows ?? 0,
+				fields: rows.fields,
+				rows: rows.rows,
 			}];
 		} catch (_error) {
 			// Fallback: split and execute individually if batch fails
@@ -87,8 +86,7 @@ export class STWMySQLAdapter implements ISTWAdapter {
 			const results: ISTWRecords[] = [];
 			for (const sql of statements) {
 				try {
-					const res = await this.query(sql);
-					results.push(res);
+					results.push(await this.query(sql));
 				} catch (err) {
 					results.push({ affectedRows: 0, fields: [], rows: [{ error: (err as Error).message }] });
 				}

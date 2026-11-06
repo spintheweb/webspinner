@@ -26,6 +26,8 @@ import { STWIndex } from "./stwIndex.ts";
 import { secureResponse } from "../stwComponents/stwResponse.ts";
 import { envGet } from "../stwComponents/stwConfig.ts";
 import { WBOL } from "../stwComponents/stwWBOL.ts";
+import { watch, type FSWatcher } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 
 export interface ISTWPortal extends ISTWElement {
 	langs: string[];
@@ -224,27 +226,30 @@ export class STWPortal extends STWElement {
 	// Watch webbase files for changes and reload when they are modified. In production this code should not be used.
 	// It is useful for development purposes to see changes in real time.
 	static #watcherStarted = false;
+	static #watchers: FSWatcher[] = [];
 	static watchWebbases() {
 		if (this.#watcherStarted) return;
 		this.#watcherStarted = true;
 
-		const webbasePath = [
+		const webbasePaths = [
 			envGet("WEBBASE") || "./.data/webbase.wbol",
 			envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol",
 		];
 		let reloadTimeout: ReturnType<typeof setTimeout> | undefined;
 
-		(async () => {
-			for await (const event of Deno.watchFs(webbasePath)) {
-				if (event.kind === "modify" || event.kind === "create") {
-					if (reloadTimeout) clearTimeout(reloadTimeout);
-					reloadTimeout = setTimeout(() => {
-						console.log(`${new Date().toISOString()}: Webbase changed...`);
-						STWPortal.#instance = undefined as unknown as STWPortal;
-						STWPortal.index.clear();
-					}, 200); // Wait 200ms for changes to settle
-				}
-			}
-		})();
+		for (const webbasePath of webbasePaths) {
+			const path = resolve(webbasePath);
+			const watcher = watch(dirname(path), { persistent: false }, (_event, filename) => {
+				if (filename && filename.toString() !== basename(path)) return;
+				if (reloadTimeout) clearTimeout(reloadTimeout);
+				reloadTimeout = setTimeout(() => {
+					console.log(`${new Date().toISOString()}: Webbase changed...`);
+					STWPortal.#instance = undefined as unknown as STWPortal;
+					STWPortal.index.clear();
+				}, 200);
+			});
+			watcher.on("error", error => console.error(`Webbase watcher failed for ${path}:`, error));
+			this.#watchers.push(watcher);
+		}
 	}
 }

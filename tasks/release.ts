@@ -1,32 +1,41 @@
 // tasks/release.ts - Build and publish a release
-// deno run --allow-read --allow-write --allow-run tasks/release.ts [--version vX.Y.Z] [--publish] [--git] [--gh] [--docker] [--docker-buildx] [--skip-git-tag] [--docker-repo <repo>]
+// node tasks/release.ts [--version vX.Y.Z] [--publish] [--git] [--gh] [--docker] [--docker-buildx] [--skip-git-tag] [--docker-repo <repo>]
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { runCommand } from "../stwComponents/stwNode.ts";
 
 // Lightweight path helpers
 function norm(p: string): string { return p.replaceAll("\\", "/").replace(/\/+/, "/"); }
 function join(...parts: string[]): string { return norm(parts.join("/")); }
 function basename(p: string): string { const n = norm(p); const i = n.lastIndexOf("/"); return i >= 0 ? n.slice(i + 1) : n; }
-function getArg(name: string, def?: string): string | undefined { const i = Deno.args.findIndex(a => a === `--${name}`); return i >= 0 ? Deno.args[i + 1] : def; }
-function getFlag(name: string): boolean { return Deno.args.includes(`--${name}`); }
+const args = process.argv.slice(2);
+function getArg(name: string, def?: string): string | undefined { const i = args.findIndex(a => a === `--${name}`); return i >= 0 ? args[i + 1] : def; }
+function getFlag(name: string): boolean { return args.includes(`--${name}`); }
 
-const cwd = Deno.cwd();
+const cwd = process.cwd();
 const dryRun = getFlag("dry-run");
 
 const outDir = join(cwd, "deployment", "release");
-await Deno.mkdir(outDir, { recursive: true });
+await mkdir(outDir, { recursive: true });
 
-async function exists(path: string) { try { await Deno.stat(path); return true; } catch { return false; } }
+async function exists(path: string) { try { await stat(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; } }
 
-async function writeDenoVersion(next: string): Promise<void> {
-  const denoPath = join(cwd, "deno.json");
-  const txt = await Deno.readTextFile(denoPath);
+async function writePackageVersion(next: string): Promise<void> {
+  const packagePath = join(cwd, "package.json");
+  const txt = await readFile(packagePath, "utf8");
   const json = JSON.parse(txt);
   json.version = next;
-  await Deno.writeTextFile(denoPath, JSON.stringify(json, null, 2) + "\n");
+  await writeFile(packagePath, JSON.stringify(json, null, 2) + "\n");
+  const lockPath = join(cwd, "package-lock.json");
+  const lock = JSON.parse(await readFile(lockPath, "utf8"));
+  lock.version = next;
+  if (lock.packages?.[""]) lock.packages[""].version = next;
+  await writeFile(lockPath, JSON.stringify(lock, null, 2) + "\n");
 }
 
 async function readPackageVersion(): Promise<string> {
   try {
-    const txt = await Deno.readTextFile(join(cwd, "deno.json"));
+    const txt = await readFile(join(cwd, "package.json"), "utf8");
     const json = JSON.parse(txt);
     const v = json?.version ?? "0.0.0";
     return typeof v === "string" ? v : "0.0.0";
@@ -35,18 +44,18 @@ async function readPackageVersion(): Promise<string> {
 function ensureV(v: string): string { return v.startsWith("v") ? v : `v${v}`; }
 
 // Auto-bump patch unless overridden
-async function bumpPatchInDenoJson(): Promise<string | null> {
+async function bumpPatchInPackageJson(): Promise<string | null> {
   try {
-    const denoPath = join(cwd, "deno.json");
-    const txt = await Deno.readTextFile(denoPath);
+    const packagePath = join(cwd, "package.json");
+    const txt = await readFile(packagePath, "utf8");
     const json = JSON.parse(txt);
     const cur = typeof json.version === "string" ? json.version : "0.0.0";
     const m = cur.match(/^(\d+)\.(\d+)\.(\d+)(.*)?$/);
     if (!m) return null;
     const next = `${Number(m[1])}.${Number(m[2])}.${Number(m[3]) + 1}${m[4] ?? ""}`;
     json.version = next;
-    await Deno.writeTextFile(denoPath, JSON.stringify(json, null, 2) + "\n");
-    console.log(`Version bumped in deno.json: ${cur} -> ${next}`);
+    await writePackageVersion(next);
+    console.log(`Version bumped in package.json: ${cur} -> ${next}`);
     return next;
   } catch (e) {
     console.warn("Skipping version bump (error):", e instanceof Error ? e.message : String(e));
@@ -54,30 +63,29 @@ async function bumpPatchInDenoJson(): Promise<string | null> {
   }
 }
 
-// Resolve final version and sync deno.json before tagging
+// Resolve final version and sync package metadata before tagging
 const cliVersion = getArg("version");
 let bumpedTo: string | null = null;
 const currentVersion = await readPackageVersion();
 if (cliVersion) {
   const vNoV = cliVersion.replace(/^v/, "");
   if (!dryRun && vNoV !== currentVersion) {
-    await writeDenoVersion(vNoV);
-    console.log(`Version set in deno.json: ${currentVersion} -> ${vNoV}`);
+    await writePackageVersion(vNoV);
+    console.log(`Version set in package.json: ${currentVersion} -> ${vNoV}`);
     bumpedTo = vNoV;
   }
 } else if (!getFlag("no-bump") && !dryRun) {
-  bumpedTo = await bumpPatchInDenoJson();
+  bumpedTo = await bumpPatchInPackageJson();
 }
 const version = ensureV(bumpedTo ?? (await readPackageVersion())); // re-read after bump
 
 async function commandExists(cmd: string): Promise<boolean> {
-  try { await new Deno.Command(cmd, { args: ["--version"], stdin: "null", stdout: "piped", stderr: "piped" }).output(); return true; }
+  try { return (await runCommand(cmd, ["--version"])).code === 0; }
   catch { return false; }
 }
 async function run(cmd: string, args: string[], opts?: { cwd?: string }): Promise<{ code: number; out: string; err: string }> {
-  const p = new Deno.Command(cmd, { args, cwd: opts?.cwd ?? cwd, stdin: "null", stdout: "piped", stderr: "piped" });
-  const res = await p.output();
-  return { code: res.code, out: new TextDecoder().decode(res.stdout).trim(), err: new TextDecoder().decode(res.stderr).trim() };
+  const res = await runCommand(cmd, args, { cwd: opts?.cwd ?? cwd });
+  return { code: res.code ?? 1, out: res.stdout.trim(), err: res.stderr.trim() };
 }
 
 // Bash runner (Git Bash, WSL, sh)
@@ -99,7 +107,7 @@ async function tryRunBashLine(line: string): Promise<{ ok: boolean; out: string;
 }
 
 async function buildServerInstaller(): Promise<string | null> {
-  await Deno.mkdir(outDir, { recursive: true }).catch(() => {});
+  await mkdir(outDir, { recursive: true });
   // Always rebuild
   const line = `./deployment/build-server.sh --non-interactive`;
   const res = await tryRunBashLine(line);
@@ -112,7 +120,7 @@ async function buildServerInstaller(): Promise<string | null> {
   const legacy = join(cwd, "deployment", "server.sh");
   if (await exists(legacy)) {
     const dst = join(outDir, "server.sh");
-    await Deno.copyFile(legacy, dst);
+    await copyFile(legacy, dst);
     return dst;
   }
   console.warn("Server installer not found after build.");
@@ -122,10 +130,9 @@ async function buildServerInstaller(): Promise<string | null> {
 async function writeChecksumIfExists(path: string | null): Promise<void> {
   if (!path || !(await exists(path))) return;
   try {
-    const data = await Deno.readFile(path);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    const hex = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
-    await Deno.writeTextFile(`${path}.sha256`, `${hex}  ${basename(path)}\n`);
+    const data = await readFile(path);
+    const hex = createHash("sha256").update(data).digest("hex");
+    await writeFile(`${path}.sha256`, `${hex}  ${basename(path)}\n`);
     console.log(`Checksum written: ${path}.sha256`);
   } catch (e) {
     console.warn(`Checksum failed for ${path}:`, e instanceof Error ? e.message : String(e));
@@ -142,7 +149,7 @@ try {
   const src = join(cwd, "deployment", "docker.sh");
   const dst = join(outDir, "docker.sh");
   if (await exists(src)) {
-    await Deno.copyFile(src, dst);
+    await copyFile(src, dst);
     dockerPath = dst;
     console.log(`Docker script prepared: ${dst}`);
   } else {
@@ -210,10 +217,10 @@ async function publishGitAndGithub() {
         if (bumpedTo) {
           console.log(`Committing version bump: ${bumpedTo}`);
           if (!dryRun) {
-            await run("git", ["add", "deno.json"]);
+            await run("git", ["add", "package.json", "package-lock.json"]);
             await run("git", ["commit", "-m", `chore(release): ${tag}`]);
           } else {
-            console.log(`[dry-run] git add deno.json && git commit -m "chore(release): ${tag}"`);
+            console.log(`[dry-run] git add package.json package-lock.json && git commit -m "chore(release): ${tag}"`);
           }
         }
         const hasTag = await run("git", ["tag", "-l", tag]);
@@ -293,7 +300,7 @@ if (doGit || doGh) await publishGitAndGithub();
 
 // Cleanup local artifacts
 if (!dryRun) {
-  try { await Deno.remove(outDir, { recursive: true }); console.log("Cleaned release artifacts:", outDir); }
+  try { await rm(outDir, { recursive: true }); console.log("Cleaned release artifacts:", outDir); }
   catch (e) { console.warn("Cleanup failed for", outDir, "-", e instanceof Error ? e.message : String(e)); }
 } else {
   console.log("[dry-run] Skipping cleanup of", outDir);

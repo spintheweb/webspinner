@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Build/development task: merge-css
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { watch } from "node:fs";
 
 // Watches stwStyles, merges and minifies all .css files into stwStyle.css on change
-// Usage: deno run --allow-read --allow-write tasks/merge-css.ts
+// Usage: node tasks/merge-css.ts
 
 const folder = "./stwStyles";
 const output = "./public/styles/stwStyle.css";
@@ -16,32 +18,29 @@ function minifyCSS(css: string): string {
 }
 
 async function mergeAndMinify() {
-	const files = Array.from(Deno.readDirSync(folder))
-		.filter(f => f.isFile && f.name.endsWith(".css") && f.name !== "stwStyle.css")
+	const files = (await readdir(folder, { withFileTypes: true }))
+		.filter(f => f.isFile() && f.name.endsWith(".css") && f.name !== "stwStyle.css")
 		.map(f => `${folder}/${f.name}`);
 
 	let merged = "";
 	for (const file of files) {
-		merged += await Deno.readTextFile(file) + "\n";
+		merged += await readFile(file, "utf8") + "\n";
 	}
 
 	const minified = minifyCSS(merged);
-	await Deno.writeTextFile(output, minified);
+	await writeFile(output, minified);
 	console.log(`[${new Date().toLocaleTimeString()}] Merged & minified ${files.length} CSS files into ${output}`);
 }
 
 await mergeAndMinify();
 
-const watcher = Deno.watchFs(folder);
+const watcher = watch(folder, (_event, filename) => {
+	if (!filename || !filename.toString().endsWith(".css") || filename.toString() === "stwStyle.css") return;
+	if (debounceTimer) clearTimeout(debounceTimer);
+	debounceTimer = setTimeout(() => {
+		void mergeAndMinify().catch(error => console.error("CSS merge failed:", error));
+		debounceTimer = undefined;
+	}, 200);
+});
 console.log(`Watching ${folder} for CSS changes...`);
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-
-for await (const event of watcher) {
-    if (event.paths.some(p => p.endsWith(".css") && !p.endsWith("stwStyle.css"))) {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            mergeAndMinify();
-            debounceTimer = undefined;
-        }, 200); // 200ms debounce window
-    }
-}

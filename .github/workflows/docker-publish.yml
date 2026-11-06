@@ -19,19 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read Deno version
-        id: deno
-        run: |
-          if [ -f deployment/.deno-version ]; then
-            V=$(cat deployment/.deno-version)
-          elif [ -f .deno-version ]; then
-            V=$(cat .deno-version)
-          else
-            V=2.3.0
-          fi
-          echo "DENO_VERSION=$V" >> "$GITHUB_ENV"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -95,6 +82,4 @@ jobs:
           platforms: ${{ steps.platforms.outputs.platforms }}
           provenance: false
           sbom: false
-          build-args: |
-            DENO_VERSION=${{ steps.deno.outputs.version }}
           tags: ${{ steps.tags.outputs.tags }}

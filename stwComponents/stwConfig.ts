@@ -1,13 +1,11 @@
-import { load as loadDotEnv } from "@std/dotenv";
+import { loadEnvFile } from "node:process";
+import { existsSync } from "node:fs";
 
-const envPath = Deno.env.get("SPINNER_ENV") === "docker" ? ".env.docker" : ".env";
-const fileEnv = await loadDotEnv({ envPath });
-
-// Cache .env values so we don’t lose them if Deno.env is readonly
-const cache = new Map<string, string>(Object.entries(fileEnv));
+const envPath = process.env.SPINNER_ENV === "docker" ? ".env.docker" : ".env";
+if (existsSync(envPath)) loadEnvFile(envPath);
 
 export function envGet(key: string, def?: string): string | undefined {
-  return Deno.env.get(key) ?? cache.get(key) ?? def;
+  return process.env[key] ?? def;
 }
 
 export function debugLog(...data: unknown[]): void {
@@ -15,8 +13,7 @@ export function debugLog(...data: unknown[]): void {
 }
 
 export function envSet(key: string, value: string) {
-  try { Deno.env.set(key, value); } catch { /* readonly in some envs */ }
-  cache.set(key, value);
+  process.env[key] = value;
 }
 
 export const isDocker = envGet("SPINNER_ENV") === "docker";

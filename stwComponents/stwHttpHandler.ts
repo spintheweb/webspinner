@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web component: stwHttpHandler
 
-import { serveFile } from "@std/http/file-server";
-import { getCookies, setCookie } from "@std/http/cookie";
+import { getCookies, serveFile, setCookie } from "./stwNode.ts";
 import { STWPortal } from "../stwElements/stwPortal.ts";
 import { STWIndex } from "../stwElements/stwIndex.ts";
 import { STWSession } from "./stwSession.ts";

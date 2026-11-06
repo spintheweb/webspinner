@@ -7,7 +7,7 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwServerScript
- * @requires jsr:@std/path
+ * @requires node:path
  * @license GPL-3.0-or-later
  */
 
@@ -16,9 +16,8 @@ import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWContent, STWContent } from "../stwElements/stwContent.ts";
 import { STWDatasources } from "../stwComponents/stwDatasources.ts";
 import { WBPL } from "../stwComponents/stwWBPL.ts";
-
-// deno-lint-ignore no-unversioned-import
-import * as path from "jsr:@std/path";
+import * as path from "node:path";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 
 /**
  * STWServerScript
@@ -44,7 +43,7 @@ import * as path from "jsr:@std/path";
  *   ✓ Interact with datasources via the datasources helper
  *   ✓ Mutate placeholders and return values
  *   ✗ Cannot interact with the operating system (no process execution)
- *   ✗ Cannot access Deno APIs directly
+ *   ✗ Cannot access Node.js APIs directly
  *   ✗ Cannot access dot-files or dot-folders (security/config protection)
  * 
  * Security model:
@@ -83,7 +82,7 @@ class SafeFileSystem {
 
     constructor(allowedRoots: string[] = ["public"]) {
         // Convert to absolute paths
-        this.allowedRoots = allowedRoots.map(r => path.resolve(Deno.cwd(), r));
+        this.allowedRoots = allowedRoots.map(r => path.resolve(process.cwd(), r));
     }
 
     /**
@@ -122,7 +121,7 @@ class SafeFileSystem {
      */
     async readText(relPath: string): Promise<string> {
         const fullPath = this.validatePath(relPath);
-        return await Deno.readTextFile(fullPath);
+        return await readFile(fullPath, "utf8");
     }
 
     /**
@@ -130,8 +129,8 @@ class SafeFileSystem {
      */
     async writeText(relPath: string, content: string): Promise<void> {
         const fullPath = this.validatePath(relPath);
-        await Deno.mkdir(path.dirname(fullPath), { recursive: true });
-        await Deno.writeTextFile(fullPath, content);
+        await mkdir(path.dirname(fullPath), { recursive: true });
+        await writeFile(fullPath, content);
     }
 
     /**
@@ -155,7 +154,7 @@ class SafeFileSystem {
     async exists(relPath: string): Promise<boolean> {
         try {
             const fullPath = this.validatePath(relPath);
-            await Deno.stat(fullPath);
+            await stat(fullPath);
             return true;
         } catch {
             return false;
@@ -169,14 +168,14 @@ class SafeFileSystem {
         const fullPath = this.validatePath(relPath);
         const entries: Array<{ name: string; isFile: boolean; isDirectory: boolean }> = [];
         
-        for await (const entry of Deno.readDir(fullPath)) {
+        for (const entry of await readdir(fullPath, { withFileTypes: true })) {
             // Skip dot-files and dot-folders
             if (entry.name.startsWith('.')) continue;
             
             entries.push({
                 name: entry.name,
-                isFile: entry.isFile,
-                isDirectory: entry.isDirectory,
+                isFile: entry.isFile(),
+                isDirectory: entry.isDirectory(),
             });
         }
         
@@ -188,7 +187,7 @@ class SafeFileSystem {
      */
     async remove(relPath: string): Promise<void> {
         const fullPath = this.validatePath(relPath);
-        await Deno.remove(fullPath);
+        await rm(fullPath);
     }
 }
 
@@ -197,7 +196,11 @@ class SafeFileSystem {
  * Allows executing commands on configured datasources.
  */
 class DatasourceHelper {
-    constructor(private session: STWSession) {}
+    private session: STWSession;
+
+    constructor(session: STWSession) {
+        this.session = session;
+    }
 
     /**
      * Execute a command on a datasource.
@@ -297,7 +300,6 @@ export default class STWServerScript extends STWContent {
     /**
      * Override serve to set proper contentType for JSON responses.
      */
-    // deno-lint-ignore require-await
     public override async serve(req: Request, session: STWSession, ref: STWContent | undefined): Promise<Response> {
         this.contentType = "application/json; charset=utf-8";
         return super.serve(req, session, ref);

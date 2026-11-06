@@ -243,7 +243,6 @@ export abstract class STWContent<
 		}
 	}
 
-	// deno-lint-ignore require-await
 	public async render(_request: Request, _session: STWSession, _record: TRecords): Promise<string> {
 		return `Render ${this.constructor.name}`;
 	}

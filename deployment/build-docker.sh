@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 # build-docker.sh — Build (and optionally push) Webspinner Docker image to GHCR
 # Usage:
-#   ./build-docker.sh [--push] [--tag <vX.Y.Z|latest>] [--deno <2.x.y>] [--platforms <list>]
-# Defaults: --tag from git tag if present else latest; --deno from deployment/.deno-version; --platforms linux/amd64,linux/arm64
+#   ./build-docker.sh [--push] [--tag <vX.Y.Z|latest>] [--node <major>] [--platforms <list>]
+# Defaults: --tag from git tag if present else latest; --node 26; --platforms linux/amd64,linux/arm64
 
 set -euo pipefail
 
 IMAGE="ghcr.io/spintheweb/webspinner"
 PUSH=false
 TAG=""
-DENO_VER=""
+NODE_VER="26"
 PLATFORMS="linux/amd64,linux/arm64"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --push) PUSH=true ;;
     --tag) TAG="$2"; shift ;;
-    --deno) DENO_VER="$2"; shift ;;
+    --node) NODE_VER="$2"; shift ;;
     --platforms) PLATFORMS="$2"; shift ;;
     -h|--help)
-      echo "Usage: $0 [--push] [--tag <vX.Y.Z|latest>] [--deno <2.x.y>] [--platforms <list>]"; exit 0 ;;
+      echo "Usage: $0 [--push] [--tag <vX.Y.Z|latest>] [--node <major>] [--platforms <list>]"; exit 0 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
   shift
@@ -31,17 +31,6 @@ if [[ -z "$TAG" ]]; then
     TAG="$(git describe --tags --exact-match)"
   else
     TAG="latest"
-  fi
-fi
-
-# Determine Deno version
-if [[ -z "$DENO_VER" ]]; then
-  if [[ -f "$(dirname "$0")/.deno-version" ]]; then
-    DENO_VER="$(cat "$(dirname "$0")/.deno-version")"
-  elif [[ -f .deno-version ]]; then
-    DENO_VER="$(cat .deno-version)"
-  else
-    DENO_VER="2.3.0"
   fi
 fi
 
@@ -61,7 +50,7 @@ echo "Building image for platforms: $PLATFORMS"
 BUILD_ARGS=(
   --platform "$PLATFORMS"
   -f deployment/Dockerfile
-  --build-arg "DENO_VERSION=$DENO_VER"
+  --build-arg "NODE_VERSION=$NODE_VER"
   -t "$IMAGE:$TAG"
   -t "$IMAGE:latest"
   .

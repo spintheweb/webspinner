@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // PostgreSQL database adapter for Spin the Web
 
-import { Client as PostgresClient } from "jsr:@db/postgres";
-import { ISTWAdapter, ISTWRecords } from "./adapter.ts";
+import { Client as PostgresClient } from "pg";
+import type { ISTWAdapter, ISTWRecords } from "./adapter.ts";
 
 export class STWPostgresAdapter implements ISTWAdapter {
   private client: PostgresClient;
@@ -15,7 +15,7 @@ export class STWPostgresAdapter implements ISTWAdapter {
     database: string;
   }) {
     this.client = new PostgresClient({
-      hostname: config.host,
+      host: config.host,
       port: config.port,
       user: config.user,
       password: config.password,
@@ -62,8 +62,8 @@ export class STWPostgresAdapter implements ISTWAdapter {
   async execute(batch: string): Promise<ISTWRecords[]> {
     try {
       // Attempt to execute the full batch as a script
-      const result = await this.client.queryObject(batch);
-      const fields = result.columns?.map((col: any) => ({ name: col.name, type: col.dataType })) ?? [];
+      const result = await this.client.query(batch);
+      const fields = result.fields?.map(col => col.name) ?? [];
       const rows = result.rows ?? [];
       return [{
         affectedRows: rows.length,
@@ -76,8 +76,8 @@ export class STWPostgresAdapter implements ISTWAdapter {
       const results: ISTWRecords[] = [];
       for (const sql of statements) {
         try {
-          const result = await this.client.queryObject(sql);
-          const fields = result.columns?.map((col: any) => ({ name: col.name, type: col.dataType })) ?? [];
+          const result = await this.client.query(sql);
+          const fields = result.fields?.map(col => col.name) ?? [];
           const rows = result.rows ?? [];
           results.push({
             affectedRows: rows.length,

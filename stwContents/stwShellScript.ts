@@ -7,14 +7,16 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwShellScript
- * @requires jsr:@std/path@1
+ * @requires node:path
  * @license GPL-3.0-or-later
  */
 
 import { ISTWRecords } from "../stwComponents/stwDBAdapters/adapter.ts";
 import type { STWSession } from "../stwComponents/stwSession.ts";
 import { ISTWContent, STWContent } from "../stwElements/stwContent.ts";
-import * as path from "jsr:@std/path@1";
+import * as path from "node:path";
+import { stat } from "node:fs/promises";
+import { runCommand } from "../stwComponents/stwNode.ts";
 
 /**
  * STWShellScript
@@ -105,8 +107,8 @@ function validateShellScript(script: string): void {
  * Build environment variables for shell script execution.
  */
 function buildEnvironment(session: STWSession, records: ISTWRecords): Record<string, string> {
-	const publicRoot = path.resolve(Deno.cwd(), "public");
-	const dataRoot = path.resolve(Deno.cwd(), "data");
+	const publicRoot = path.resolve(process.cwd(), "public");
+	const dataRoot = path.resolve(process.cwd(), "data");
 
 	const env: Record<string, string> = {
 		STW_PUBLIC_ROOT: publicRoot,
@@ -184,52 +186,21 @@ export default class STWShellScript extends STWContent {
 		script: string,
 		env: Record<string, string>
 	): Promise<string> {
-		const command = new Deno.Command(shell, {
-			args: ["-c", script],
-			env: env,
-			cwd: Deno.cwd(),
-			stdin: "null",
-			stdout: "piped",
-			stderr: "piped",
+		const output = await runCommand(shell, ["-c", script], {
+			env: { ...process.env, ...env },
+			cwd: process.cwd(),
+			timeoutMs: this.timeout,
 		});
+		const stdout = output.stdout.trim();
+		const stderr = output.stderr.trim();
 
-		// Start the process
-		const child = command.spawn();
-
-		// Create timeout promise
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			setTimeout(() => {
-				child.kill("SIGTERM");
-				reject(new Error(`Shell script timeout after ${this.timeout}ms`));
-			}, this.timeout);
+		if (stdout.startsWith('{') || stdout.startsWith('[')) return stdout;
+		return JSON.stringify({
+			ok: output.code === 0,
+			stdout: stdout || undefined,
+			stderr: stderr || undefined,
+			code: output.code,
 		});
-
-		// Race between completion and timeout
-		try {
-			const output = await Promise.race([
-				child.output(),
-				timeoutPromise,
-			]);
-
-			const stdout = new TextDecoder().decode(output.stdout).trim();
-			const stderr = new TextDecoder().decode(output.stderr).trim();
-
-			// If stdout looks like JSON, return it directly
-			if (stdout.startsWith('{') || stdout.startsWith('[')) {
-				return stdout;
-			}
-
-			// Otherwise wrap in a standard response
-			return JSON.stringify({
-				ok: output.success,
-				stdout: stdout || undefined,
-				stderr: stderr || undefined,
-				code: output.code,
-			});
-		} catch (error) {
-			// Timeout or execution error
-			throw error;
-		}
 	}
 
 	/**
@@ -238,22 +209,21 @@ export default class STWShellScript extends STWContent {
 	private async _detectShell(): Promise<string> {
 		// Try bash first
 		try {
-			const cmd = new Deno.Command("bash", { args: ["--version"], stdout: "null", stderr: "null" });
-			const output = await cmd.output();
-			if (output.success) return "bash";
+			const output = await runCommand("bash", ["--version"], { timeoutMs: 2000 });
+			if (output.code === 0) return "bash";
 		} catch {
 			// bash not available
 		}
 
 		// Fallback to sh on Unix-like systems
-		if (Deno.build.os !== "windows") {
+		if (process.platform !== "win32") {
 			return "sh";
 		}
 
 		// On Windows, try Git Bash
 		const gitBashPath = "C:\\Program Files\\Git\\bin\\bash.exe";
 		try {
-			await Deno.stat(gitBashPath);
+			await stat(gitBashPath);
 			return gitBashPath;
 		} catch {
 			// Git Bash not found

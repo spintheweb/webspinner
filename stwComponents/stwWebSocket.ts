@@ -21,12 +21,11 @@ import { STWPage } from "../stwElements/stwPage.ts";
 import { STWContent } from "../stwElements/stwContent.ts";
 import { STWSession } from "./stwSession.ts";
 import { newId } from "./stwIds.ts";
+import { WebSocket } from "ws";
 
 const SESSION_CLEANUP_GRACE_PERIOD_MS = 30000; // 30 seconds
 
-export function handleWebSocket(request: Request, session: STWSession, stwSessions: Map<string, STWSession>): Response {
-	const { socket, response } = Deno.upgradeWebSocket(request);
-
+export function handleWebSocket(request: Request, socket: WebSocket, session: STWSession, stwSessions: Map<string, STWSession>): void {
 	const url = new URL(request.url);
 	const tabId = url.searchParams.get("tab") || newId();
 
@@ -35,13 +34,11 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 	session.sockets.set(tabId, socket);
 
 	if (prev && prev !== socket && prev.readyState === WebSocket.OPEN) {
-		// deno-lint-ignore no-empty
 		try { prev.close(1000, "superseded"); } catch { }
 	}
 
-	socket.onmessage = async event => {
-		// deno-lint-ignore no-explicit-any
-		const data: { method: string, resource: string, options: any, search: string } = JSON.parse(event.data);
+	socket.on("message", async message => {
+		const data: { method: string, resource: string, options: any, search: string } = JSON.parse(message.toString());
 
 		const url = new URL(data.resource, request.url);
 		for (const [key, value] of new URLSearchParams(data.search)) {
@@ -113,11 +110,11 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 				socket.send(JSON.stringify(content));
 			});
 		}
-	};
-	socket.onerror = error => {
+	});
+	socket.on("error", error => {
 		console.error(error);
-	};
-	socket.onclose = () => {
+	});
+	socket.on("close", () => {
 		// console.log(`${new Date().toISOString()}: WebSocket closed for session: [${session.sessionId}] tab=[${tabId}]`);
 
 		// Only remove if this is still the current socket for the tab
@@ -132,7 +129,6 @@ export function handleWebSocket(request: Request, session: STWSession, stwSessio
 				}
 			}, SESSION_CLEANUP_GRACE_PERIOD_MS);
 		}
-	};
+	});
 
-	return response;
 }

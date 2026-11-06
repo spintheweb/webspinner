@@ -20,7 +20,6 @@ export class STWBreadcrumbs extends STWContent {
 		super(content);
 	}
 
-	// deno-lint-ignore require-await
 	public override async render(request: Request, session: STWSession, _records: ISTWRecords): Promise<string> {
 		let body = "";
 		for (let element = session.portal.find(session, new URL(request.url).pathname); element; element = element.parent)

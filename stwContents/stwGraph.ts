@@ -20,7 +20,6 @@ export class STWGraph extends STWContent {
 		super(content);
 	}
 
-	// deno-lint-ignore require-await
 	public override async render(_req: Request, _session: STWSession, _records: ISTWRecords): Promise<string> {
 		return `TODO: Render ${this.constructor.name} <pre>${_records}</pre>`;
 	}

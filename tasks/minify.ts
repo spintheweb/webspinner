@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Build/development task: minify
 
-import * as esbuild from "https://deno.land/x/esbuild@v0.21.5/mod.js";
+import { readFile, writeFile } from "node:fs/promises";
+import { transform } from "esbuild";
 
-const inputJs = await Deno.readTextFile("./public/scripts/stwClient.js");
-const result = await esbuild.transform(inputJs, { minify: true, loader: "js" });
-await Deno.writeTextFile("./public/scripts/stwClient.min.js", result.code);
-esbuild.stop();
+const inputJs = await readFile("./public/scripts/stwClient.js", "utf8");
+const result = await transform(inputJs, { minify: true, loader: "js" });
+await writeFile("./public/scripts/stwClient.min.js", result.code);
 
 console.log("Client-side JS minified successfully!");

@@ -8,12 +8,12 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwWBOL
- * @requires jsr:@std/xml
+ * @requires @xmldom/xmldom
  * @license GPL-3.0-or-later
  */
 
-// deno-lint-ignore no-unversioned-import
-import * as xml from "jsr:@std/xml";
+import { readFileSync } from "node:fs";
+import { DOMParser } from "@xmldom/xmldom";
 
 /**
  * Parses a WBOL document or file path into the element tree consumed by STWElement constructors.
@@ -26,53 +26,63 @@ import * as xml from "jsr:@std/xml";
  * @throws {Error} If the source has an unsupported root or child element.
  */
 export function WBOL(source: string): any {
-	if (!source.startsWith('<'))
-		source = Deno.readTextFileSync(source);
-	const wbol = xml.parse(source);
+	if (!source.trimStart().startsWith("<")) source = readFileSync(source, "utf8");
+	const document = new DOMParser({
+		errorHandler: {
+			warning: () => {},
+			error: message => { throw new Error(message); },
+			fatalError: message => { throw new Error(message); },
+		},
+	}).parseFromString(source, "application/xml");
+	const root = document.documentElement;
+	if (!root) throw new Error("WBOL: document has no root element");
 
-	switch (wbol.root.name.local) {
+	switch (localName(root)) {
 		case 'webbase':
-			return WBOLFragment(wbol.root);
+			return WBOLFragment(root);
 		case 'webbaselet':
-			return WBOLFragment(wbol.root);
+			return WBOLFragment(root);
 		default:
-			throw new Error(`WBOL: unsupported root element ${wbol.root.name.local}`);
+			throw new Error(`WBOL: unsupported root element ${localName(root)}`);
 	}
 }
 
-function WBOLFragment(element: xml.XmlElement): any {
+function WBOLFragment(element: Element): any {
 	let obj: any = {};
+	const name = localName(element);
 
-	if (['webbase', 'webbaselet', 'area', 'page', 'content', 'shortcut'].findIndex(e => e === element.name.local) === -1)
-		throw new Error(`WBOL: unsupported element ${element.name.local}`);
+	if (!['webbase', 'webbaselet', 'area', 'page', 'content', 'shortcut'].includes(name))
+		throw new Error(`WBOL: unsupported element ${name}`);
 
-	obj.type = element.name.local.charAt(0).toUpperCase() + element.name.local.slice(1);
-	for (const attr in element.attributes) {
+	obj.type = name.charAt(0).toUpperCase() + name.slice(1);
+	for (let i = 0; i < element.attributes.length; i++) {
+		const attribute = element.attributes.item(i)!;
+		const attr = attribute.name;
 		if (attr.startsWith('xml:') || attr === 'xmlns') continue;
 		if (attr === 'langs')
-			obj.langs = element.attributes[attr].split(' ');
+			obj.langs = attribute.value.split(' ');
 		else
-			obj[attr] = element.attributes[attr];
+			obj[attr] = attribute.value;
 	}
 
-	if (element.name.local === 'content') {
+	if (name === 'content') {
 		obj.subtype = obj.type.charAt(0).toUpperCase() + obj.type.slice(1);
 		obj.type = 'Content';
 	}
 
-	element.children.filter(child => child.type === 'element').forEach(child => {
-		switch (child.name.local) {
+	childElements(element).forEach(child => {
+		switch (localName(child)) {
 			case 'name':
 				obj = Object.assign(parseName(child), obj);
 				break;
 			case 'layout':
 			case 'keywords':
 			case 'description':
-				obj[child.name.local] = parseText(child);
+				obj[localName(child)] = parseText(child);
 				break;
 			case 'query':
-				obj.dsn = child.attributes.datasource;
-				obj.parameters = child.attributes.parameters;
+				obj.dsn = child.getAttribute('datasource') ?? undefined;
+				obj.parameters = child.getAttribute('parameters') ?? undefined;
 				obj.query = innerText(child);
 				break;
 			case 'options':
@@ -82,21 +92,21 @@ function WBOLFragment(element: xml.XmlElement): any {
 			case 'visibilities':
 			case 'visibility':
 				obj.visibility = {};
-				child.children.filter(role => role.type === 'element' && role.name.local === 'role').forEach((role: any) => {
-					if (element.name.local === 'webbase')
-						obj.visibility[role.attributes.id] = undefined; // For webbase, visibility is not explicitly set
-					else if (role.attributes.visibility === 'true' || role.attributes.visibility === 'false')
-						obj.visibility[role.attributes.id] = (role.attributes.visibility === 'true');
+				childElements(child).filter(role => localName(role) === 'role').forEach(role => {
+					if (name === 'webbase')
+						obj.visibility[role.getAttribute('id')!] = undefined; // For webbase, visibility is not explicitly set
+					else if (role.getAttribute('visibility') === 'true' || role.getAttribute('visibility') === 'false')
+						obj.visibility[role.getAttribute('id')!] = role.getAttribute('visibility') === 'true';
 				});
 				break;
 			case 'children':
 				obj.children = [];
-				child.children.filter(grandchild => grandchild.type === 'element').forEach(grandchild =>
+				childElements(child).forEach(grandchild =>
 					obj.children.push(WBOLFragment(grandchild))
 				);
 				break;
 			default:
-				throw new Error(`WBOL: unsupported element ${child.name.local}`);
+				throw new Error(`WBOL: unsupported element ${localName(child)}`);
 		}
 	});
 
@@ -109,36 +119,50 @@ function WBOLFragment(element: xml.XmlElement): any {
 	return obj;
 }
 
-function parseOptions(wbol: xml.XmlElement = { attributes: {}, children: [], name: { raw: '', local: '' }, type: 'element' }): any {
+function parseOptions(wbol: Element | null): any {
 	const obj: any = [];
-	wbol.children.filter(option => option.type === 'element' && option.name.local === 'option').forEach((option: any) => {
+	if (!wbol) return obj;
+	childElements(wbol).filter(option => localName(option) === 'option').forEach(option => {
 		obj.push({
 			name: parseText(option),
-			ref: option.attributes.ref,
-			parameters: option.attributes.parameters,
-			options: option.children ? parseOptions(option.children.find((options: any) => options.type === 'element' && options.name.local === 'options')) : []
+			ref: option.getAttribute('ref') ?? undefined,
+			parameters: option.getAttribute('parameters') ?? undefined,
+			options: parseOptions(childElements(option).find(options => localName(options) === 'options') ?? null)
 		});
 	});
 	return obj;
 }
 
-function innerText(wbol: xml.XmlElement): string {
-	return (wbol.children.find(child => child.type === 'cdata') || { text: '' }).text;
+function innerText(wbol: Element): string {
+	return wbol.textContent ?? "";
 }
 
-function parseName(wbol: xml.XmlElement): any {
+function parseName(wbol: Element): any {
 	const obj: any = { name: {}, slug: {} };
-	wbol.children.filter(child => child.type === 'element' && child.name.local === 'text').forEach((name: any) => {
-		obj.slug[name.attributes['xml:lang'] || 'en'] = name.attributes.slug;
-		obj.name[name.attributes['xml:lang'] || 'en'] = name.children[0].text;
+	childElements(wbol).filter(child => localName(child) === 'text').forEach(name => {
+		const lang = name.getAttribute('xml:lang') || 'en';
+		obj.slug[lang] = name.getAttribute('slug') ?? undefined;
+		obj.name[lang] = name.textContent ?? "";
 	});
 	return obj;
 }
 
-function parseText(wbol: xml.XmlElement): any {
+function parseText(wbol: Element): any {
 	const obj: any = {};
-	wbol.children.filter(child => child.type === 'element' && child.name.local === 'text').forEach((text: any) =>
-		obj[text.attributes['xml:lang'] || 'en'] = text.children[0].text
+	childElements(wbol).filter(child => localName(child) === 'text').forEach(text =>
+		obj[text.getAttribute('xml:lang') || 'en'] = text.textContent ?? ""
 	);
 	return obj;
+}
+
+function childElements(element: Element): Element[] {
+	const children: Element[] = [];
+	for (let child = element.firstChild; child; child = child.nextSibling) {
+		if (child.nodeType === 1) children.push(child as Element);
+	}
+	return children;
+}
+
+function localName(element: Element): string {
+	return element.localName || element.tagName.split(":").at(-1)!;
 }

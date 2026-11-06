@@ -20,7 +20,6 @@ export class STWPivot extends STWContent {
 		super(content);
 	}
 
-	// deno-lint-ignore require-await
 	public override async render(_req: Request, _session: STWSession, _records: ISTWRecords): Promise<string> {
 		return `TODO: Render ${this.constructor.name} for ${_session.user} <pre>${_records}</pre>`;
 	}

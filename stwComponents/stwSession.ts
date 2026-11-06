@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Spin the Web component: stwSession
 
-import { getCookies } from "@std/http/cookie";
+import type { WebSocket } from "ws";
+import { getCookies } from "./stwNode.ts";
 import { STWPortal } from "../stwElements/stwPortal.ts";
 import { envGet } from "./stwConfig.ts";
 
 export class STWSession {
 	sessionId: string;
-	remoteAddr: Deno.Addr;
+	remoteAddr: { hostname: string; port: number };
 	baseurl: string = ""; // Base URL of the application (used to generate absolute URLs)
 	user: string; // User name
 	name!: string; // Full name
@@ -23,7 +24,7 @@ export class STWSession {
 	public sockets: Map<string, WebSocket> = new Map(); // per-tab sockets
 	public states: Map<string, any>;
 
-	public constructor(sessionId: string, remoteAddr: Deno.Addr, portal: STWPortal) {
+	public constructor(sessionId: string, remoteAddr: { hostname: string; port: number }, portal: STWPortal) {
 		this.sessionId = sessionId;
 		this.remoteAddr = remoteAddr;
 		this.baseurl = envGet("HOST") || "";
@@ -57,7 +58,6 @@ export class STWSession {
 	 * @param obj Can be a request a string or an object (a row of a record set)
 	 * @param value The value assigned obj if it is a string
 	 */
-	// deno-lint-ignore no-explicit-any
 	setPlaceholders(obj: Request | string | any, value: string = ""): void {
 		if (obj instanceof Request) {
 			this.placeholders.clear();

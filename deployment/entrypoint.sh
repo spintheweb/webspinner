@@ -40,14 +40,8 @@ if [ -n "${PORTAL_DOMAIN:-}" ] || [ -f "$APP_DIR/.configured" ]; then
   # create sentinel
   touch "$APP_DIR/.configured" || true
   echo "INFO: Starting Webspinner (PORTAL_DOMAIN=${PORTAL_DOMAIN:-<unset>})."
-  exec deno run --allow-net --allow-read --allow-env stwSpinner.ts
+  exec node dist/stwSpinner.js
 fi
 
 echo "INFO: No PORTAL_DOMAIN set and no configuration sentinel found. Serving configuration info page on port $PORT."
-
-# Serve the info page using Deno's built-in server (no remote imports needed)
-deno run --allow-net --allow-read --allow-env - <<'DENO'
-const port = Number(Deno.env.get('PORT') || '8080');
-const body = await Deno.readTextFile('./.config-needed.html');
-Deno.serve({ port }, (_req) => new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } }));
-DENO
+exec node deployment/config-server.mjs
