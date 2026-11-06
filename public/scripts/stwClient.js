@@ -341,20 +341,20 @@ const dialog = document.getElementById("dialog");
 const handle = document.getElementById("dialogHeader");
 
 handle.addEventListener("mousedown", (e) => {
-  offsetX = e.clientX - dialog.offsetLeft;
-  offsetY = e.clientY - dialog.offsetTop;
-  isDragging = true;
+	offsetX = e.clientX - dialog.offsetLeft;
+	offsetY = e.clientY - dialog.offsetTop;
+	isDragging = true;
 });
 
 document.addEventListener("mousemove", (e) => {
-  if (isDragging) {
-	 dialog.style.position = "absolute";
-	 dialog.style.left = `${e.clientX - offsetX}px`;
-	 dialog.style.top = `${e.clientY - offsetY}px`;
-  }
+	if (isDragging) {
+		dialog.style.position = "absolute";
+		dialog.style.left = `${e.clientX - offsetX}px`;
+		dialog.style.top = `${e.clientY - offsetY}px`;
+	}
 });
 
 document.addEventListener("mouseup", () => {
-  isDragging = false;
+	isDragging = false;
 });
 */

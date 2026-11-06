@@ -12,14 +12,14 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 class STWGraph extends STWContent {
-  constructor(content) {
-    super(content);
-  }
-  async render(_req, _session, _records) {
-    return `TODO: Render ${this.constructor.name} <pre>${_records}</pre>`;
-  }
+	constructor(content) {
+		super(content);
+	}
+	async render(_req, _session, _records) {
+		return `TODO: Render ${this.constructor.name} <pre>${_records}</pre>`;
+	}
 }
 registerElement("Graph", STWGraph);
 export {
-  STWGraph
+	STWGraph
 };

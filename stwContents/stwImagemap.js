@@ -12,15 +12,15 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 class STWImagemap extends STWContent {
-  constructor(content) {
-    super(content);
-  }
-  // TODO: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area
-  async render(_req, _session) {
-    return `TODO: Render ${this.constructor.name} for ${_session.user}`;
-  }
+	constructor(content) {
+		super(content);
+	}
+	// TODO: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area
+	async render(_req, _session) {
+		return `TODO: Render ${this.constructor.name} for ${_session.user}`;
+	}
 }
 registerElement("Imagemap", STWImagemap);
 export {
-  STWImagemap
+	STWImagemap
 };

@@ -307,7 +307,7 @@ fi
 
 # Check if this is an upgrade
 UPGRADE_MODE=false
-if [ -d "$INSTALL_DIR" ] && { [ -f "$INSTALL_DIR/stwSpinner.js" ] || [ -f "$INSTALL_DIR/stwSpinner.ts" ]; }; then
+if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/stwSpinner.js" ]; then
   UPGRADE_MODE=true
   echo ""
   echo "Existing installation detected at: $INSTALL_DIR"
@@ -348,7 +348,6 @@ tail -n+$ARCHIVE_LINE "$0" | base64 -d | tar -xzf - -C "$TEMP_EXTRACT" --strip-c
 if [ "$UPGRADE_MODE" = true ]; then
   # Update core Webspinner files only
   rm -rf "$INSTALL_DIR/dist" "$INSTALL_DIR/stwComponents" "$INSTALL_DIR/stwContents" "$INSTALL_DIR/stwElements"
-  rm -f "$INSTALL_DIR/stwSpinner.ts"
   cp "$TEMP_EXTRACT/stwSpinner.js" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/stwComponents" "$TEMP_EXTRACT/stwContents" "$TEMP_EXTRACT/stwElements" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/stwStyles" "$INSTALL_DIR/"

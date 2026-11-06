@@ -11,936 +11,936 @@
 import { WBPL } from "./stwWBPL.js";
 const WBLL = { a, A, b, c, d, D, e, f, h, i, j, k, l, L, m, n, o, O, r, s, S, t, u, v, w, x, y, z, $s, $A, $r, $n, $t, $mc };
 const FLAGS = {
-  stwnone: 0,
-  stwinsert: 1,
-  stwupdate: 2,
-  stwdelete: 4,
-  stwsearch: 8,
-  stwfilter: 16,
-  stwsubmit: 32,
-  stwlogon: 64,
-  stwlogoff: 128,
-  stwpwdreset: 256,
-  stwreset: 512,
-  stwsummary: 1024,
-  stwnovalue: 25,
-  stwcud: 7,
-  stwany: -1
+	stwnone: 0,
+	stwinsert: 1,
+	stwupdate: 2,
+	stwdelete: 4,
+	stwsearch: 8,
+	stwfilter: 16,
+	stwsubmit: 32,
+	stwlogon: 64,
+	stwlogoff: 128,
+	stwpwdreset: 256,
+	stwreset: 512,
+	stwsummary: 1024,
+	stwnovalue: 25,
+	stwcud: 7,
+	stwany: -1
 };
 class STWLayout {
-  wbll;
-  justSettings;
-  renderer;
-  // Rendering function, placeholders are updated at runtime
-  constructor(wbll) {
-    this.wbll = wbll;
-    const SYMBOLS = new RegExp(
-      [
-        /(\\r)/,
-        /(\\[aAs])(?:\('([^]*?)'\))/,
-        /(\\[nt])(?:\('([^]*?)'\))?/,
-        /(?:([aAcefhilLmoOpquwxyz]))(?:\('([^]*?)'\))?/,
-        /(?:([bdDnjrsStvk]))(?:\('([^]*?)'\))/,
-        /\/\/.*$/,
-        /\/\*[^]*\*\//,
-        /(<+|>+)/,
-        /(?<error>[\S])/
-      ].map((r2) => r2.source).join("|"),
-      "gmu"
-    );
-    const code = [];
-    let closed = false;
-    for (const expression of wbll.matchAll(SYMBOLS)) {
-      if (expression.groups?.error !== void 0)
-        throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${expression.input.slice(0, expression.index)}<i>\u22D9${expression.input.slice(expression.index)}</i></pre>`);
-      const pattern = expression.filter((value, i2) => value !== void 0 && i2);
-      if (pattern[0]) {
-        if (["<", ">"].includes(pattern[0].at(0) ?? ""))
-          code.push(`WBLL.$mc(${(pattern[0].at(0) === "<" ? -1 : 1) * pattern[0].length}, ${expression.index}, runtime)`);
-        else {
-          const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] != null ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
-          if (pattern[0].match(/(p|q|\\a)/) || code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyz]/) && !closed) {
-            code[code.length - 1] = code[code.length - 1] + `.${fragment}`;
-            closed = pattern[0].match(/^[defintvxyz]/) !== null;
-          } else {
-            code.push("WBLL." + fragment);
-            closed = false;
-          }
-        }
-      }
-    }
-    for (let i2 = 0; i2 < code.length; ++i2) {
-      if (code[i2].startsWith("WBLL.$n") && code[i2 + 1]?.startsWith("WBLL.$A"))
-        code[i2] = "";
-      else
-        code[i2] = code[i2].match(/^WBLL\.(\$s|\$mc|k|j)/) ? `${code[i2]};` : `await ${code[i2]}.$();`;
-    }
-    this.justSettings = !code.some((line) => line.startsWith("await "));
-    code.push(`runtime.HTML += [...runtime.Wrappers].reverse().map(el => \`</\${el}>\`).join("");`);
-    code.push(`let renderIn = ["thead", "tbody", "tfoot"].includes(runtime.RenderIn) ? "tr" : runtime.RenderIn;`);
-    code.push(`if (renderIn) runtime.HTML = \`<\${renderIn}>\${runtime.HTML}</\${renderIn}>\`;`);
-    code.push(`runtime.Wrappers = [];`);
-    const AsyncFunction = Object.getPrototypeOf(async function() {
-    }).constructor;
-    this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
-  }
-  async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "") {
-    const runtime = {
-      Session: session,
-      Fields: fields,
-      FormFields: 0,
-      Flags: FLAGS.stwnone,
-      Placeholders: placeholders,
-      HTML: "",
-      RenderIn: renderIn,
-      Wrappers: [],
-      FldIndex: 0,
-      Settings: /* @__PURE__ */ new Map(),
-      Actions: "",
-      // Filtering, CRUD, Summary
-      Cols: 1,
-      Index: 0,
-      Downgrade: false,
-      // From table to form
-      Mode: FLAGS.stwnone
-    };
-    try {
-      await this.renderer(WBLL, WBPL, runtime);
-      if (renderIn === "thead" && runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter)) {
-        runtime.RenderIn = "tbody";
-        runtime.FormFields = 0;
-        runtime.FldIndex = 0;
-        runtime.Actions = "";
-        runtime.Mode = FLAGS.stwnovalue;
-        await this.renderer(WBLL, WBPL, runtime);
-        runtime.HTML += `<tr><td colspan="${runtime.Cols}">${runtime.Actions}</td></tr>`;
-      }
-      if (renderIn === "thead" && runtime.Flags & FLAGS.stwinsert) {
-        runtime.HTML += `<tr><td colspan="${runtime.Cols}">...</td></tr>`;
-      }
-      if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
-        return { settings: runtime.Settings, HTML: "" };
-      return { settings: runtime.Settings, HTML: runtime.HTML };
-    } catch (_err) {
-      const index = runtime.Index;
-      throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
-    }
-  }
+	wbll;
+	justSettings;
+	renderer;
+	// Rendering function, placeholders are updated at runtime
+	constructor(wbll) {
+		this.wbll = wbll;
+		const SYMBOLS = new RegExp(
+			[
+				/(\\r)/,
+				/(\\[aAs])(?:\('([^]*?)'\))/,
+				/(\\[nt])(?:\('([^]*?)'\))?/,
+				/(?:([aAcefhilLmoOpquwxyz]))(?:\('([^]*?)'\))?/,
+				/(?:([bdDnjrsStvk]))(?:\('([^]*?)'\))/,
+				/\/\/.*$/,
+				/\/\*[^]*\*\//,
+				/(<+|>+)/,
+				/(?<error>[\S])/
+			].map((r2) => r2.source).join("|"),
+			"gmu"
+		);
+		const code = [];
+		let closed = false;
+		for (const expression of wbll.matchAll(SYMBOLS)) {
+			if (expression.groups?.error !== void 0)
+				throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${expression.input.slice(0, expression.index)}<i>\u22D9${expression.input.slice(expression.index)}</i></pre>`);
+			const pattern = expression.filter((value, i2) => value !== void 0 && i2);
+			if (pattern[0]) {
+				if (["<", ">"].includes(pattern[0].at(0) ?? ""))
+					code.push(`WBLL.$mc(${(pattern[0].at(0) === "<" ? -1 : 1) * pattern[0].length}, ${expression.index}, runtime)`);
+				else {
+					const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] != null ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
+					if (pattern[0].match(/(p|q|\\a)/) || code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyz]/) && !closed) {
+						code[code.length - 1] = code[code.length - 1] + `.${fragment}`;
+						closed = pattern[0].match(/^[defintvxyz]/) !== null;
+					} else {
+						code.push("WBLL." + fragment);
+						closed = false;
+					}
+				}
+			}
+		}
+		for (let i2 = 0; i2 < code.length; ++i2) {
+			if (code[i2].startsWith("WBLL.$n") && code[i2 + 1]?.startsWith("WBLL.$A"))
+				code[i2] = "";
+			else
+				code[i2] = code[i2].match(/^WBLL\.(\$s|\$mc|k|j)/) ? `${code[i2]};` : `await ${code[i2]}.$();`;
+		}
+		this.justSettings = !code.some((line) => line.startsWith("await "));
+		code.push(`runtime.HTML += [...runtime.Wrappers].reverse().map(el => \`</\${el}>\`).join("");`);
+		code.push(`let renderIn = ["thead", "tbody", "tfoot"].includes(runtime.RenderIn) ? "tr" : runtime.RenderIn;`);
+		code.push(`if (renderIn) runtime.HTML = \`<\${renderIn}>\${runtime.HTML}</\${renderIn}>\`;`);
+		code.push(`runtime.Wrappers = [];`);
+		const AsyncFunction = Object.getPrototypeOf(async function() {
+		}).constructor;
+		this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
+	}
+	async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "") {
+		const runtime = {
+			Session: session,
+			Fields: fields,
+			FormFields: 0,
+			Flags: FLAGS.stwnone,
+			Placeholders: placeholders,
+			HTML: "",
+			RenderIn: renderIn,
+			Wrappers: [],
+			FldIndex: 0,
+			Settings: /* @__PURE__ */ new Map(),
+			Actions: "",
+			// Filtering, CRUD, Summary
+			Cols: 1,
+			Index: 0,
+			Downgrade: false,
+			// From table to form
+			Mode: FLAGS.stwnone
+		};
+		try {
+			await this.renderer(WBLL, WBPL, runtime);
+			if (renderIn === "thead" && runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter)) {
+				runtime.RenderIn = "tbody";
+				runtime.FormFields = 0;
+				runtime.FldIndex = 0;
+				runtime.Actions = "";
+				runtime.Mode = FLAGS.stwnovalue;
+				await this.renderer(WBLL, WBPL, runtime);
+				runtime.HTML += `<tr><td colspan="${runtime.Cols}">${runtime.Actions}</td></tr>`;
+			}
+			if (renderIn === "thead" && runtime.Flags & FLAGS.stwinsert) {
+				runtime.HTML += `<tr><td colspan="${runtime.Cols}">...</td></tr>`;
+			}
+			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
+				return { settings: runtime.Settings, HTML: "" };
+			return { settings: runtime.Settings, HTML: runtime.HTML };
+		} catch (_err) {
+			const index = runtime.Index;
+			throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
+		}
+	}
 }
 class RootSymbol {
-  runtime;
-  text = "";
-  tagName = "";
-  args = [];
-  attrs = /* @__PURE__ */ new Map();
-  constructor(attrs = "", tagName = "", runtime) {
-    this.runtime = runtime;
-    this.tagName = tagName;
-    if (attrs)
-      for (const pair of attrs.matchAll(/([A-Za-z0-9:\-.]+)(?:="([^"]*)")?/g)) {
-        const [, key, value] = pair;
-        this.attrs.set(key, value ?? true);
-      }
-  }
-  toString() {
-    const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
-    return `<${this.tagName}${htmlAttrs}>`;
-  }
-  $() {
-    if (!["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn))
-      this.runtime.HTML += this.toString();
-    else if (this.runtime.RenderIn === "thead") {
-      if (this instanceof LabelSymbol)
-        this.runtime.HTML += this.toString();
-    } else if (this.runtime.RenderIn !== "tfoot")
-      this.runtime.HTML += this.toString();
-  }
+	runtime;
+	text = "";
+	tagName = "";
+	args = [];
+	attrs = /* @__PURE__ */ new Map();
+	constructor(attrs = "", tagName = "", runtime) {
+		this.runtime = runtime;
+		this.tagName = tagName;
+		if (attrs)
+			for (const pair of attrs.matchAll(/([A-Za-z0-9:\-.]+)(?:="([^"]*)")?/g)) {
+				const [, key, value] = pair;
+				this.attrs.set(key, value ?? true);
+			}
+	}
+	toString() {
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		return `<${this.tagName}${htmlAttrs}>`;
+	}
+	$() {
+		if (!["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn))
+			this.runtime.HTML += this.toString();
+		else if (this.runtime.RenderIn === "thead") {
+			if (this instanceof LabelSymbol)
+				this.runtime.HTML += this.toString();
+		} else if (this.runtime.RenderIn !== "tfoot")
+			this.runtime.HTML += this.toString();
+	}
 }
 class BaseSymbol extends RootSymbol {
-  constructor(args, tagName = "", runtime) {
-    super(void 0, tagName, runtime);
-    let c2 = "";
-    let quoted = false;
-    let param = "";
-    for (c2 of args ?? "") {
-      if (c2 === '"') quoted = !quoted;
-      else if (c2 === ";" && !quoted) this.args.push(param), param = "";
-      else param += c2;
-    }
-    this.args.push(param.trim());
-  }
-  $a(attrs, index, runtime) {
-    runtime.Index = index;
-    attrs = WBPL(attrs, runtime.Placeholders);
-    if (!this.tagName)
-      this.tagName = "span";
-    for (const pair of attrs.matchAll(/([A-Za-z0-9:\-.]+)(?:="([^"]*)")?/g)) {
-      const [, key, value] = pair;
-      this.attrs.set(key, value ?? true);
-    }
-    return this;
-  }
-  toString() {
-    if (!this.tagName) return this.text;
-    const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
-    switch (this.tagName) {
-      case "input":
-      case "img":
-        return `<${this.tagName}${htmlAttrs}>`;
-      case "label":
-        return `<${this.tagName}${htmlAttrs}>${this.text}`;
-      default:
-        return `<${this.tagName}${htmlAttrs}>${this.text}</${this.tagName}>`;
-    }
-  }
+	constructor(args, tagName = "", runtime) {
+		super(void 0, tagName, runtime);
+		let c2 = "";
+		let quoted = false;
+		let param = "";
+		for (c2 of args ?? "") {
+			if (c2 === '"') quoted = !quoted;
+			else if (c2 === ";" && !quoted) this.args.push(param), param = "";
+			else param += c2;
+		}
+		this.args.push(param.trim());
+	}
+	$a(attrs, index, runtime) {
+		runtime.Index = index;
+		attrs = WBPL(attrs, runtime.Placeholders);
+		if (!this.tagName)
+			this.tagName = "span";
+		for (const pair of attrs.matchAll(/([A-Za-z0-9:\-.]+)(?:="([^"]*)")?/g)) {
+			const [, key, value] = pair;
+			this.attrs.set(key, value ?? true);
+		}
+		return this;
+	}
+	toString() {
+		if (!this.tagName) return this.text;
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		switch (this.tagName) {
+			case "input":
+			case "img":
+				return `<${this.tagName}${htmlAttrs}>`;
+			case "label":
+				return `<${this.tagName}${htmlAttrs}>${this.text}`;
+			default:
+				return `<${this.tagName}${htmlAttrs}>${this.text}</${this.tagName}>`;
+		}
+	}
 }
 class TextSymbol extends BaseSymbol {
-  constructor(args, tagName = "", runtime) {
-    super(args, tagName, runtime);
-    this.text = args || Field(runtime);
-  }
+	constructor(args, tagName = "", runtime) {
+		super(args, tagName, runtime);
+		this.text = args || Field(runtime);
+	}
 }
 class AnchorSymbol extends BaseSymbol {
-  url;
-  constructor(url, tagName = "a", runtime) {
-    super(url, tagName, runtime);
-    url = url || Field(runtime);
-    try {
-      this.url = new URL(url);
-    } catch {
-      this.url = new URL(url, `https://${runtime.Session.baseurl}`);
-    }
-    this.text = url;
-    this.attrs.set("href", this.url.toString());
-  }
-  p(args, index, runtime) {
-    if (args === ".")
-      return this.q(args, index, runtime);
-    runtime.Index = index;
-    args = WBPL(args, runtime.Placeholders) || Field(runtime, ";");
-    const search = `${args};`.split(";");
-    this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
-    this.attrs.set("href", this.url.toString());
-    return this;
-  }
-  q(args, index, runtime) {
-    runtime.Index = index;
-    if (args === ".")
-      args = String(runtime.Placeholders.get("@@query_string"));
-    else
-      args = WBPL(args, runtime.Placeholders);
-    try {
-      const qs = (args || Field(runtime) || "").trim().replace(/^\?/, "");
-      const params = new URLSearchParams(qs);
-      for (const [k2, v2] of params.entries())
-        this.url.searchParams.set(k2, v2);
-      this.attrs.set("href", this.url.toString());
-    } catch {
-    }
-    return this;
-  }
-  t(args, index, runtime) {
-    const symbol = WBLL.t(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  v(args, index, runtime) {
-    const symbol = WBLL.v(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  f(args, index, runtime) {
-    const symbol = WBLL.f(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  e(args, index, runtime) {
-    const symbol = WBLL.f(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  i(args, index, runtime) {
-    const symbol = WBLL.i(args, index, runtime);
-    this.text = BaseSymbol.prototype.toString.call(symbol);
-    return this;
-  }
-  n(args, index, runtime) {
-    const symbol = WBLL.n(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  x(args, index, runtime) {
-    const symbol = WBLL.x(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  y(args, index, runtime) {
-    const symbol = WBLL.y(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  z(args, index, runtime) {
-    const symbol = WBLL.z(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
+	url;
+	constructor(url, tagName = "a", runtime) {
+		super(url, tagName, runtime);
+		url = url || Field(runtime);
+		try {
+			this.url = new URL(url);
+		} catch {
+			this.url = new URL(url, `https://${runtime.Session.baseurl}`);
+		}
+		this.text = url;
+		this.attrs.set("href", this.url.toString());
+	}
+	p(args, index, runtime) {
+		if (args === ".")
+			return this.q(args, index, runtime);
+		runtime.Index = index;
+		args = WBPL(args, runtime.Placeholders) || Field(runtime, ";");
+		const search = `${args};`.split(";");
+		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
+		this.attrs.set("href", this.url.toString());
+		return this;
+	}
+	q(args, index, runtime) {
+		runtime.Index = index;
+		if (args === ".")
+			args = String(runtime.Placeholders.get("@@query_string"));
+		else
+			args = WBPL(args, runtime.Placeholders);
+		try {
+			const qs = (args || Field(runtime) || "").trim().replace(/^\?/, "");
+			const params = new URLSearchParams(qs);
+			for (const [k2, v2] of params.entries())
+				this.url.searchParams.set(k2, v2);
+			this.attrs.set("href", this.url.toString());
+		} catch {
+		}
+		return this;
+	}
+	t(args, index, runtime) {
+		const symbol = WBLL.t(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	v(args, index, runtime) {
+		const symbol = WBLL.v(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	f(args, index, runtime) {
+		const symbol = WBLL.f(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	e(args, index, runtime) {
+		const symbol = WBLL.f(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	i(args, index, runtime) {
+		const symbol = WBLL.i(args, index, runtime);
+		this.text = BaseSymbol.prototype.toString.call(symbol);
+		return this;
+	}
+	n(args, index, runtime) {
+		const symbol = WBLL.n(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	x(args, index, runtime) {
+		const symbol = WBLL.x(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	y(args, index, runtime) {
+		const symbol = WBLL.y(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	z(args, index, runtime) {
+		const symbol = WBLL.z(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
 }
 class LabelSymbol extends BaseSymbol {
-  mode;
-  constructor(args, runtime) {
-    const mode = runtime.RenderIn === "thead" ? "header" : runtime.RenderIn === "tbody" || runtime.RenderIn === "tfoot" ? "cell" : "form";
-    const tagName = mode === "header" ? "th" : mode === "cell" ? "td" : "label";
-    super(args, tagName, runtime);
-    this.mode = mode;
-    this.runtime.Flags |= this.args[2] ? FLAGS.stwsummary : 0;
-    if (mode === "cell") {
-      this.runtime.Cols++;
-      runtime.Wrappers.push("td");
-      return;
-    }
-    if (runtime.RenderIn === "tfoot")
-      this.text = this.args[2] || this.args[0] || "";
-    else
-      this.text = this.args[0] || (args == null ? mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime) : "");
-    if (runtime.RenderIn === "thead" && this.args[1] != null)
-      this.text += `<span class="stwOrderBy" data-orderby="${this.args[1] || runtime.Fields[runtime.FldIndex]}"><i class="fas fa-fw fa-angle-up"></i><i class="fas fa-fw fa-angle-down"></i></span>`;
-    if (mode === "form") {
-      runtime.Wrappers.push("label");
-      this.attrs.set("for", `stwE${runtime.FormFields}`);
-    }
-  }
-  toString() {
-    return this.mode === "cell" ? RootSymbol.prototype.toString.call(this) : super.toString();
-  }
+	mode;
+	constructor(args, runtime) {
+		const mode = runtime.RenderIn === "thead" ? "header" : runtime.RenderIn === "tbody" || runtime.RenderIn === "tfoot" ? "cell" : "form";
+		const tagName = mode === "header" ? "th" : mode === "cell" ? "td" : "label";
+		super(args, tagName, runtime);
+		this.mode = mode;
+		this.runtime.Flags |= this.args[2] ? FLAGS.stwsummary : 0;
+		if (mode === "cell") {
+			this.runtime.Cols++;
+			runtime.Wrappers.push("td");
+			return;
+		}
+		if (runtime.RenderIn === "tfoot")
+			this.text = this.args[2] || this.args[0] || "";
+		else
+			this.text = this.args[0] || (args == null ? mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime) : "");
+		if (runtime.RenderIn === "thead" && this.args[1] != null)
+			this.text += `<span class="stwOrderBy" data-orderby="${this.args[1] || runtime.Fields[runtime.FldIndex]}"><i class="fas fa-fw fa-angle-up"></i><i class="fas fa-fw fa-angle-down"></i></span>`;
+		if (mode === "form") {
+			runtime.Wrappers.push("label");
+			this.attrs.set("for", `stwE${runtime.FormFields}`);
+		}
+	}
+	toString() {
+		return this.mode === "cell" ? RootSymbol.prototype.toString.call(this) : super.toString();
+	}
 }
 class FormSymbol extends BaseSymbol {
-  constructor(args, tagName = "input", runtime) {
-    super(args, tagName, runtime);
-    if (!this.attrs.has("type") && this.args[0])
-      this.attrs.set("type", this.args[0]);
-    if (!this.attrs.has("id"))
-      this.attrs.set("id", `stwE${runtime.FormFields}`);
-    if (!this.attrs.has("name"))
-      this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stwE${runtime.FormFields}`);
-    if (!this.attrs.has("value"))
-      this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] || runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter | FLAGS.stwinsert) ? this.args[2] ?? "" : Field(runtime));
-    ++runtime.FormFields;
-    if (this.runtime.Settings.has("disabled"))
-      this.attrs.set("disabled", this.runtime.Settings.get("disabled") ?? true);
-  }
-  toString() {
-    let fragment = "";
-    if (this.tagName === "input" && this.args[3]) {
-      this.attrs.set("list", `${this.attrs.get("id") ?? "Fld0"}_options`);
-      fragment = `<datalist id="${this.attrs.get("id") ?? "Fld0"}_options">`;
-      for (let i2 = 3; i2 < this.args.length; ++i2)
-        fragment += `<option value="${this.args[i2]}"></option>`;
-      fragment += "</datalist>";
-    }
-    return fragment + super.toString();
-  }
+	constructor(args, tagName = "input", runtime) {
+		super(args, tagName, runtime);
+		if (!this.attrs.has("type") && this.args[0])
+			this.attrs.set("type", this.args[0]);
+		if (!this.attrs.has("id"))
+			this.attrs.set("id", `stwE${runtime.FormFields}`);
+		if (!this.attrs.has("name"))
+			this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stwE${runtime.FormFields}`);
+		if (!this.attrs.has("value"))
+			this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] || runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter | FLAGS.stwinsert) ? this.args[2] ?? "" : Field(runtime));
+		++runtime.FormFields;
+		if (this.runtime.Settings.has("disabled"))
+			this.attrs.set("disabled", this.runtime.Settings.get("disabled") ?? true);
+	}
+	toString() {
+		let fragment = "";
+		if (this.tagName === "input" && this.args[3]) {
+			this.attrs.set("list", `${this.attrs.get("id") ?? "Fld0"}_options`);
+			fragment = `<datalist id="${this.attrs.get("id") ?? "Fld0"}_options">`;
+			for (let i2 = 3; i2 < this.args.length; ++i2)
+				fragment += `<option value="${this.args[i2]}"></option>`;
+			fragment += "</datalist>";
+		}
+		return fragment + super.toString();
+	}
 }
 class TextAreaSymbol extends FormSymbol {
-  constructor(args, tagName = "textarea", runtime) {
-    super(args, tagName, runtime);
-    this.text = String(this.attrs.get("value") ?? "");
-    this.attrs.delete("type");
-    this.attrs.delete("value");
-  }
-  toString() {
-    if (this.args[0] === "contenteditable") {
-      this.tagName = "div";
-      this.attrs.set("contenteditable", "");
-    } else if (this.args[0])
-      this.attrs.set("class", this.args[0]);
-    const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
-    const fragment = `<${this.tagName}${htmlAttrs}>${this.text || ""}</${this.tagName}>`;
-    return fragment;
-  }
+	constructor(args, tagName = "textarea", runtime) {
+		super(args, tagName, runtime);
+		this.text = String(this.attrs.get("value") ?? "");
+		this.attrs.delete("type");
+		this.attrs.delete("value");
+	}
+	toString() {
+		if (this.args[0] === "contenteditable") {
+			this.tagName = "div";
+			this.attrs.set("contenteditable", "");
+		} else if (this.args[0])
+			this.attrs.set("class", this.args[0]);
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		const fragment = `<${this.tagName}${htmlAttrs}>${this.text || ""}</${this.tagName}>`;
+		return fragment;
+	}
 }
 class ButtonSymbol extends FormSymbol {
-  url;
-  constructor(args, tagName = "button", runtime) {
-    super(args, tagName, runtime);
-    this.attrs.set("type", "submit");
-    this.attrs.delete("value");
-    try {
-      this.url = new URL(this.args[0]);
-    } catch {
-      this.url = new URL(this.args[0] ?? "", `https://${runtime.Session.baseurl}`);
-    }
-    const action = this.action(this.args[1]);
-    this.attrs.set("formaction", this.url.toString());
-    if (action & (FLAGS.stwsearch | FLAGS.stwfilter)) {
-      this.text = action & FLAGS.stwsearch ? "Search" : "Filter";
-      this.attrs.delete("name");
-      this.attrs.set("formmethod", "GET");
-    } else if (action & FLAGS.stwdelete) {
-      this.text = "Delete";
-      this.attrs.set("formmethod", "DELETE");
-    } else if (action & FLAGS.stwupdate) {
-      this.text = "Update";
-      this.attrs.set("formmethod", "PATCH");
-    } else if (action & FLAGS.stwinsert) {
-      this.text = "Insert";
-      this.attrs.set("formmethod", "PUT");
-    } else if (action & FLAGS.stwreset) {
-      this.text = "Reset";
-      this.attrs.set("type", "reset");
-    } else {
-      this.text = "Submit";
-      this.attrs.set("formmethod", "POST");
-    }
-    runtime.Flags |= action;
-  }
-  p(args, index, runtime) {
-    if (args === ".")
-      return this.q(args, index, runtime);
-    runtime.Index = index;
-    args = WBPL(args, runtime.Placeholders);
-    const search = `${args};;`.split(";");
-    this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
-    this.attrs.set("formaction", this.url.toString());
-    return this;
-  }
-  q(args, index, runtime) {
-    runtime.Index = index;
-    if (args === ".")
-      args = String(runtime.Placeholders.get("@@query_string"));
-    else
-      args = WBPL(args, runtime.Placeholders);
-    try {
-      const qs = (args ?? "").trim().replace(/^\?/, "");
-      const params = new URLSearchParams(qs);
-      for (const [k2, v2] of params.entries())
-        this.url.searchParams.set(k2, v2);
-      this.attrs.set("formaction", this.url.toString());
-    } catch {
-    }
-    return this;
-  }
-  t(args, index, runtime) {
-    const symbol = WBLL.t(args, index, runtime);
-    this.text = symbol.text;
-    return this;
-  }
-  toString() {
-    if (this.runtime.Settings.get("disabled"))
-      return "";
-    const fragment = super.toString();
-    if (["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn)) {
-      this.runtime.Actions += fragment;
-      return "";
-    }
-    return fragment;
-  }
-  action(value) {
-    value = (value || "").toLocaleLowerCase();
-    const action = Object.entries(FLAGS).find(([name, member]) => name === value && typeof member === "number")?.[1];
-    return typeof action === "number" ? action : FLAGS.stwnone;
-  }
+	url;
+	constructor(args, tagName = "button", runtime) {
+		super(args, tagName, runtime);
+		this.attrs.set("type", "submit");
+		this.attrs.delete("value");
+		try {
+			this.url = new URL(this.args[0]);
+		} catch {
+			this.url = new URL(this.args[0] ?? "", `https://${runtime.Session.baseurl}`);
+		}
+		const action = this.action(this.args[1]);
+		this.attrs.set("formaction", this.url.toString());
+		if (action & (FLAGS.stwsearch | FLAGS.stwfilter)) {
+			this.text = action & FLAGS.stwsearch ? "Search" : "Filter";
+			this.attrs.delete("name");
+			this.attrs.set("formmethod", "GET");
+		} else if (action & FLAGS.stwdelete) {
+			this.text = "Delete";
+			this.attrs.set("formmethod", "DELETE");
+		} else if (action & FLAGS.stwupdate) {
+			this.text = "Update";
+			this.attrs.set("formmethod", "PATCH");
+		} else if (action & FLAGS.stwinsert) {
+			this.text = "Insert";
+			this.attrs.set("formmethod", "PUT");
+		} else if (action & FLAGS.stwreset) {
+			this.text = "Reset";
+			this.attrs.set("type", "reset");
+		} else {
+			this.text = "Submit";
+			this.attrs.set("formmethod", "POST");
+		}
+		runtime.Flags |= action;
+	}
+	p(args, index, runtime) {
+		if (args === ".")
+			return this.q(args, index, runtime);
+		runtime.Index = index;
+		args = WBPL(args, runtime.Placeholders);
+		const search = `${args};;`.split(";");
+		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
+		this.attrs.set("formaction", this.url.toString());
+		return this;
+	}
+	q(args, index, runtime) {
+		runtime.Index = index;
+		if (args === ".")
+			args = String(runtime.Placeholders.get("@@query_string"));
+		else
+			args = WBPL(args, runtime.Placeholders);
+		try {
+			const qs = (args ?? "").trim().replace(/^\?/, "");
+			const params = new URLSearchParams(qs);
+			for (const [k2, v2] of params.entries())
+				this.url.searchParams.set(k2, v2);
+			this.attrs.set("formaction", this.url.toString());
+		} catch {
+		}
+		return this;
+	}
+	t(args, index, runtime) {
+		const symbol = WBLL.t(args, index, runtime);
+		this.text = symbol.text;
+		return this;
+	}
+	toString() {
+		if (this.runtime.Settings.get("disabled"))
+			return "";
+		const fragment = super.toString();
+		if (["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn)) {
+			this.runtime.Actions += fragment;
+			return "";
+		}
+		return fragment;
+	}
+	action(value) {
+		value = (value || "").toLocaleLowerCase();
+		const action = Object.entries(FLAGS).find(([name, member]) => name === value && typeof member === "number")?.[1];
+		return typeof action === "number" ? action : FLAGS.stwnone;
+	}
 }
 class ChoiceSymbol extends FormSymbol {
-  constructor(args, tagName = "checkbox", runtime) {
-    super(args, tagName, runtime);
-  }
-  toString() {
-    const type = this.attrs.get("type");
-    const supportsGroups = this.tagName === "select" || type === "checkbox" || type === "radio";
-    const mode = supportsGroups && this.args[3] === "3" ? 3 : [, "1", "2"].indexOf(this.args[3]);
-    if (mode !== -1) {
-      const tagName = this.attrs.get("type");
-      this.attrs.delete("type");
-      let htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
-      if (mode === 3 && (tagName === "checkbox" || tagName === "radio")) {
-        const options = this.choiceItems(this.args, mode);
-        const groups = /* @__PURE__ */ new Map();
-        for (const option of options) {
-          const group = option.group ?? "";
-          groups.set(group, [...groups.get(group) ?? [], option]);
-        }
-        const updateValue = tagName === "checkbox" ? `this.querySelector('input[type="hidden"]').value=[...this.querySelectorAll(":checked")].map(el => el.value).join(',')` : `this.querySelectorAll('input[type="radio"]').forEach(el => el.checked=el==event.target);this.querySelector('input[type="hidden"]').value=event.target.value`;
-        let fragment2 = `<div class="stwChoices" onchange="${updateValue}"><input type="hidden"${htmlAttrs}>`;
-        for (const [group, groupedOptions] of groups) {
-          fragment2 += `<fieldset>${group ? `<legend>${group}</legend>` : ""}`;
-          for (const option of groupedOptions) {
-            fragment2 += `<label><input type="${tagName}" value="${option.value}"${option.value === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || option.label.charAt(0) === "!" ? " disabled" : ""}> ${option.label}</label>`;
-          }
-          fragment2 += "</fieldset>";
-        }
-        return fragment2 + "</div>";
-      }
-      let fragment = `<input type="hidden"${htmlAttrs}><fieldset class="stwChoices" onchange="`;
-      if (tagName === "checkbox") {
-        if (mode === 1)
-          fragment += `this.previousElementSibling.value=[...this.querySelectorAll(':checked')].reduce((acc, el) => acc + Number(el.value), 0)">`;
-        else
-          fragment += `this.previousElementSibling.value=[...this.querySelectorAll(':checked')].map(el => el.value).join(',')">`;
-        for (let i2 = 4; i2 < this.args.length; i2 += mode)
-          fragment += `<label><input type="checkbox" value="${mode === 1 ? 1 << i2 - 4 : this.args[i2]}"${this.args[i2] === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || this.args[i2 + mode - 1].charAt(0) === "!" ? " disabled" : ""}> ${this.args[i2 + mode - 1]}</label>`;
-        fragment += "</fieldset>";
-      } else if (tagName === "radio") {
-        fragment += `this.querySelectorAll('input').forEach(el => el.checked=el==event.target);this.previousElementSibling.value=event.target.value">`;
-        for (let i2 = 4; i2 < this.args.length; i2 += mode)
-          fragment += `<label><input type="radio" value="${this.args[i2]}"${this.args[i2] === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || this.args[i2 + mode - 1].charAt(0) === "!" ? " disabled" : ""}> ${this.args[i2 + mode - 1]}</label>`;
-        fragment += "</fieldset>";
-      } else if (this.tagName === "select") {
-        fragment = `<select${htmlAttrs}>`;
-        if (this.attrs.has("data-blank")) {
-          fragment += '<option value=""></option>';
-          this.attrs.delete("data-blank");
-        }
-        const options = this.choiceItems(this.args, mode);
-        const renderOption = ({ value, label }) => `<option value="${value}"${value === (this.attrs.get("value") ?? "") ? " selected" : ""}${label.charAt(0) === "!" ? " disabled" : ""}>${label}</option>`;
-        if (mode === 3) {
-          const groups = /* @__PURE__ */ new Map();
-          for (const option of options) {
-            const group = option.group ?? "";
-            groups.set(group, [...groups.get(group) ?? [], option]);
-          }
-          for (const [group, groupedOptions] of groups)
-            fragment += group ? `<optgroup label="${group}">${groupedOptions.map(renderOption).join("")}</optgroup>` : groupedOptions.map(renderOption).join("");
-        } else {
-          fragment += options.map(renderOption).join("");
-        }
-        fragment += "</select>";
-      } else {
-        let i2 = Number(this.attrs.get("value")) + 3;
-        if (mode === 2) {
-          for (i2 = 4; i2 < this.args.length; i2 += 2)
-            if (this.args[i2] == this.attrs.get("value"))
-              break;
-        }
-        this.attrs.delete("id");
-        this.attrs.delete("name");
-        this.attrs.delete("value");
-        htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
-        fragment = this.args[i2 + 1] || "";
-        if (htmlAttrs)
-          fragment = `<span${htmlAttrs}>${fragment}</span>`;
-      }
-      return fragment;
-    } else if (this.tagName === "checkbox")
-      return `<input${[...this.attrs.entries()].map(
-        ([key, value]) => value === "" ? ` ${key}` : ` ${key}="${value || ""}"`
-      ).join("")}>`;
-    throw new SyntaxError();
-  }
-  choiceItems(args, arity) {
-    const items = [];
-    for (let i2 = 4; i2 < args.length; i2 += arity) {
-      items.push({
-        value: args[i2],
-        label: arity === 1 ? args[i2] : args[i2 + 1],
-        group: arity === 3 ? args[i2 + 2] : void 0
-      });
-    }
-    return items;
-  }
+	constructor(args, tagName = "checkbox", runtime) {
+		super(args, tagName, runtime);
+	}
+	toString() {
+		const type = this.attrs.get("type");
+		const supportsGroups = this.tagName === "select" || type === "checkbox" || type === "radio";
+		const mode = supportsGroups && this.args[3] === "3" ? 3 : [, "1", "2"].indexOf(this.args[3]);
+		if (mode !== -1) {
+			const tagName = this.attrs.get("type");
+			this.attrs.delete("type");
+			let htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
+			if (mode === 3 && (tagName === "checkbox" || tagName === "radio")) {
+				const options = this.choiceItems(this.args, mode);
+				const groups = /* @__PURE__ */ new Map();
+				for (const option of options) {
+					const group = option.group ?? "";
+					groups.set(group, [...groups.get(group) ?? [], option]);
+				}
+				const updateValue = tagName === "checkbox" ? `this.querySelector('input[type="hidden"]').value=[...this.querySelectorAll(":checked")].map(el => el.value).join(',')` : `this.querySelectorAll('input[type="radio"]').forEach(el => el.checked=el==event.target);this.querySelector('input[type="hidden"]').value=event.target.value`;
+				let fragment2 = `<div class="stwChoices" onchange="${updateValue}"><input type="hidden"${htmlAttrs}>`;
+				for (const [group, groupedOptions] of groups) {
+					fragment2 += `<fieldset>${group ? `<legend>${group}</legend>` : ""}`;
+					for (const option of groupedOptions) {
+						fragment2 += `<label><input type="${tagName}" value="${option.value}"${option.value === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || option.label.charAt(0) === "!" ? " disabled" : ""}> ${option.label}</label>`;
+					}
+					fragment2 += "</fieldset>";
+				}
+				return fragment2 + "</div>";
+			}
+			let fragment = `<input type="hidden"${htmlAttrs}><fieldset class="stwChoices" onchange="`;
+			if (tagName === "checkbox") {
+				if (mode === 1)
+					fragment += `this.previousElementSibling.value=[...this.querySelectorAll(':checked')].reduce((acc, el) => acc + Number(el.value), 0)">`;
+				else
+					fragment += `this.previousElementSibling.value=[...this.querySelectorAll(':checked')].map(el => el.value).join(',')">`;
+				for (let i2 = 4; i2 < this.args.length; i2 += mode)
+					fragment += `<label><input type="checkbox" value="${mode === 1 ? 1 << i2 - 4 : this.args[i2]}"${this.args[i2] === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || this.args[i2 + mode - 1].charAt(0) === "!" ? " disabled" : ""}> ${this.args[i2 + mode - 1]}</label>`;
+				fragment += "</fieldset>";
+			} else if (tagName === "radio") {
+				fragment += `this.querySelectorAll('input').forEach(el => el.checked=el==event.target);this.previousElementSibling.value=event.target.value">`;
+				for (let i2 = 4; i2 < this.args.length; i2 += mode)
+					fragment += `<label><input type="radio" value="${this.args[i2]}"${this.args[i2] === (this.attrs.get("value") ?? "") ? " checked" : ""}${this.attrs.has("disabled") || this.args[i2 + mode - 1].charAt(0) === "!" ? " disabled" : ""}> ${this.args[i2 + mode - 1]}</label>`;
+				fragment += "</fieldset>";
+			} else if (this.tagName === "select") {
+				fragment = `<select${htmlAttrs}>`;
+				if (this.attrs.has("data-blank")) {
+					fragment += '<option value=""></option>';
+					this.attrs.delete("data-blank");
+				}
+				const options = this.choiceItems(this.args, mode);
+				const renderOption = ({ value, label }) => `<option value="${value}"${value === (this.attrs.get("value") ?? "") ? " selected" : ""}${label.charAt(0) === "!" ? " disabled" : ""}>${label}</option>`;
+				if (mode === 3) {
+					const groups = /* @__PURE__ */ new Map();
+					for (const option of options) {
+						const group = option.group ?? "";
+						groups.set(group, [...groups.get(group) ?? [], option]);
+					}
+					for (const [group, groupedOptions] of groups)
+						fragment += group ? `<optgroup label="${group}">${groupedOptions.map(renderOption).join("")}</optgroup>` : groupedOptions.map(renderOption).join("");
+				} else {
+					fragment += options.map(renderOption).join("");
+				}
+				fragment += "</select>";
+			} else {
+				let i2 = Number(this.attrs.get("value")) + 3;
+				if (mode === 2) {
+					for (i2 = 4; i2 < this.args.length; i2 += 2)
+						if (this.args[i2] == this.attrs.get("value"))
+							break;
+				}
+				this.attrs.delete("id");
+				this.attrs.delete("name");
+				this.attrs.delete("value");
+				htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
+				fragment = this.args[i2 + 1] || "";
+				if (htmlAttrs)
+					fragment = `<span${htmlAttrs}>${fragment}</span>`;
+			}
+			return fragment;
+		} else if (this.tagName === "checkbox")
+			return `<input${[...this.attrs.entries()].map(
+				([key, value]) => value === "" ? ` ${key}` : ` ${key}="${value || ""}"`
+			).join("")}>`;
+		throw new SyntaxError();
+	}
+	choiceItems(args, arity) {
+		const items = [];
+		for (let i2 = 4; i2 < args.length; i2 += arity) {
+			items.push({
+				value: args[i2],
+				label: arity === 1 ? args[i2] : args[i2 + 1],
+				group: arity === 3 ? args[i2 + 2] : void 0
+			});
+		}
+		return items;
+	}
 }
 class EmbedSymbol extends BaseSymbol {
-  url;
-  constructor(args, tagName = "", runtime) {
-    super(args, tagName, runtime);
-    try {
-      this.url = new URL(this.args[0]);
-    } catch {
-      this.url = new URL(this.args[0], `https://${runtime.Session.baseurl}`);
-    }
-    if (tagName === "embed") {
-      this.attrs.set("src", this.url.toString());
-      this.attrs.set("type", "text/html");
-      this.attrs.set("style", "display:block; width: 100%; height: 100%");
-    }
-  }
-  p(args, index, runtime) {
-    runtime.Index = index;
-    args = WBPL(args, runtime.Placeholders);
-    const search = `${args};;`.split(";");
-    this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
-    this.attrs.set("src", this.url.toString());
-    return this;
-  }
-  q(args, index, runtime) {
-    runtime.Index = index;
-    args = WBPL(args, runtime.Placeholders);
-    try {
-      const qs = (args ?? "").trim().replace(/^\?/, "");
-      const params = new URLSearchParams(qs);
-      for (const [k2, v2] of params.entries())
-        this.url.searchParams.set(k2, v2);
-      this.attrs.set("src", this.url.toString());
-    } catch {
-    }
-    return this;
-  }
-  async $() {
-    if (this.runtime.Downgrade)
-      return;
-    if (this.tagName === "embed")
-      this.runtime.HTML += super.toString();
-    else {
-      const response = await fetch(this.url);
-      this.runtime.HTML += await response.text();
-    }
-  }
+	url;
+	constructor(args, tagName = "", runtime) {
+		super(args, tagName, runtime);
+		try {
+			this.url = new URL(this.args[0]);
+		} catch {
+			this.url = new URL(this.args[0], `https://${runtime.Session.baseurl}`);
+		}
+		if (tagName === "embed") {
+			this.attrs.set("src", this.url.toString());
+			this.attrs.set("type", "text/html");
+			this.attrs.set("style", "display:block; width: 100%; height: 100%");
+		}
+	}
+	p(args, index, runtime) {
+		runtime.Index = index;
+		args = WBPL(args, runtime.Placeholders);
+		const search = `${args};;`.split(";");
+		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
+		this.attrs.set("src", this.url.toString());
+		return this;
+	}
+	q(args, index, runtime) {
+		runtime.Index = index;
+		args = WBPL(args, runtime.Placeholders);
+		try {
+			const qs = (args ?? "").trim().replace(/^\?/, "");
+			const params = new URLSearchParams(qs);
+			for (const [k2, v2] of params.entries())
+				this.url.searchParams.set(k2, v2);
+			this.attrs.set("src", this.url.toString());
+		} catch {
+		}
+		return this;
+	}
+	async $() {
+		if (this.runtime.Downgrade)
+			return;
+		if (this.tagName === "embed")
+			this.runtime.HTML += super.toString();
+		else {
+			const response = await fetch(this.url);
+			this.runtime.HTML += await response.text();
+		}
+	}
 }
 class ProgressSymbol extends BaseSymbol {
-  value;
-  constructor(value, runtime) {
-    super(void 0, "div", runtime);
-    this.value = Number(value);
-    this.attrs.set("role", "progressbar");
-    this.attrs.set("aria-valuemin", 0);
-    this.attrs.set("aria-valuemax", 1);
-    this.attrs.set("aria-valuenow", this.value);
-    this.attrs.set("style", "background-color:GrayText;color:AccentColor;");
-  }
-  toString() {
-    if (!Number.isFinite(this.value) || this.value < 0 || this.value > 1)
-      return "";
-    const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
-    return `<div${htmlAttrs}><div style="display:block;width:${this.value * 100}%;height:1rem;background-color:currentColor"></div></div>`;
-  }
+	value;
+	constructor(value, runtime) {
+		super(void 0, "div", runtime);
+		this.value = Number(value);
+		this.attrs.set("role", "progressbar");
+		this.attrs.set("aria-valuemin", 0);
+		this.attrs.set("aria-valuemax", 1);
+		this.attrs.set("aria-valuenow", this.value);
+		this.attrs.set("style", "background-color:GrayText;color:AccentColor;");
+	}
+	toString() {
+		if (!Number.isFinite(this.value) || this.value < 0 || this.value > 1)
+			return "";
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		return `<div${htmlAttrs}><div style="display:block;width:${this.value * 100}%;height:1rem;background-color:currentColor"></div></div>`;
+	}
 }
 function a(url, index, runtime) {
-  runtime.Index = index;
-  url = WBPL(url, runtime.Placeholders);
-  const symbol = new AnchorSymbol(url, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	url = WBPL(url, runtime.Placeholders);
+	const symbol = new AnchorSymbol(url, void 0, runtime);
+	return symbol;
 }
 function A(url, index, runtime) {
-  runtime.Index = index;
-  url = WBPL(url, runtime.Placeholders);
-  const symbol = new AnchorSymbol(url, void 0, runtime);
-  if (!symbol.attrs.has("target"))
-    symbol.attrs.set("target", "_blank");
-  return symbol;
+	runtime.Index = index;
+	url = WBPL(url, runtime.Placeholders);
+	const symbol = new AnchorSymbol(url, void 0, runtime);
+	if (!symbol.attrs.has("target"))
+		symbol.attrs.set("target", "_blank");
+	return symbol;
 }
 function b(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ButtonSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ButtonSymbol(args, void 0, runtime);
+	return symbol;
 }
 function c(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
-  symbol.attrs.set("type", "checkbox");
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
+	symbol.attrs.set("type", "checkbox");
+	return symbol;
 }
 function d(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
-  symbol.attrs.set("data-blank", true);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	symbol.attrs.set("data-blank", true);
+	return symbol;
 }
 function D(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	return symbol;
 }
 function e(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new FormSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new FormSymbol(args, void 0, runtime);
+	return symbol;
 }
 function f(format, index, runtime) {
-  runtime.Index = index;
-  const symbol = new TextSymbol(void 0, void 0, runtime);
-  format = WBPL(format, runtime.Placeholders);
-  if (!isNaN(Number(symbol.text)))
-    symbol.text = formatNumber(Number(symbol.text), format, runtime.Session.lang);
-  else if (!Number.isNaN(Date.parse(symbol.text)))
-    symbol.text = formatDate(symbol.text, format, runtime.Session.lang, runtime.Session.tz);
-  return symbol;
+	runtime.Index = index;
+	const symbol = new TextSymbol(void 0, void 0, runtime);
+	format = WBPL(format, runtime.Placeholders);
+	if (!isNaN(Number(symbol.text)))
+		symbol.text = formatNumber(Number(symbol.text), format, runtime.Session.lang);
+	else if (!Number.isNaN(Date.parse(symbol.text)))
+		symbol.text = formatDate(symbol.text, format, runtime.Session.lang, runtime.Session.tz);
+	return symbol;
 }
 function h(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new FormSymbol(`;${args}`, void 0, runtime);
-  symbol.attrs.set("type", "hidden");
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new FormSymbol(`;${args}`, void 0, runtime);
+	symbol.attrs.set("type", "hidden");
+	return symbol;
 }
 function i(args, index, runtime) {
-  runtime.Index = index;
-  let symbol;
-  args = WBPL(args, runtime.Placeholders);
-  if (args.indexOf(";") === -1) {
-    symbol = new BaseSymbol(args, "img", runtime);
-    symbol.attrs.set("src", symbol.args[0] || Field(runtime));
-  } else {
-    symbol = new ChoiceSymbol(";;" + args, "img", runtime);
-    symbol.attrs.delete("id");
-    symbol.attrs.delete("name");
-    symbol.attrs.delete("value");
-    symbol.attrs.set("src", symbol.args[2] || Field(runtime));
-  }
-  return symbol;
+	runtime.Index = index;
+	let symbol;
+	args = WBPL(args, runtime.Placeholders);
+	if (args.indexOf(";") === -1) {
+		symbol = new BaseSymbol(args, "img", runtime);
+		symbol.attrs.set("src", symbol.args[0] || Field(runtime));
+	} else {
+		symbol = new ChoiceSymbol(";;" + args, "img", runtime);
+		symbol.attrs.delete("id");
+		symbol.attrs.delete("name");
+		symbol.attrs.delete("value");
+		symbol.attrs.set("src", symbol.args[2] || Field(runtime));
+	}
+	return symbol;
 }
 function j(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  runtime.Settings.set("script", (runtime.Settings.get("script") || "") + args);
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	runtime.Settings.set("script", (runtime.Settings.get("script") || "") + args);
 }
 function k(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new TextSymbol(args, void 0, runtime);
-  const name = symbol.args[0];
-  if (name && !name.toLocaleLowerCase().startsWith("stw") || runtime.Fields[runtime.FldIndex]) {
-    runtime.Session.placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
-    runtime.Placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
-  }
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new TextSymbol(args, void 0, runtime);
+	const name = symbol.args[0];
+	if (name && !name.toLocaleLowerCase().startsWith("stw") || runtime.Fields[runtime.FldIndex]) {
+		runtime.Session.placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+		runtime.Placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+	}
 }
 function l(args, index, runtime) {
-  runtime.Index = index;
-  closeAllBlocks(runtime);
-  if (args != null)
-    args = WBPL(args, runtime.Placeholders);
-  return new LabelSymbol(args, runtime);
+	runtime.Index = index;
+	closeAllBlocks(runtime);
+	if (args != null)
+		args = WBPL(args, runtime.Placeholders);
+	return new LabelSymbol(args, runtime);
 }
 function L(args, index, runtime) {
-  return l(args, index, runtime);
+	return l(args, index, runtime);
 }
 function m(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new TextAreaSymbol(`${args ?? ";"}`, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new TextAreaSymbol(`${args ?? ";"}`, void 0, runtime);
+	return symbol;
 }
 function n(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(";;;" + args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(";;;" + args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(args, void 0, runtime);
+	return symbol;
 }
 function o(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new EmbedSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new EmbedSymbol(args, void 0, runtime);
+	return symbol;
 }
 function O(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new EmbedSymbol(args, "embed", runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new EmbedSymbol(args, "embed", runtime);
+	return symbol;
 }
 function r(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
-  symbol.attrs.set("type", "radio");
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
+	symbol.attrs.set("type", "radio");
+	return symbol;
 }
 function s(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
-  symbol.attrs.set("multiple", true);
-  symbol.attrs.set("data-blank", true);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	symbol.attrs.set("multiple", true);
+	symbol.attrs.set("data-blank", true);
+	return symbol;
 }
 function S(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
-  symbol.attrs.set("multiple", true);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	symbol.attrs.set("multiple", true);
+	return symbol;
 }
 function t(args, index, runtime) {
-  runtime.Index = index;
-  const symbol = new TextSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	const symbol = new TextSymbol(args, void 0, runtime);
+	return symbol;
 }
 function u(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new FormSymbol(`;${args}`, void 0, runtime);
-  symbol.attrs.set("type", "file");
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new FormSymbol(`;${args}`, void 0, runtime);
+	symbol.attrs.set("type", "file");
+	return symbol;
 }
 function v(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new TextSymbol(args, void 0, runtime);
-  if (!isNaN(Number(symbol.args[2])))
-    symbol.text = formatNumber(Number(symbol.args[2]), symbol.args[0], runtime.Session.lang);
-  else if (!Number.isNaN(Date.parse(symbol.args[2])))
-    symbol.text = formatDate(symbol.args[2], symbol.args[0], runtime.Session.lang, runtime.Session.tz);
-  else
-    symbol.text = symbol.args[2] ?? "";
-  const name = symbol.args[1];
-  if (name && !name.toLowerCase().startsWith("stw")) {
-    runtime.Session.placeholders.set(`@@${name}`, symbol.args[2]);
-    runtime.Placeholders.set(`@@${name}`, symbol.args[2]);
-  }
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new TextSymbol(args, void 0, runtime);
+	if (!isNaN(Number(symbol.args[2])))
+		symbol.text = formatNumber(Number(symbol.args[2]), symbol.args[0], runtime.Session.lang);
+	else if (!Number.isNaN(Date.parse(symbol.args[2])))
+		symbol.text = formatDate(symbol.args[2], symbol.args[0], runtime.Session.lang, runtime.Session.tz);
+	else
+		symbol.text = symbol.args[2] ?? "";
+	const name = symbol.args[1];
+	if (name && !name.toLowerCase().startsWith("stw")) {
+		runtime.Session.placeholders.set(`@@${name}`, symbol.args[2]);
+		runtime.Placeholders.set(`@@${name}`, symbol.args[2]);
+	}
+	return symbol;
 }
 function w(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new FormSymbol(`;${args}`, void 0, runtime);
-  symbol.attrs.set("type", "password");
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new FormSymbol(`;${args}`, void 0, runtime);
+	symbol.attrs.set("type", "password");
+	return symbol;
 }
 function x(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new ProgressSymbol(args, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new ProgressSymbol(args, runtime);
+	return symbol;
 }
 function y(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new TextSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new TextSymbol(args, void 0, runtime);
+	return symbol;
 }
 function z(args, index, runtime) {
-  runtime.Index = index;
-  args = WBPL(args, runtime.Placeholders);
-  const symbol = new TextSymbol(args, void 0, runtime);
-  return symbol;
+	runtime.Index = index;
+	args = WBPL(args, runtime.Placeholders);
+	const symbol = new TextSymbol(args, void 0, runtime);
+	return symbol;
 }
 function $s(attrs, index, runtime) {
-  runtime.Index = index;
-  attrs = WBPL(attrs, runtime.Placeholders);
-  runtime.Settings.set("rows", 25);
-  for (const [, key, dq, sq, bare] of attrs.matchAll(/(?:^|\s+)([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g))
-    runtime.Settings.set(key, dq ?? sq ?? bare ?? true);
+	runtime.Index = index;
+	attrs = WBPL(attrs, runtime.Placeholders);
+	runtime.Settings.set("rows", 25);
+	for (const [, key, dq, sq, bare] of attrs.matchAll(/(?:^|\s+)([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g))
+		runtime.Settings.set(key, dq ?? sq ?? bare ?? true);
 }
 function $A(attrs, index, runtime) {
-  return WBLL.$n(attrs, index, runtime);
+	return WBLL.$n(attrs, index, runtime);
 }
 function $r(attrs, index, runtime) {
-  runtime.Index = index;
-  let symbol;
-  if (["thead", "tbody", "tfoot"].includes(runtime.RenderIn))
-    symbol = new RootSymbol(attrs, "br", runtime);
-  else
-    symbol = new RootSymbol(`style="flex-basis:100%;" ${attrs || ""}`, "div", runtime);
-  return symbol;
+	runtime.Index = index;
+	let symbol;
+	if (["thead", "tbody", "tfoot"].includes(runtime.RenderIn))
+		symbol = new RootSymbol(attrs, "br", runtime);
+	else
+		symbol = new RootSymbol(`style="flex-basis:100%;" ${attrs || ""}`, "div", runtime);
+	return symbol;
 }
 function $n(attrs, index, runtime) {
-  runtime.Index = index;
-  closeAllBlocks(runtime);
-  attrs = WBPL(attrs, runtime.Placeholders);
-  if (!["thead", "tbody", "tfoot"].includes(runtime.RenderIn)) {
-    attrs = `style="display:flex;flex-basis:100%;" ${attrs || ""}`;
-    runtime.Wrappers.push("div");
-    return new RootSymbol(`class="stwLine"${attrs || ""}`, "div", runtime);
-  }
-  if (["thead", "tfoot"].includes(runtime.RenderIn)) {
-    runtime.RenderIn = "";
-    runtime.Downgrade = true;
-    return new RootSymbol("", "", runtime);
-  }
-  runtime.HTML += new RootSymbol(attrs, "tr", runtime).toString();
-  runtime.Wrappers.push("tr", "td");
-  return new RootSymbol(`colspan="${runtime.Cols}"`, "td", runtime);
+	runtime.Index = index;
+	closeAllBlocks(runtime);
+	attrs = WBPL(attrs, runtime.Placeholders);
+	if (!["thead", "tbody", "tfoot"].includes(runtime.RenderIn)) {
+		attrs = `style="display:flex;flex-basis:100%;" ${attrs || ""}`;
+		runtime.Wrappers.push("div");
+		return new RootSymbol(`class="stwLine"${attrs || ""}`, "div", runtime);
+	}
+	if (["thead", "tfoot"].includes(runtime.RenderIn)) {
+		runtime.RenderIn = "";
+		runtime.Downgrade = true;
+		return new RootSymbol("", "", runtime);
+	}
+	runtime.HTML += new RootSymbol(attrs, "tr", runtime).toString();
+	runtime.Wrappers.push("tr", "td");
+	return new RootSymbol(`colspan="${runtime.Cols}"`, "td", runtime);
 }
 function $t(attrs, index, runtime) {
-  runtime.Index = index;
-  attrs = WBPL(`class="stwTab"${attrs || ""}`, runtime.Placeholders);
-  if (runtime.RenderIn !== "tbody") {
-    if (runtime.Wrappers.at(-1) === "span" || runtime.Wrappers.at(-1) === "label")
-      closeBlock(runtime);
-    runtime.Wrappers.push("span");
-    return new RootSymbol(attrs, "span", runtime);
-  }
-  while (runtime.Wrappers.length && runtime.Wrappers.at(-1) !== "tr")
-    closeBlock(runtime);
-  if (runtime.Wrappers.at(-1) !== "tr") {
-    runtime.HTML += "<tr>";
-    runtime.Wrappers.push("tr");
-  }
-  runtime.Wrappers.push("td");
-  return new RootSymbol(attrs, "td", runtime);
+	runtime.Index = index;
+	attrs = WBPL(`class="stwTab"${attrs || ""}`, runtime.Placeholders);
+	if (runtime.RenderIn !== "tbody") {
+		if (runtime.Wrappers.at(-1) === "span" || runtime.Wrappers.at(-1) === "label")
+			closeBlock(runtime);
+		runtime.Wrappers.push("span");
+		return new RootSymbol(attrs, "span", runtime);
+	}
+	while (runtime.Wrappers.length && runtime.Wrappers.at(-1) !== "tr")
+		closeBlock(runtime);
+	if (runtime.Wrappers.at(-1) !== "tr") {
+		runtime.HTML += "<tr>";
+		runtime.Wrappers.push("tr");
+	}
+	runtime.Wrappers.push("td");
+	return new RootSymbol(attrs, "td", runtime);
 }
 function $mc(steps, index, runtime) {
-  runtime.Index = index;
-  runtime.FldIndex += steps;
-  if (runtime.FldIndex < 0)
-    runtime.FldIndex = 0;
-  else if (runtime.FldIndex > runtime.Fields.length - 1)
-    runtime.FldIndex = runtime.Fields.length;
+	runtime.Index = index;
+	runtime.FldIndex += steps;
+	if (runtime.FldIndex < 0)
+		runtime.FldIndex = 0;
+	else if (runtime.FldIndex > runtime.Fields.length - 1)
+		runtime.FldIndex = runtime.Fields.length;
 }
 function formatNumber(value, format, locale) {
-  if (!format) return new Intl.NumberFormat(locale).format(value);
-  const match = format.match(/[0#,]+(?:\.[0#]+)?/);
-  if (!match || match.index === void 0)
-    return format;
-  const mask = match[0];
-  const [integerMask, fractionMask = ""] = mask.split(".");
-  const prefix = format.slice(0, match.index).replace("%", "");
-  const suffix = format.slice(match.index + mask.length).replace("%", "");
-  const formatted = new Intl.NumberFormat(locale, {
-    style: format.includes("%") ? "percent" : "decimal",
-    useGrouping: integerMask.includes(","),
-    minimumIntegerDigits: Math.max(1, integerMask.split("0").length - 1),
-    minimumFractionDigits: fractionMask.split("0").length - 1,
-    maximumFractionDigits: fractionMask.length
-  }).format(value);
-  return `${prefix}${formatted}${suffix}`;
+	if (!format) return new Intl.NumberFormat(locale).format(value);
+	const match = format.match(/[0#,]+(?:\.[0#]+)?/);
+	if (!match || match.index === void 0)
+		return format;
+	const mask = match[0];
+	const [integerMask, fractionMask = ""] = mask.split(".");
+	const prefix = format.slice(0, match.index).replace("%", "");
+	const suffix = format.slice(match.index + mask.length).replace("%", "");
+	const formatted = new Intl.NumberFormat(locale, {
+		style: format.includes("%") ? "percent" : "decimal",
+		useGrouping: integerMask.includes(","),
+		minimumIntegerDigits: Math.max(1, integerMask.split("0").length - 1),
+		minimumFractionDigits: fractionMask.split("0").length - 1,
+		maximumFractionDigits: fractionMask.length
+	}).format(value);
+	return `${prefix}${formatted}${suffix}`;
 }
 function formatDate(date, format, locale, timeZone) {
-  if (!format) return date;
-  const value = new Date(date);
-  if (isNaN(value.getTime())) return date;
-  const part = (type, options) => new Intl.DateTimeFormat(locale, { timeZone, ...options }).formatToParts(value).find((item) => item.type === type)?.value ?? "";
-  const tokens = {
-    "d": part("day", { day: "numeric" }),
-    "dd": part("day", { day: "2-digit" }),
-    "ddd": part("weekday", { weekday: "short" }),
-    "dddd": part("weekday", { weekday: "long" }),
-    "M": part("month", { month: "numeric" }),
-    "MM": part("month", { month: "2-digit" }),
-    "MMM": part("month", { month: "short" }),
-    "MMMM": part("month", { month: "long" }),
-    "yy": part("year", { year: "2-digit" }),
-    "yyyy": part("year", { year: "numeric" }),
-    "h": part("hour", { hour: "numeric", hourCycle: "h12" }),
-    "hh": part("hour", { hour: "2-digit", hourCycle: "h12" }),
-    "H": part("hour", { hour: "numeric", hourCycle: "h23" }),
-    "HH": part("hour", { hour: "2-digit", hourCycle: "h23" }),
-    "m": part("minute", { minute: "numeric" }),
-    "mm": part("minute", { minute: "2-digit" }),
-    "s": part("second", { second: "numeric" }),
-    "ss": part("second", { second: "2-digit" })
-  };
-  return format.replace(
-    /"([^"]*)"|'([^']*)'|dddd|ddd|yyyy|yy|MMMM|MMM|MM|M|dd|d|HH|H|hh|h|mm|m|ss|s/g,
-    (match, doubleQuoted, singleQuoted) => doubleQuoted ?? singleQuoted ?? tokens[match]
-  );
+	if (!format) return date;
+	const value = new Date(date);
+	if (isNaN(value.getTime())) return date;
+	const part = (type, options) => new Intl.DateTimeFormat(locale, { timeZone, ...options }).formatToParts(value).find((item) => item.type === type)?.value ?? "";
+	const tokens = {
+		"d": part("day", { day: "numeric" }),
+		"dd": part("day", { day: "2-digit" }),
+		"ddd": part("weekday", { weekday: "short" }),
+		"dddd": part("weekday", { weekday: "long" }),
+		"M": part("month", { month: "numeric" }),
+		"MM": part("month", { month: "2-digit" }),
+		"MMM": part("month", { month: "short" }),
+		"MMMM": part("month", { month: "long" }),
+		"yy": part("year", { year: "2-digit" }),
+		"yyyy": part("year", { year: "numeric" }),
+		"h": part("hour", { hour: "numeric", hourCycle: "h12" }),
+		"hh": part("hour", { hour: "2-digit", hourCycle: "h12" }),
+		"H": part("hour", { hour: "numeric", hourCycle: "h23" }),
+		"HH": part("hour", { hour: "2-digit", hourCycle: "h23" }),
+		"m": part("minute", { minute: "numeric" }),
+		"mm": part("minute", { minute: "2-digit" }),
+		"s": part("second", { second: "numeric" }),
+		"ss": part("second", { second: "2-digit" })
+	};
+	return format.replace(
+		/"([^"]*)"|'([^']*)'|dddd|ddd|yyyy|yy|MMMM|MMM|MM|M|dd|d|HH|H|hh|h|mm|m|ss|s/g,
+		(match, doubleQuoted, singleQuoted) => doubleQuoted ?? singleQuoted ?? tokens[match]
+	);
 }
 function closeBlock(runtime) {
-  const tagName = runtime.Wrappers.pop();
-  if (tagName)
-    runtime.HTML += `</${tagName}>`;
+	const tagName = runtime.Wrappers.pop();
+	if (tagName)
+		runtime.HTML += `</${tagName}>`;
 }
 function closeAllBlocks(runtime) {
-  while (runtime.Wrappers.length && !(runtime.RenderIn.startsWith("t") && runtime.Wrappers[0] === "tr"))
-    closeBlock(runtime);
+	while (runtime.Wrappers.length && !(runtime.RenderIn.startsWith("t") && runtime.Wrappers[0] === "tr"))
+		closeBlock(runtime);
 }
 function Field(runtime, separator = "") {
-  if (runtime.FldIndex >= runtime.Fields.length)
-    return "";
-  const fieldName = runtime.Fields[runtime.FldIndex++] || "";
-  return `${separator ? fieldName + separator : ""}${runtime.Placeholders.get(`@@${fieldName}`)?.toString() || ""}`;
+	if (runtime.FldIndex >= runtime.Fields.length)
+		return "";
+	const fieldName = runtime.Fields[runtime.FldIndex++] || "";
+	return `${separator ? fieldName + separator : ""}${runtime.Placeholders.get(`@@${fieldName}`)?.toString() || ""}`;
 }
 function isTruthy(val) {
-  if (!val || val === "false") return false;
-  if (val === "true") return true;
-  const num = Number(val);
-  return !isNaN(num) && num !== 0;
+	if (!val || val === "false") return false;
+	if (val === "true") return true;
+	const num = Number(val);
+	return !isNaN(num) && num !== 0;
 }
 export {
-  FLAGS,
-  STWLayout,
-  isTruthy
+	FLAGS,
+	STWLayout,
+	isTruthy
 };

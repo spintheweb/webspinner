@@ -11,5 +11,5 @@
  */
 const STWIndex = /* @__PURE__ */ new Map();
 export {
-  STWIndex
+	STWIndex
 };

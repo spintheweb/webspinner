@@ -20,34 +20,34 @@ import { STWElement } from "./stwElement.js";
 import { STWPortal } from "./stwPortal.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 class STWArea extends STWElement {
-  mainpage;
-  version;
-  constructor(area) {
-    super(area);
-    this.mainpage = area.mainpage;
-    this.version = area.version || `v1.0.0 ${(/* @__PURE__ */ new Date()).toISOString()}`;
-  }
-  toLocalizedJSON(session) {
-    return {
-      ...super.toLocalizedJSON(session),
-      mainpage: this.mainpage,
-      version: this.version
-    };
-  }
-  update(session, data) {
-    super.update(session, data);
-    this.mainpage = data.mainpage || this.mainpage;
-    this.version = data.version || this.version;
-  }
-  serve(req, session) {
-    const page = STWPortal.index.get(this.mainpage);
-    return page?.serve(req, session) || new Promise((resolve) => {
-      const response = secureResponse(`Area '${this.localize(session, "name")}' main page not found`, { status: 404, statusText: "Not Found" });
-      resolve(response);
-    });
-  }
+	mainpage;
+	version;
+	constructor(area) {
+		super(area);
+		this.mainpage = area.mainpage;
+		this.version = area.version || `v1.0.0 ${(/* @__PURE__ */ new Date()).toISOString()}`;
+	}
+	toLocalizedJSON(session) {
+		return {
+			...super.toLocalizedJSON(session),
+			mainpage: this.mainpage,
+			version: this.version
+		};
+	}
+	update(session, data) {
+		super.update(session, data);
+		this.mainpage = data.mainpage || this.mainpage;
+		this.version = data.version || this.version;
+	}
+	serve(req, session) {
+		const page = STWPortal.index.get(this.mainpage);
+		return page?.serve(req, session) || new Promise((resolve) => {
+			const response = secureResponse(`Area '${this.localize(session, "name")}' main page not found`, { status: 404, statusText: "Not Found" });
+			resolve(response);
+		});
+	}
 }
 registerElement("Area", STWArea);
 export {
-  STWArea
+	STWArea
 };

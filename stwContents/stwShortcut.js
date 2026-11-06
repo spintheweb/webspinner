@@ -15,20 +15,20 @@ import { STWIndex } from "../stwElements/stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
 class STWShortcut extends STWContent {
-  ref;
-  constructor(content) {
-    super(content);
-    this.ref = content.ref;
-  }
-  serve(_req, _session) {
-    const ref = STWIndex.get(this.ref);
-    if (!(ref instanceof STWContent) || !this.isVisible(_session) || !ref || ref instanceof STWShortcut)
-      return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
-    debugLog(`${(/* @__PURE__ */ new Date()).toISOString()}: \u251C\u252C ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
-    return ref.serve(_req, _session, this);
-  }
+	ref;
+	constructor(content) {
+		super(content);
+		this.ref = content.ref;
+	}
+	serve(_req, _session) {
+		const ref = STWIndex.get(this.ref);
+		if (!(ref instanceof STWContent) || !this.isVisible(_session) || !ref || ref instanceof STWShortcut)
+			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
+		debugLog(`${(/* @__PURE__ */ new Date()).toISOString()}: \u251C\u252C ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
+		return ref.serve(_req, _session, this);
+	}
 }
 registerElement("Shortcut", STWShortcut);
 export {
-  STWShortcut
+	STWShortcut
 };
