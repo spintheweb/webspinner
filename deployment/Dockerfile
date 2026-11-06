@@ -1,25 +1,16 @@
 # syntax=docker/dockerfile:1.6
 
 ARG NODE_VERSION=26
-FROM node:${NODE_VERSION}-bookworm-slim AS build
+FROM node:${NODE_VERSION}-bookworm-slim
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
-COPY tsconfig.json ./
-COPY stwSpinner.ts ./
+ENV NODE_ENV=production
+RUN npm ci --omit=dev
+COPY stwSpinner.js ./
 COPY stwComponents ./stwComponents
 COPY stwContents ./stwContents
 COPY stwElements ./stwElements
-COPY tasks ./tasks
-RUN npm run build
-
-FROM node:${NODE_VERSION}-bookworm-slim
-WORKDIR /app
-ENV NODE_ENV=production
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
 COPY public ./public
 COPY webbaselets ./webbaselets
 COPY stwStyles ./stwStyles

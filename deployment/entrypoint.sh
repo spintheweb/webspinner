@@ -40,7 +40,7 @@ if [ -n "${PORTAL_DOMAIN:-}" ] || [ -f "$APP_DIR/.configured" ]; then
   # create sentinel
   touch "$APP_DIR/.configured" || true
   echo "INFO: Starting Webspinner (PORTAL_DOMAIN=${PORTAL_DOMAIN:-<unset>})."
-  exec node dist/stwSpinner.js
+  exec node stwSpinner.js
 fi
 
 echo "INFO: No PORTAL_DOMAIN set and no configuration sentinel found. Serving configuration info page on port $PORT."

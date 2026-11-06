@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.ts";
-import { WBOL } from "../stwComponents/stwWBOL.ts";
+import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.js";
+import { WBOL } from "../stwComponents/stwWBOL.js";
 
 test("cookie helpers parse and set session cookies", () => {
 	const cookies = getCookies(new Headers({ cookie: "sessionId=a%20b; theme=dark" }));

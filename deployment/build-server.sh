@@ -91,7 +91,8 @@ mkdir -p "$PAYLOAD_DIR"
 echo -e "${BLUE}Step 1: Creating payload archive...${NC}"
 
 # Copy runtime files to payload directory
-cp -r dist "$PAYLOAD_DIR/"
+cp stwSpinner.js "$PAYLOAD_DIR/"
+cp -r stwComponents stwContents stwElements "$PAYLOAD_DIR/"
 cp -r stwStyles "$PAYLOAD_DIR/"
 cp -r webbaselets "$PAYLOAD_DIR/"
 cp -r public "$PAYLOAD_DIR/"
@@ -306,7 +307,7 @@ fi
 
 # Check if this is an upgrade
 UPGRADE_MODE=false
-if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/stwSpinner.ts" ]; then
+if [ -d "$INSTALL_DIR" ] && { [ -f "$INSTALL_DIR/stwSpinner.js" ] || [ -f "$INSTALL_DIR/stwSpinner.ts" ]; }; then
   UPGRADE_MODE=true
   echo ""
   echo "Existing installation detected at: $INSTALL_DIR"
@@ -346,8 +347,10 @@ tail -n+$ARCHIVE_LINE "$0" | base64 -d | tar -xzf - -C "$TEMP_EXTRACT" --strip-c
 # In upgrade mode, selectively copy files
 if [ "$UPGRADE_MODE" = true ]; then
   # Update core Webspinner files only
-  rm -rf "$INSTALL_DIR/dist"
-  cp -r "$TEMP_EXTRACT/dist" "$INSTALL_DIR/"
+  rm -rf "$INSTALL_DIR/dist" "$INSTALL_DIR/stwComponents" "$INSTALL_DIR/stwContents" "$INSTALL_DIR/stwElements"
+  rm -f "$INSTALL_DIR/stwSpinner.ts"
+  cp "$TEMP_EXTRACT/stwSpinner.js" "$INSTALL_DIR/"
+  cp -r "$TEMP_EXTRACT/stwComponents" "$TEMP_EXTRACT/stwContents" "$TEMP_EXTRACT/stwElements" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/stwStyles" "$INSTALL_DIR/"
   cp "$TEMP_EXTRACT/package.json" "$TEMP_EXTRACT/package-lock.json" "$INSTALL_DIR/"
   cp -r "$TEMP_EXTRACT/LICENSE" "$INSTALL_DIR/"
@@ -658,7 +661,7 @@ After=network.target
 Type=simple
 User=$SUDO_USER
 WorkingDirectory=$INSTALL_DIR
-ExecStart=/usr/bin/env node dist/stwSpinner.js
+ExecStart=/usr/bin/env node stwSpinner.js
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -678,7 +681,7 @@ if [ "$SERVICE_INSTALL" = false ]; then
   cat > "$INSTALL_DIR/start.sh" << 'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
-node dist/stwSpinner.js
+node stwSpinner.js
 EOF
   chmod +x "$INSTALL_DIR/start.sh"
 fi

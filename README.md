@@ -23,7 +23,6 @@ Webspinner requires Node.js 22.18 or later. From this repository:
 
 ```bash
 npm ci
-npm run build
 npm start
 ```
 
