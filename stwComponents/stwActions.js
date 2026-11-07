@@ -3,7 +3,7 @@ import { STWSecurity } from "./stwSecurity.js";
 class STWActionRouter {
 	handlers;
 	constructor() {
-		this.handlers = /* @__PURE__ */ new Map();
+		this.handlers = new Map();
 		this.registerDefaultHandlers();
 	}
 	/**

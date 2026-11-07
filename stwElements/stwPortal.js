@@ -26,6 +26,7 @@ import { envGet } from "../stwComponents/stwConfig.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { watch } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+
 class STWPortal extends STWElement {
 	static #instance;
 	static index = STWIndex;
@@ -33,12 +34,13 @@ class STWPortal extends STWElement {
 	datasources;
 	mainpage;
 	version;
+
 	constructor(portal) {
 		super(portal);
 		this.langs = portal.langs || ["en"];
 		this.datasources = new Map(Object.entries(portal.datasources || { name: "STW", value: "" }));
 		this.mainpage = portal.mainpage;
-		this.version = portal.version || `v1.0.0 ${(/* @__PURE__ */ new Date()).toISOString()}`;
+		this.version = portal.version || `v1.0.0 ${(new Date()).toISOString()}`;
 		STWIndex.set(portal.uuid, this);
 	}
 	toLocalizedJSON(session) {
@@ -57,7 +59,7 @@ class STWPortal extends STWElement {
     */
 	static get instance() {
 		if (!STWPortal.#instance) {
-			console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
+			console.log(`${(new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
 			const webbase = envGet("WEBBASE") || "./.data/webbase.wbol";
 			const wbol = WBOL(webbase);
 			STWPortal.#instance = new STWPortal(wbol);
@@ -67,6 +69,7 @@ class STWPortal extends STWElement {
 				);
 			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol");
 			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol");
+			
 			if (envGet("DEBUG") === "true")
 				STWPortal.watchWebbases();
 		}
@@ -76,7 +79,7 @@ class STWPortal extends STWElement {
     * Load Spin the Web Studio webbase, if it's already present, replace it.
     */
 	addWebbaselet(filepath) {
-		console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: Adding webbaselet '${filepath}'...`);
+		console.log(`${(new Date()).toISOString()}: Adding webbaselet '${filepath}'...`);
 		try {
 			if (URL.parse(filepath || ""))
 				fetch(new URL(filepath || "")).then((response) => response.text()).then((text) => load(WBOL(text))).catch((_error) => {
@@ -160,7 +163,7 @@ class STWPortal extends STWElement {
 		this.children.forEach((child) => fragment += child.export());
 		return `<?xml version="1.0" encoding="utf-8"?>
 <wbol version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://webspinner.org" xsi:schemaLocation="https://webspinner.org/schemas wbol.xsd">
-<!--Spin the Web (TM) webbase generated ${(/* @__PURE__ */ new Date()).toISOString()}-->
+<!--Spin the Web (TM) webbase generated ${(new Date()).toISOString()}-->
 <portal uuid="${this.uuid}" langs="${this.langs.join(" ")}" mainpage="${this.mainpage}">
 ${super.export()}${fragment}</portal>
 </wbol>`;
@@ -187,6 +190,7 @@ ${fragment}</urlset>`
 			}
 		}
 	}
+
 	// Watch webbase files for changes and reload when they are modified. In production this code should not be used.
 	// It is useful for development purposes to see changes in real time.
 	static #watcherStarted = false;
@@ -205,7 +209,7 @@ ${fragment}</urlset>`
 				if (filename && filename.toString() !== basename(path)) return;
 				if (reloadTimeout) clearTimeout(reloadTimeout);
 				reloadTimeout = setTimeout(() => {
-					console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: Webbase changed...`);
+					console.log(`${(new Date()).toISOString()}: Webbase changed...`);
 					STWPortal.#instance = void 0;
 					STWPortal.index.clear();
 				}, 200);

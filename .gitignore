@@ -1,8 +1,7 @@
 /.vscode
 node_modules/
 dist/
+tests/
 /.cert/*.pem
-/tests/*.log
-/WIP
 /.env
 /deployment/release

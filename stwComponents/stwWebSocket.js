@@ -20,6 +20,7 @@ import { STWPage } from "../stwElements/stwPage.js";
 import { newId } from "./stwIds.js";
 import { WebSocket } from "ws";
 const SESSION_CLEANUP_GRACE_PERIOD_MS = 3e4;
+
 function handleWebSocket(request, socket, session, stwSessions) {
 	const url = new URL(request.url);
 	const tabId = url.searchParams.get("tab") || newId();
@@ -68,7 +69,6 @@ function handleWebSocket(request, socket, session, stwSessions) {
 					data.method === "PATCH" && data.options.sections?.includes(content.section) ? content : void 0
 				);
 				if (response.status === 200) {
-					console.log(content.type, content.getData(session, "name"), content.section, data.options.sections);
 					finalData.push(await response.json());
 				} else {
 					finalData.push({ method: "DELETE", id: content.uuid });
@@ -100,7 +100,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			setTimeout(() => {
 				if (session.sockets.size === 0) {
 					stwSessions.delete(session.sessionId);
-					console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: Session timed out and removed: [${session.sessionId}]`);
+					console.log(`${(new Date()).toISOString()}: Session timed out and removed: [${session.sessionId}]`);
 				}
 			}, SESSION_CLEANUP_GRACE_PERIOD_MS);
 		}

@@ -27,11 +27,13 @@ const FLAGS = {
 	stwcud: 7,
 	stwany: -1
 };
+
 class STWLayout {
 	wbll;
 	justSettings;
 	renderer;
-	// Rendering function, placeholders are updated at runtime
+
+	// Define rendering function, placeholders are updated at runtime
 	constructor(wbll) {
 		this.wbll = wbll;
 		const SYMBOLS = new RegExp(
@@ -48,6 +50,7 @@ class STWLayout {
 			].map((r2) => r2.source).join("|"),
 			"gmu"
 		);
+
 		const code = [];
 		let closed = false;
 		for (const expression of wbll.matchAll(SYMBOLS)) {
@@ -75,15 +78,17 @@ class STWLayout {
 			else
 				code[i2] = code[i2].match(/^WBLL\.(\$s|\$mc|k|j)/) ? `${code[i2]};` : `await ${code[i2]}.$();`;
 		}
+
 		this.justSettings = !code.some((line) => line.startsWith("await "));
 		code.push(`runtime.HTML += [...runtime.Wrappers].reverse().map(el => \`</\${el}>\`).join("");`);
 		code.push(`let renderIn = ["thead", "tbody", "tfoot"].includes(runtime.RenderIn) ? "tr" : runtime.RenderIn;`);
 		code.push(`if (renderIn) runtime.HTML = \`<\${renderIn}>\${runtime.HTML}</\${renderIn}>\`;`);
 		code.push(`runtime.Wrappers = [];`);
-		const AsyncFunction = Object.getPrototypeOf(async function() {
-		}).constructor;
+
+		const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 		this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
 	}
+
 	async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "") {
 		const runtime = {
 			Session: session,
@@ -95,17 +100,17 @@ class STWLayout {
 			RenderIn: renderIn,
 			Wrappers: [],
 			FldIndex: 0,
-			Settings: /* @__PURE__ */ new Map(),
-			Actions: "",
-			// Filtering, CRUD, Summary
+			Settings: new Map(),
+			Actions: "", // Filtering, CRUD, Summary
 			Cols: 1,
 			Index: 0,
-			Downgrade: false,
-			// From table to form
+			Downgrade: false, // From table to form
 			Mode: FLAGS.stwnone
 		};
 		try {
 			await this.renderer(WBLL, WBPL, runtime);
+
+			// Tables are rendered particularly
 			if (renderIn === "thead" && runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter)) {
 				runtime.RenderIn = "tbody";
 				runtime.FormFields = 0;
@@ -120,6 +125,7 @@ class STWLayout {
 			}
 			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
 				return { settings: runtime.Settings, HTML: "" };
+
 			return { settings: runtime.Settings, HTML: runtime.HTML };
 		} catch (_err) {
 			const index = runtime.Index;
@@ -127,12 +133,15 @@ class STWLayout {
 		}
 	}
 }
+
+//#region Symbols classes
 class RootSymbol {
 	runtime;
 	text = "";
 	tagName = "";
 	args = [];
-	attrs = /* @__PURE__ */ new Map();
+	attrs = new Map();
+
 	constructor(attrs = "", tagName = "", runtime) {
 		this.runtime = runtime;
 		this.tagName = tagName;
@@ -142,10 +151,12 @@ class RootSymbol {
 				this.attrs.set(key, value ?? true);
 			}
 	}
+
 	toString() {
 		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
 		return `<${this.tagName}${htmlAttrs}>`;
 	}
+	
 	$() {
 		if (!["thead", "tbody", "tfoot"].includes(this.runtime.RenderIn))
 			this.runtime.HTML += this.toString();
@@ -156,6 +167,7 @@ class RootSymbol {
 			this.runtime.HTML += this.toString();
 	}
 }
+
 class BaseSymbol extends RootSymbol {
 	constructor(args, tagName = "", runtime) {
 		super(void 0, tagName, runtime);
@@ -169,6 +181,7 @@ class BaseSymbol extends RootSymbol {
 		}
 		this.args.push(param.trim());
 	}
+
 	$a(attrs, index, runtime) {
 		runtime.Index = index;
 		attrs = WBPL(attrs, runtime.Placeholders);
@@ -180,6 +193,7 @@ class BaseSymbol extends RootSymbol {
 		}
 		return this;
 	}
+
 	toString() {
 		if (!this.tagName) return this.text;
 		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
@@ -194,12 +208,14 @@ class BaseSymbol extends RootSymbol {
 		}
 	}
 }
+
 class TextSymbol extends BaseSymbol {
 	constructor(args, tagName = "", runtime) {
 		super(args, tagName, runtime);
 		this.text = args || Field(runtime);
 	}
 }
+
 class AnchorSymbol extends BaseSymbol {
 	url;
 	constructor(url, tagName = "a", runtime) {
@@ -454,7 +470,7 @@ class ChoiceSymbol extends FormSymbol {
 			let htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
 			if (mode === 3 && (tagName === "checkbox" || tagName === "radio")) {
 				const options = this.choiceItems(this.args, mode);
-				const groups = /* @__PURE__ */ new Map();
+				const groups = new Map();
 				for (const option of options) {
 					const group = option.group ?? "";
 					groups.set(group, [...groups.get(group) ?? [], option]);
@@ -493,7 +509,7 @@ class ChoiceSymbol extends FormSymbol {
 				const options = this.choiceItems(this.args, mode);
 				const renderOption = ({ value, label }) => `<option value="${value}"${value === (this.attrs.get("value") ?? "") ? " selected" : ""}${label.charAt(0) === "!" ? " disabled" : ""}>${label}</option>`;
 				if (mode === 3) {
-					const groups = /* @__PURE__ */ new Map();
+					const groups = new Map();
 					for (const option of options) {
 						const group = option.group ?? "";
 						groups.set(group, [...groups.get(group) ?? [], option]);
@@ -603,6 +619,9 @@ class ProgressSymbol extends BaseSymbol {
 		return `<div${htmlAttrs}><div style="display:block;width:${this.value * 100}%;height:1rem;background-color:currentColor"></div></div>`;
 	}
 }
+//#endregion
+
+//#region Symbols
 function a(url, index, runtime) {
 	runtime.Index = index;
 	url = WBPL(url, runtime.Placeholders);
@@ -870,6 +889,9 @@ function $mc(steps, index, runtime) {
 	else if (runtime.FldIndex > runtime.Fields.length - 1)
 		runtime.FldIndex = runtime.Fields.length;
 }
+//#endregion
+
+//#region Helper functions
 function formatNumber(value, format, locale) {
 	if (!format) return new Intl.NumberFormat(locale).format(value);
 	const match = format.match(/[0#,]+(?:\.[0#]+)?/);
@@ -888,6 +910,7 @@ function formatNumber(value, format, locale) {
 	}).format(value);
 	return `${prefix}${formatted}${suffix}`;
 }
+
 function formatDate(date, format, locale, timeZone) {
 	if (!format) return date;
 	const value = new Date(date);
@@ -918,15 +941,18 @@ function formatDate(date, format, locale, timeZone) {
 		(match, doubleQuoted, singleQuoted) => doubleQuoted ?? singleQuoted ?? tokens[match]
 	);
 }
+
 function closeBlock(runtime) {
 	const tagName = runtime.Wrappers.pop();
 	if (tagName)
 		runtime.HTML += `</${tagName}>`;
 }
+
 function closeAllBlocks(runtime) {
 	while (runtime.Wrappers.length && !(runtime.RenderIn.startsWith("t") && runtime.Wrappers[0] === "tr"))
 		closeBlock(runtime);
 }
+
 function Field(runtime, separator = "") {
 	if (runtime.FldIndex >= runtime.Fields.length)
 		return "";
@@ -939,6 +965,8 @@ function isTruthy(val) {
 	const num = Number(val);
 	return !isNaN(num) && num !== 0;
 }
+//#endregion
+
 export {
 	FLAGS,
 	STWLayout,

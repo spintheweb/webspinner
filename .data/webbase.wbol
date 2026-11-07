@@ -328,7 +328,7 @@ END {
 					</name>
 					<query datasource="objects" parameters="id=3&amp;id=5&amp;id=10"><![CDATA[$.({"name":name,"color":data.color})]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
+						<text xml:lang="en"><![CDATA[\s('rownumber="False" closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />

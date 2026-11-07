@@ -25,7 +25,7 @@ class STWArea extends STWElement {
 	constructor(area) {
 		super(area);
 		this.mainpage = area.mainpage;
-		this.version = area.version || `v1.0.0 ${(/* @__PURE__ */ new Date()).toISOString()}`;
+		this.version = area.version || `v1.0.0 ${(new Date()).toISOString()}`;
 	}
 	toLocalizedJSON(session) {
 		return {

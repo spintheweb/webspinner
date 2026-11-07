@@ -68,7 +68,7 @@ class STWTree extends STWContent {
     */
 	buildTreeFromPaths(rows, pathField) {
 		const root = { children: [] };
-		const nodeMap = /* @__PURE__ */ new Map();
+		const nodeMap = new Map();
 		const sortedRows = rows.sort((a, b) => {
 			const pathA = a[pathField] || "";
 			const pathB = b[pathField] || "";

@@ -7,10 +7,10 @@ import { createConnection } from "mysql2/promise";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
 class STWDatasources {
-	static datasources = /* @__PURE__ */ new Map();
+	static datasources = new Map();
 	static #initializationPromise = null;
 	// Keep DSN settings to reconnect when needed
-	static mysqlConfigs = /* @__PURE__ */ new Map();
+	static mysqlConfigs = new Map();
 	static async getConfigurations() {
 		const path = envGet("DATASOURCES") || "./.data/datasources.json";
 		try {

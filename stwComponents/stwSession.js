@@ -24,7 +24,7 @@ class STWSession {
 	dev;
 	// If true STW Studio  enabled
 	portal;
-	sockets = /* @__PURE__ */ new Map();
+	sockets = new Map();
 	// per-tab sockets
 	states;
 	constructor(sessionId, remoteAddr, portal) {
@@ -36,13 +36,13 @@ class STWSession {
 		this.lang = "en";
 		this.langs = ["en"];
 		this.tz = "UTC";
-		this.placeholders = /* @__PURE__ */ new Map();
+		this.placeholders = new Map();
 		this.timestamp = Date.now();
 		this.dev = false;
 		this.portal = portal;
-		this.states = /* @__PURE__ */ new Map();
-		this.sockets = /* @__PURE__ */ new Map();
-		console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
+		this.states = new Map();
+		this.sockets = new Map();
+		console.log(`${(new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
 	}
 	/**
     * @param name Name of the placeholder, it has to start with either \@ (Querystring parameters or Cookie value), 
@@ -76,7 +76,7 @@ class STWSession {
 	}
 	timeout(timer) {
 		clearTimeout(timer);
-		console.log(`${(/* @__PURE__ */ new Date()).toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
+		console.log(`${(new Date()).toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
 		this.timer = setTimeout(() => this.timeout(this.timer), parseInt(envGet("TIMEOUT") || "15") * 6e4);
 	}
 }

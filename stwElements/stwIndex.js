@@ -9,7 +9,7 @@
  * @module stwIndex
  * @license GPL-3.0-or-later
  */
-const STWIndex = /* @__PURE__ */ new Map();
+const STWIndex = new Map();
 export {
 	STWIndex
 };

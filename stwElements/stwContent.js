@@ -47,7 +47,7 @@ class STWContent extends STWElement {
 		this.cache = content.cache || 0;
 		this.contentType = content.contentType || "text/html; charset=utf-8";
 		if (!["Text", "ClientScript", "Shortcut"].includes(this.type) && content.layout) {
-			this.layout = /* @__PURE__ */ new Map();
+			this.layout = new Map();
 			for (const [lang, wbll] of Object.entries(content.layout)) {
 				try {
 					this.layout.set(lang, new STWLayout(wbll));
@@ -78,7 +78,7 @@ class STWContent extends STWElement {
 		let layout = this.layout?.get(session.lang);
 		if (!layout || layout.justSettings && defaultLayout) {
 			layout = new STWLayout((layout?.wbll || "") + defaultLayout);
-			this.layout = /* @__PURE__ */ new Map();
+			this.layout = new Map();
 			this.layout.set(session.lang, layout);
 		}
 		return layout;
@@ -108,7 +108,7 @@ class STWContent extends STWElement {
     */
 	setState(session, state) {
 		if (this.stateful) {
-			if (!session.states) session.states = /* @__PURE__ */ new Map();
+			if (!session.states) session.states = new Map();
 			session.states.set(this.uuid, state);
 		}
 	}
@@ -117,11 +117,11 @@ class STWContent extends STWElement {
 			return secureResponse(null, { status: 204 });
 		if (ref) {
 			debugLog(
-				`${(/* @__PURE__ */ new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(/* @__PURE__ */ new Date()).toISOString()}: \u251C\u2500 ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		}
 		let settings, HTML, records;

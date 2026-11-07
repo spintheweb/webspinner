@@ -11,6 +11,7 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+
 class STWCalendar extends STWContent {
 	constructor(content) {
 		super(content);
@@ -27,8 +28,9 @@ class STWCalendar extends STWContent {
 		const settings = firstRender.settings;
 		const mode = String(settings.get("mode") ?? "month");
 		const datetimeKey = String(settings.get("key") ?? "date");
+		
 		let today = new Date(String(settings.get("date")));
-		if (isNaN(today.getTime())) today = /* @__PURE__ */ new Date();
+		if (isNaN(today.getTime())) today = new Date();
 		const renderRow = async (row) => {
 			if (row === firstRow)
 				return firstRender.HTML;
@@ -84,11 +86,10 @@ class STWCalendar extends STWContent {
 			const daysInMonth = lastDay.getDate();
 			const firstDayOfWeek = getFirstDayOfWeek(session);
 			const weekDays = [];
-			const baseDate = /* @__PURE__ */ new Date();
+			const locale = session.lang || "en";
 			for (let i = 0; i < 7; i++) {
-				const day = new Date(baseDate);
-				day.setDate(baseDate.getDate() + (i + firstDayOfWeek) % 7);
-				weekDays.push(day.toLocaleDateString(session.lang, { weekday: "short" }));
+				const day = new Date(Date.UTC(2023, 0, 1 + (i + firstDayOfWeek) % 7));
+				weekDays.push(day.toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" }));
 			}
 			const monthName = today.toLocaleDateString(session.lang, { month: "long", year: "numeric" });
 			body += `<div class="stwCalendarMonthHeader">${monthName}</div>`;
@@ -99,7 +100,7 @@ class STWCalendar extends STWContent {
 			for (let i = 0; i < firstWeekday; i++) body += `<td></td>`;
 			for (let day = 1; day <= daysInMonth; day++) {
 				const dateStr = toLocalDateString(new Date(year, month, day), session);
-				const isToday = dateStr === toLocalDateString(/* @__PURE__ */ new Date(), session);
+				const isToday = dateStr === toLocalDateString(new Date(), session);
 				body += `<td${isToday ? ' class="stwCalendarToday"' : ""}><div class="stwCalendarDayNum">${day}</div>`;
 				for (const row of recordMap[dateStr] || []) {
 					body += `<div>` + await renderRow(row) + `</div>`;
@@ -116,9 +117,11 @@ class STWCalendar extends STWContent {
 	}
 }
 function getFirstDayOfWeek(session) {
-	const sundayLocales = ["en-US", "en-CA", "en-AU", "en-PH", "zh-CN", "ja-JP"];
-	if (sundayLocales.some((l) => session.langs[0].startsWith(l.split("-")[0]))) return 0;
-	return 1;
+	const locale = new Intl.Locale(session.langs?.[0] || session.lang || "en");
+	const firstDay = locale.weekInfo?.firstDay ?? locale.getWeekInfo?.().firstDay;
+	if (firstDay) return firstDay % 7;
+	const sundayRegions = new Set(["CA", "IL", "JP", "MX", "PH", "US"]);
+	return sundayRegions.has(locale.region) ? 0 : 1;
 }
 function toLocalDateString(date, session) {
 	const formatter = new Intl.DateTimeFormat(session.langs[0], {

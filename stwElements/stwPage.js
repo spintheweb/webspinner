@@ -57,7 +57,7 @@ class STWPage extends STWElement {
     * @returns - A response for the request
     */
 	serve(req, session) {
-		debugLog(`${(/* @__PURE__ */ new Date()).toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
+		debugLog(`${(new Date()).toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
 		return serveFile(req, `./public/${this.template}`);
 	}
 	update(session, data) {

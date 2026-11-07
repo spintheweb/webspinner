@@ -25,11 +25,11 @@ class STWText extends STWContent {
 		}
 		if (ref) {
 			debugLog(
-				`${(/* @__PURE__ */ new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(/* @__PURE__ */ new Date()).toISOString()}: \u251C\u2500 Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		}
 		const data = {

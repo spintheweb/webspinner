@@ -4,7 +4,7 @@ import { secureResponse } from "./stwResponse.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { STWElement } from "../stwElements/stwElement.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
-const datasourceTypes = /* @__PURE__ */ new Set(["api", "mysql", "shell"]);
+const datasourceTypes = new Set(["api", "mysql", "shell"]);
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId] = segments;
 	if (!["users", "roles", "datasources"].includes(resource || "")) return null;
@@ -220,7 +220,7 @@ function validateDatasource(value) {
 	return result;
 }
 function validateDatasourceFields(value) {
-	const allowed = /* @__PURE__ */ new Set(["name", "type", "host", "user", "password", "database", "contentType", "port"]);
+	const allowed = new Set(["name", "type", "host", "user", "password", "database", "contentType", "port"]);
 	for (const key of Object.keys(value)) {
 		if (!allowed.has(key)) throw new AdminApiError(400, `Unsupported datasource field: ${key}`);
 	}

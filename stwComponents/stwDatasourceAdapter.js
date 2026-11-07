@@ -1,7 +1,7 @@
 import { WBPL } from "./stwWBPL.js";
 import { runCommand } from "./stwNode.js";
 class STWAdapterRegistry {
-	static adapters = /* @__PURE__ */ new Map();
+	static adapters = new Map();
 	static register(adapter) {
 		this.adapters.set(adapter.type, adapter);
 	}
