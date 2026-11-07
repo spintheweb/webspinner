@@ -22,8 +22,7 @@ Notes:
 - Images are tagged locally as `ghcr.io/spintheweb/webspinner:latest` by default but are not pushed anywhere unless you explicitly use `--push`.
 - First run: if `PORTAL_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `PORTAL_DOMAIN` to proceed.
 - Persistent data: `./webspinner-data` on host is mounted to `/app/.data` in the container.
-- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE`, `PORTAL_DOMAIN`, and `STW_DEBUG`.
-- Set `STW_DEBUG=true` to enable request-level page and content trace logs; tracing is disabled by default.
+- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE` and `PORTAL_DOMAIN`.
 
 ## Developer WBOL API
 

@@ -24,7 +24,7 @@ import { handleHttp } from "./stwComponents/stwHttpHandler.js";
 import { handleWebSocket } from "./stwComponents/stwWebSocket.js";
 
 const project = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
-import { envGet, envSet, isDocker } from "./stwComponents/stwConfig.js";
+import { debugLog, envGet, envSet, isDocker } from "./stwComponents/stwConfig.js";
 import { newId } from "./stwComponents/stwIds.js";
 const moduleRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -32,14 +32,14 @@ try {
 	const portalUrl = envGet("PORTAL_URL");
 	if (portalUrl && /^https?:\/\//i.test(portalUrl)) {
 		const webbasePath = envGet("WEBBASE") || "./.data/webbase.wbol";
-		console.log(`${(new Date()).toISOString()}: Fetching portal webbase from ${portalUrl} ...`);
+		debugLog(`${(new Date()).toISOString()}: Fetching portal webbase from ${portalUrl} ...`);
 		const res = await fetch(portalUrl);
 		if (!res.ok) throw new Error(`Failed to download portal webbase: ${res.status} ${res.statusText}`);
 		const json = await res.text();
 		const dir = webbasePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/") || ".";
 		mkdirSync(dir, { recursive: true });
 		writeFileSync(webbasePath, json);
-		console.log(`${(new Date()).toISOString()}: Portal webbase saved to ${webbasePath}.`);
+		debugLog(`${(new Date()).toISOString()}: Portal webbase saved to ${webbasePath}.`);
 		envSet("WEBBASE", webbasePath);
 	}
 } catch (error) {
@@ -132,7 +132,7 @@ function getSession(request, incoming, sessionId = getCookies(request.headers).s
 	let session = stwSessions.get(sessionId);
 	if (!session || session.remoteAddr.hostname !== remoteAddr.hostname) {
 		if (session) {
-			console.log(
+			debugLog(
 				`${(new Date()).toISOString()}: IP address changed for session [${sessionId}]. A new session will be created.`
 			);
 		}

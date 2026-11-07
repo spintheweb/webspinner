@@ -1,32 +1,23 @@
 import { getCookies } from "./stwNode.js";
-import { envGet } from "./stwConfig.js";
+import { debugLog, envGet } from "./stwConfig.js";
 class STWSession {
 	sessionId;
 	remoteAddr;
-	baseurl = "";
-	// Base URL of the application (used to generate absolute URLs)
-	user;
-	// User name
-	name;
-	// Full name
-	roles;
-	// Roles played by the user. IMPORTANT: Security revolves around this aspect!
-	lang;
-	// Preferred user language (this language is used to render contents based on the accepted and available portal languages)
-	langs;
-	// Accepted user languages (Accept-Language)
-	tz;
-	// Timezone of the user
+	baseurl = ""; // Base URL of the application (used to generate absolute URLs)
+	user; // User name
+	name; // Full name
+	roles; // Roles played by the user. IMPORTANT: Security revolves around this aspect!
+	lang; // Preferred user language (this language is used to render contents based on the accepted and available portal languages)
+	langs; // Accepted user languages (Accept-Language)
+	tz; // Timezone of the user
 	placeholders;
-	timestamp;
-	// Session timeout in minutes
+	timestamp; // Session timeout in minutes
 	timer = 0;
-	dev;
-	// If true STW Studio  enabled
+	dev; // If true STW Studio enabled
 	portal;
-	sockets = new Map();
-	// per-tab sockets
+	sockets = new Map(); // per-tab sockets
 	states;
+
 	constructor(sessionId, remoteAddr, portal) {
 		this.sessionId = sessionId;
 		this.remoteAddr = remoteAddr;
@@ -42,8 +33,9 @@ class STWSession {
 		this.portal = portal;
 		this.states = new Map();
 		this.sockets = new Map();
-		console.log(`${(new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
+		debugLog(`${(new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
 	}
+
 	/**
     * @param name Name of the placeholder, it has to start with either \@ (Querystring parameters or Cookie value), 
     * \@@ (Recordset Field, Session, Application or Server variables)
@@ -52,6 +44,7 @@ class STWSession {
 	getPlaceholder(name) {
 		return this.placeholders.get(name) || "";
 	}
+
 	/**
     * Placeholders reppresent server side data accessible to contents. Each request received by the server resets the placeholder,
     * then, the content being rendered cycles each record of the record set. 
@@ -76,10 +69,11 @@ class STWSession {
 	}
 	timeout(timer) {
 		clearTimeout(timer);
-		console.log(`${(new Date()).toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
+		debugLog(`${(new Date()).toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
 		this.timer = setTimeout(() => this.timeout(this.timer), parseInt(envGet("TIMEOUT") || "15") * 6e4);
 	}
 }
+
 export {
 	STWSession
 };

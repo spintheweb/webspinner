@@ -18,6 +18,7 @@
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWPage } from "../stwElements/stwPage.js";
 import { newId } from "./stwIds.js";
+import { debugLog } from "./stwConfig.js";
 import { WebSocket } from "ws";
 const SESSION_CLEANUP_GRACE_PERIOD_MS = 3e4;
 
@@ -100,7 +101,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			setTimeout(() => {
 				if (session.sockets.size === 0) {
 					stwSessions.delete(session.sessionId);
-					console.log(`${(new Date()).toISOString()}: Session timed out and removed: [${session.sessionId}]`);
+					debugLog(`${(new Date()).toISOString()}: Session timed out and removed: [${session.sessionId}]`);
 				}
 			}, SESSION_CLEANUP_GRACE_PERIOD_MS);
 		}

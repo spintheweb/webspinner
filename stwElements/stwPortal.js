@@ -22,7 +22,7 @@ import { STWArea } from "./stwArea.js";
 import { STWElement } from "./stwElement.js";
 import { STWIndex } from "./stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
-import { envGet } from "../stwComponents/stwConfig.js";
+import { debugLog, envGet, isDebugging } from "../stwComponents/stwConfig.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { watch } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
@@ -59,7 +59,7 @@ class STWPortal extends STWElement {
     */
 	static get instance() {
 		if (!STWPortal.#instance) {
-			console.log(`${(new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
+			debugLog(`${(new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
 			const webbase = envGet("WEBBASE") || "./.data/webbase.wbol";
 			const wbol = WBOL(webbase);
 			STWPortal.#instance = new STWPortal(wbol);
@@ -70,16 +70,17 @@ class STWPortal extends STWElement {
 			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol");
 			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol");
 			
-			if (envGet("DEBUG") === "true")
+			if (isDebugging)
 				STWPortal.watchWebbases();
 		}
 		return STWPortal.#instance;
 	}
+
 	/**
     * Load Spin the Web Studio webbase, if it's already present, replace it.
     */
 	addWebbaselet(filepath) {
-		console.log(`${(new Date()).toISOString()}: Adding webbaselet '${filepath}'...`);
+		debugLog(`${(new Date()).toISOString()}: Adding webbaselet '${filepath}'...`);
 		try {
 			if (URL.parse(filepath || ""))
 				fetch(new URL(filepath || "")).then((response) => response.text()).then((text) => load(WBOL(text))).catch((_error) => {
@@ -209,7 +210,7 @@ ${fragment}</urlset>`
 				if (filename && filename.toString() !== basename(path)) return;
 				if (reloadTimeout) clearTimeout(reloadTimeout);
 				reloadTimeout = setTimeout(() => {
-					console.log(`${(new Date()).toISOString()}: Webbase changed...`);
+					debugLog(`${(new Date()).toISOString()}: Webbase changed...`);
 					STWPortal.#instance = void 0;
 					STWPortal.index.clear();
 				}, 200);
