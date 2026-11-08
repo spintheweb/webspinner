@@ -8,7 +8,6 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwContent
- * @requires ../stwComponents/stwDBAdapters/adapter.js
  * @requires ../stwComponents/stwDatasources.js
  * @requires ../stwComponents/stwSession.js
  * @requires ./stwElement.js
@@ -18,10 +17,11 @@
  * @license GPL-3.0-or-later
  */
 import { STWDatasources } from "../stwComponents/stwDatasources.js";
-import { STWElement } from "./stwElement.js";
+import { assertSlugAllowed, STWElement } from "./stwElement.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
+
 class STWContent extends STWElement {
 	type;
 	cssClass;
@@ -34,6 +34,7 @@ class STWContent extends STWElement {
 	stateful;
 	cache;
 	contentType;
+
 	constructor(content, _settings) {
 		super(content);
 		this.type = content.subtype;
@@ -46,20 +47,21 @@ class STWContent extends STWElement {
 		this.stateful = content.stateful || false;
 		this.cache = content.cache || 0;
 		this.contentType = content.contentType || "text/html; charset=utf-8";
+
 		if (!["Text", "ClientScript", "Shortcut"].includes(this.type) && content.layout) {
 			this.layout = new Map();
 			for (const [lang, wbll] of Object.entries(content.layout)) {
 				try {
 					this.layout.set(lang, new STWLayout(wbll));
 				} catch (error) {
-					throw SyntaxError(`${this.type} (${this.name.entries().next().value}) \xA7${this.section}.${this.sequence} [${this.uuid}]
- \u2514 Layout: ${error.message}`);
+					throw SyntaxError(`${this.type} (${this.name.entries().next().value}) \xA7${this.section}.${this.sequence} [${this.uuid}] \u2514 Layout: ${error.message}`);
 				}
 			}
 		} else if (content.layout) {
 			this.layout = new Map(Object.entries(content.layout || {}));
 		}
 	}
+
 	toLocalizedJSON(session) {
 		return {
 			...super.toLocalizedJSON(session),
@@ -74,6 +76,7 @@ class STWContent extends STWElement {
 			contentType: this.contentType
 		};
 	}
+
 	getLayout(session, defaultLayout = "") {
 		let layout = this.layout?.get(session.lang);
 		if (!layout || layout.justSettings && defaultLayout) {
@@ -83,45 +86,49 @@ class STWContent extends STWElement {
 		}
 		return layout;
 	}
+
 	localize(session, name, value = "") {
 		if (value) {
-			value = name === "slug" ? value.replace(/[^a-z0-9_]/gi, "").toLowerCase() : value;
+			value = name === "slug" ? assertSlugAllowed(value.replace(/[^a-z0-9_]/gi, "").toLowerCase()) : value;
 			this[name].set(session.lang, value);
 			return value;
 		}
 		return this[name].get(session.lang) || "";
 	}
+
 	/**
-    * Retrieves the state of this content for the given session.
-    * The state is stored in the session object.
-    * @param session The current user session.
-    * @returns The state object, or undefined if not stateful or no state is set.
-    */
+	 * Retrieves the state of this content for the given session.
+	 * The state is stored in the session object.
+	 * @param session The current user session.
+	 * @returns The state object, or undefined if not stateful or no state is set.
+	 */
 	getState(session) {
 		return this.stateful ? session.states?.get(this.uuid) : void 0;
 	}
+
 	/**
-    * Saves the state of this content for the given session.
-    * The state is stored in the session object.
-    * @param session The current user session.
-    * @param state The state object to save.
-    */
+	 * Saves the state of this content for the given session.
+	 * The state is stored in the session object.
+	 * @param session The current user session.
+	 * @param state The state object to save.
+	 */
 	setState(session, state) {
 		if (this.stateful) {
 			if (!session.states) session.states = new Map();
 			session.states.set(this.uuid, state);
 		}
 	}
+
 	async serve(request, session, ref) {
 		if (!ref && !this.isVisible(session))
 			return secureResponse(null, { status: 204 });
 		if (ref) {
 			debugLog(
-				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)} ${this.type} \xA7${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(new Date()).toISOString()}: \u251C\u2500 ${this.type} (${this.pathname(session)}) \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)} ${this.type} \xA7${this.section}.${this.sequence} [${this.uuid}]`
 			);
 		}
 		let settings, HTML, records;
@@ -140,11 +147,11 @@ class STWContent extends STWElement {
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
 				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">
-       ${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}
-       ${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
-       ${HTML}
-       ${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
-		</article>`;
+${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}
+${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
+${HTML}
+${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
+</article>`;
 			}
 		} catch (error) {
 			const safeStringify = (obj) => {
@@ -176,9 +183,11 @@ class STWContent extends STWElement {
 			return section.startsWith("stwShow") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
 		}
 	}
+
 	async render(_request, _session, _record) {
 		return `Render ${this.constructor.name}`;
 	}
+
 	update(session, data) {
 		super.update(session, data);
 		this.cssClass = data.cssClass || this.cssClass;
@@ -193,6 +202,7 @@ class STWContent extends STWElement {
 		}
 	}
 }
+
 export {
 	STWContent
 };

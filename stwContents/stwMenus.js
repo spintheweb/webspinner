@@ -12,8 +12,10 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { newId } from "../stwComponents/stwIds.js";
+
 class STWMenus extends STWContent {
 	options = [];
+
 	constructor(content) {
 		super(content);
 		this.options = loadOptions(content.options || []);
@@ -30,6 +32,7 @@ class STWMenus extends STWContent {
 			return _options;
 		}
 	}
+
 	toLocalizedJSON(session) {
 		return {
 			...super.toLocalizedJSON(session),
@@ -39,19 +42,23 @@ class STWMenus extends STWContent {
 			}))
 		};
 	}
+
 	async render(request, session) {
 		let body = "";
 		const layout = this.getLayout(session);
 		const firstRender = await layout.render([], session.placeholders, session);
 		const settings = firstRender.settings;
+
 		this.options.forEach((option) => subrender(option));
 		if (settings.has("vertical"))
 			return `<nav><menu><li style="width:2rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>`;
 		return `<nav><menu>${body}</menu></nav>`;
+
 		function subrender(option, iteration = false) {
 			let element = session.portal.find(session, option.ref || "");
 			let href = option.ref;
 			const parameters = option.parameters || "";
+
 			if (element && "mainpage" in element && element.mainpage) {
 				const mainPage = session.portal.find(session, element.mainpage);
 				if (mainPage && mainPage.isVisible(session)) {
@@ -63,9 +70,11 @@ class STWMenus extends STWContent {
 			} else if (element) {
 				href = element.pathname(session);
 			}
+
 			if (href && parameters) {
 				href += `${href.includes("?") ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`;
 			}
+			
 			const name = option?.name.get(session.lang) || element?.localize(session, "name") || href;
 			if (name === "-") {
 				body += iteration ? "<hr>" : "";
@@ -85,7 +94,9 @@ class STWMenus extends STWContent {
 		}
 	}
 }
+
 registerElement("Menus", STWMenus);
+
 export {
 	STWMenus
 };

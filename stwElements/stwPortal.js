@@ -162,13 +162,9 @@ class STWPortal extends STWElement {
 	export() {
 		let fragment = "";
 		this.children.forEach((child) => fragment += child.export());
-		return `<?xml version="1.0" encoding="utf-8"?>
-<wbol version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://webspinner.org" xsi:schemaLocation="https://webspinner.org/schemas wbol.xsd">
-<!--Spin the Web (TM) webbase generated ${(new Date()).toISOString()}-->
-<portal uuid="${this.uuid}" langs="${this.langs.join(" ")}" mainpage="${this.mainpage}">
-${super.export()}${fragment}</portal>
-</wbol>`;
+		return `<?xml version="1.0" encoding="utf-8"?>\n<wbol version="1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://webspinner.org" xsi:schemaLocation="https://webspinner.org/schemas wbol.xsd">\n<!--Spin the Web (TM) webbase generated ${(new Date()).toISOString()}-->\n<portal uuid="${this.uuid}" langs="${this.langs.join(" ")}" mainpage="${this.mainpage}">\n${super.export()}${fragment}</portal>\n</wbol>`;
 	}
+
 	// Build a sitemap (see sitemaps.org) that includes the URLs of visible portal pages
 	sitemap(session) {
 		let fragment = "";
@@ -176,9 +172,7 @@ ${super.export()}${fragment}</portal>
 		return new Promise(
 			(resolve2) => resolve2(
 				secureResponse(
-					`<?xml version="1.0" encoding="utf-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${fragment}</urlset>`
+					`<?xml version="1.0" encoding="utf-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${fragment}</urlset>`
 				)
 			)
 		);
@@ -186,8 +180,7 @@ ${fragment}</urlset>`
 			if (element.type === "Area" && element.children.length > 0) {
 				element.children.forEach((child) => _url(child));
 			} else if (element.type === "Page" && element.isVisible(session) & 1) {
-				fragment += `<url><loc>${element.pathname(session)}</loc><lastmod>${element.modified}</lastmod><priority>0.5</priority></url>
-`;
+				fragment += `<url><loc>${element.pathname(session)}</loc><lastmod>${element.modified}</lastmod><priority>0.5</priority></url>\n`;
 			}
 		}
 	}

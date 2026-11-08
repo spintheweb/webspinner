@@ -10,12 +10,8 @@
  */
 
 let stwWS;
-let stwReconnectTimer = null;
-let stwSections;
 
 window.addEventListener("load", () => {
-	stwSections = [...document.body.querySelectorAll("[data-section]")].map(el => el.id);
-
 	stwStartWebsocket();
 	if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
 		_enableStudio();
@@ -98,11 +94,6 @@ function stwStartWebsocket() {
 	const wsUrl = `${protocol}//${window.location.host}/?tab=${encodeURIComponent(stwTabId)}`;
 	stwWS = new WebSocket(wsUrl);
 
-	if (stwReconnectTimer) {
-		clearTimeout(stwReconnectTimer);
-		stwReconnectTimer = null;
-	}
-
 	stwWS.onopen = () => {
 		stwWS.send(JSON.stringify({
 			method: "HEAD",
@@ -125,7 +116,7 @@ function stwStartWebsocket() {
 		document.querySelectorAll("[lang]").forEach((element) => element.setAttribute("lang", "en-US"));
 	};
 
-	stwWS.onmessage = (event) => {
+	stwWS.onmessage = async (event) => {
 		// event.data = { method: "GET" | "PUT" | "PATCH" | "DELETE", id: string, section: string, sequence: number, body: string }
 		const data = JSON.parse(event.data);
 
@@ -154,7 +145,6 @@ function stwStartWebsocket() {
 			}
 
 			if (data.section === "stwShowModal" || data.section === "stwShow") {
-				// document.querySelector("dialog")?.remove();
 				document.body.insertAdjacentHTML("afterbegin", `<dialog onclose="this.remove()">${data.body}</dialog>`);
 				if (data.section === "stwShowModal") {
 					document.querySelector("dialog")?.showModal();
@@ -185,36 +175,10 @@ function stwStartWebsocket() {
 			article.removeAttribute("href");
 		});
 
-		// Load content link+script
-		document.body.querySelectorAll("script").forEach(script => {
-			if (document.head.querySelector(`script[name="${script.getAttribute("name")}"]`)) {
-				if (typeof script.onload === "function") {
-					script.onload();
-				}
-				return;
-			}
-
-			const loadScript = document.createElement("script");
-			loadScript.setAttribute("name", script.getAttribute("name") || "");
-			if (script.src)
-				loadScript.src = script.src;
-			else
-				loadScript.textContent = script.textContent;
-			document.head.appendChild(loadScript);
-			if (typeof script.onload === "function")
-				script.onload();
-			script.remove();
-		});
-
-		const script = document.getElementById(data.id)?.querySelector("script[onload]");
-		if (script) {
-			if (typeof window[`fn${script.getAttribute("name")}`] !== "function") {
-				const element = document.createElement("script");
-				element.insertAdjacentText("afterbegin", script.innerText);
-				document.head.append(element);
-			}
-			script.onload();
-			script.remove();
+		try {
+			await _stwLoadContentResources();
+		} catch (error) {
+			console.error("Failed to load content resources:", error);
 		}
 	};
 
@@ -270,10 +234,7 @@ function _stwHandleNavClick(event) {
 	if (!href || !href.startsWith("/")) return;
 
 	event.preventDefault();
-//	if (stwWS && stwWS.readyState === WebSocket.OPEN)
-//		stwWS.send(JSON.stringify({ method: "PATCH", resource: href, options: {}, search: window.location.search }));
-//	else
-		window.location.href = a.getAttribute("href");
+	window.location.href = a.getAttribute("href");
 }
 
 // Attach once, capture
@@ -295,6 +256,80 @@ function _stwLoadScript(src) {
 		document.head.appendChild(s);
 	});
 	return _stwLoading[src];
+}
+
+const _stwContentResources = new Map();
+const _stwInlineContentScripts = new Set();
+
+async function _stwLoadContentResources() {
+	const links = [...document.body.querySelectorAll("link[href]")];
+	const scripts = [...document.body.querySelectorAll("script")];
+	const externalScripts = scripts.filter((script) => script.src);
+	const inlineScripts = scripts.filter((script) => !script.src);
+
+	try {
+		await Promise.all(links.map((link) => _stwLoadContentResource("link", link)));
+		links.forEach(_stwRunContentLoadHandler);
+		for (const script of externalScripts) {
+			await _stwLoadContentResource("script", script);
+			_stwRunContentLoadHandler(script);
+		}
+
+		for (const script of inlineScripts) {
+			const name = script.getAttribute("name");
+			if (script.textContent && (!name || !_stwInlineContentScripts.has(name))) {
+				const loadedScript = document.createElement("script");
+				for (const attribute of script.attributes) {
+					if (attribute.name !== "onload") loadedScript.setAttribute(attribute.name, attribute.value);
+				}
+				loadedScript.textContent = script.textContent;
+				document.head.appendChild(loadedScript);
+				if (name) _stwInlineContentScripts.add(name);
+			}
+			_stwRunContentLoadHandler(script);
+		}
+	} finally {
+		links.forEach((link) => link.remove());
+		scripts.forEach((script) => script.remove());
+	}
+}
+
+function _stwLoadContentResource(type, source) {
+	const attribute = type === "script" ? "src" : "href";
+	const url = new URL(source.getAttribute(attribute), document.baseURI).href;
+	const name = source.getAttribute("name");
+	const keys = [`${type}:url:${url}`];
+	if (name) keys.push(`${type}:name:${name}`);
+	const cached = keys.map((key) => _stwContentResources.get(key)).find(Boolean);
+	if (cached) return cached;
+
+	const existing = [...document.head.querySelectorAll(type)].find((resource) =>
+		(name && resource.getAttribute("name") === name) || resource[attribute] === url
+	);
+	if (existing) {
+		const loaded = Promise.resolve();
+		keys.forEach((key) => _stwContentResources.set(key, loaded));
+		return loaded;
+	}
+
+	const resource = document.createElement(type);
+	for (const attribute2 of source.attributes) {
+		if (attribute2.name !== "onload") resource.setAttribute(attribute2.name, attribute2.value);
+	}
+	const promise = new Promise((resolve, reject) => {
+		resource.addEventListener("load", resolve, { once: true });
+		resource.addEventListener("error", () => {
+			keys.forEach((key) => _stwContentResources.delete(key));
+			reject(new Error(`Failed to load content ${type}: ${url}`));
+		}, { once: true });
+	});
+	keys.forEach((key) => _stwContentResources.set(key, promise));
+	document.head.appendChild(resource);
+	return promise;
+}
+
+function _stwRunContentLoadHandler(script) {
+	if (typeof script.onload === "function") script.onload.call(script, new Event("load"));
 }
 
 function _stwLoadStyle(href) {
@@ -332,29 +367,3 @@ window.stwLoadAce = function stwLoadAce() {
 		_stwLoaded.ace = true;
 	});
 };
-
-/*
-let isDragging = false;
-let offsetX, offsetY;
-
-const dialog = document.getElementById("dialog");
-const handle = document.getElementById("dialogHeader");
-
-handle.addEventListener("mousedown", (e) => {
-	offsetX = e.clientX - dialog.offsetLeft;
-	offsetY = e.clientY - dialog.offsetTop;
-	isDragging = true;
-});
-
-document.addEventListener("mousemove", (e) => {
-	if (isDragging) {
-		dialog.style.position = "absolute";
-		dialog.style.left = `${e.clientX - offsetX}px`;
-		dialog.style.top = `${e.clientY - offsetY}px`;
-	}
-});
-
-document.addEventListener("mouseup", () => {
-	isDragging = false;
-});
-*/

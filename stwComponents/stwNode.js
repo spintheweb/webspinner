@@ -1,9 +1,11 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, extname } from "node:path";
 import { spawn } from "node:child_process";
+
 function isNotFoundError(error) {
 	return error?.code === "ENOENT";
 }
+
 function runCommand(command, args, options = {}) {
 	return new Promise((resolvePromise, reject) => {
 		const child = spawn(command, args, {
@@ -34,6 +36,7 @@ function runCommand(command, args, options = {}) {
 		});
 	});
 }
+
 function getCookies(headers) {
 	const cookies = {};
 	for (const cookie of headers.get("cookie")?.split(";") ?? []) {
@@ -49,6 +52,7 @@ function getCookies(headers) {
 	}
 	return cookies;
 }
+
 function setCookie(headers, cookie) {
 	const value = [
 		`${cookie.name}=${encodeURIComponent(cookie.value)}`,
@@ -59,6 +63,7 @@ function setCookie(headers, cookie) {
 	].filter(Boolean).join("; ");
 	headers.append("Set-Cookie", value);
 }
+
 async function serveFile(_request, requestedPath) {
 	const root = resolve("public");
 	const filePath = resolve(requestedPath);
@@ -80,35 +85,27 @@ async function serveFile(_request, requestedPath) {
 		throw error;
 	}
 }
+
 function isWithin(root, path) {
 	const relativePath = relative(root, path);
 	return !isAbsolute(relativePath) && relativePath !== ".." && !relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`);
 }
+
 function contentType(filePath) {
 	switch (extname(filePath).toLowerCase()) {
-		case ".html":
-			return "text/html; charset=utf-8";
-		case ".css":
-			return "text/css; charset=utf-8";
-		case ".js":
-			return "application/javascript; charset=utf-8";
-		case ".json":
-			return "application/json; charset=utf-8";
-		case ".svg":
-			return "image/svg+xml";
-		case ".png":
-			return "image/png";
-		case ".jpg":
-		case ".jpeg":
-			return "image/jpeg";
-		case ".gif":
-			return "image/gif";
-		case ".ico":
-			return "image/x-icon";
-		default:
-			return "application/octet-stream";
+		case ".html": return "text/html; charset=utf-8";
+		case ".css": return "text/css; charset=utf-8";
+		case ".js": return "application/javascript; charset=utf-8";
+		case ".json": return "application/json; charset=utf-8";
+		case ".svg": return "image/svg+xml";
+		case ".png": return "image/png";
+		case ".jpg": case ".jpeg": return "image/jpeg";
+		case ".gif": return "image/gif";
+		case ".ico": return "image/x-icon";
+		default: return "application/octet-stream";
 	}
 }
+
 export {
 	getCookies,
 	isNotFoundError,

@@ -6,6 +6,7 @@ import { secureResponse } from "./stwResponse.js";
 import { envGet } from "./stwConfig.js";
 import { actionRouter } from "./stwActions.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
+
 async function handleHttp(request, session, sessionId) {
 	const pathname = new URL(request.url).pathname;
 	if (pathname === "/wbol" || pathname.startsWith("/wbol/")) {

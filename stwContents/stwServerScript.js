@@ -15,11 +15,14 @@ import { STWDatasources } from "../stwComponents/stwDatasources.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 import * as path from "node:path";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+
 class SafeFileSystem {
 	allowedRoots;
+
 	constructor(allowedRoots = ["public"]) {
 		this.allowedRoots = allowedRoots.map((r) => path.resolve(process.cwd(), r));
 	}
+
 	/**
     * Validate and resolve a path within allowed roots.
     * Throws if path is outside allowed roots or accesses dot-files/folders.
@@ -41,6 +44,7 @@ class SafeFileSystem {
 		}
 		throw new Error(`Path outside allowed roots: \${relPath}`);
 	}
+
 	/**
     * Read text file content.
     */
@@ -48,6 +52,7 @@ class SafeFileSystem {
 		const fullPath = this.validatePath(relPath);
 		return await readFile(fullPath, "utf8");
 	}
+
 	/**
     * Write text file content. Creates parent directories as needed.
     */
@@ -56,6 +61,7 @@ class SafeFileSystem {
 		await mkdir(path.dirname(fullPath), { recursive: true });
 		await writeFile(fullPath, content);
 	}
+
 	/**
     * Read JSON file and parse.
     */
@@ -63,12 +69,14 @@ class SafeFileSystem {
 		const text = await this.readText(relPath);
 		return JSON.parse(text);
 	}
+
 	/**
     * Write JSON file with pretty formatting.
     */
 	async writeJSON(relPath, data) {
 		await this.writeText(relPath, JSON.stringify(data, null, 2));
 	}
+
 	/**
     * Check if file or directory exists.
     */
@@ -81,6 +89,7 @@ class SafeFileSystem {
 			return false;
 		}
 	}
+
 	/**
     * List directory contents. Returns array of { name, isFile, isDirectory }.
     */
@@ -105,6 +114,7 @@ class SafeFileSystem {
 		await rm(fullPath);
 	}
 }
+
 class DatasourceHelper {
 	session;
 	constructor(session) {
@@ -133,6 +143,7 @@ class DatasourceHelper {
 		return await this.execute(dsn, processedCommand);
 	}
 }
+
 class STWServerScript extends STWContent {
 	constructor(content, settings) {
 		super(content, settings);
@@ -171,6 +182,7 @@ class STWServerScript extends STWContent {
 			});
 		}
 	}
+	
 	/**
     * Extract JavaScript code from the layout for the current session language.
     * For ServerScript, layout is stored as raw javascript, not parsed as WBLL.
@@ -188,6 +200,7 @@ class STWServerScript extends STWContent {
 		return super.serve(req, session, ref);
 	}
 }
+
 export {
 	STWServerScript as default
 };

@@ -69,7 +69,7 @@ function WBOLFragment(element) {
 				break;
 			case "query":
 				obj.dsn = child.getAttribute("datasource") ?? void 0;
-				obj.parameters = child.getAttribute("parameters") ?? void 0;
+				obj.params = child.getAttribute("parameters") ?? void 0;
 				obj.query = innerText(child);
 				break;
 			case "options":

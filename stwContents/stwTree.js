@@ -12,14 +12,17 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
+
 class STWTree extends STWContent {
 	constructor(content) {
 		super(content);
 	}
+
 	async render(request, session, records) {
 		let layout = this.getLayout(session);
 		if (!records.fields?.length || !records.rows?.length)
 			return layout.settings.get("nodata") || "";
+
 		const fields = records.fields?.map((f) => f.name) || Object.keys(records.rows?.[0] || {});
 		layout = this.getLayout(session, "f".repeat(fields.length));
 		if (!this.isHierarchicalData(records.rows) && !fields.includes(layout.settings.get("key") || "path"))
@@ -58,9 +61,11 @@ class STWTree extends STWContent {
 		await Promise.resolve();
 		return body;
 	}
+
 	isHierarchicalData(rows) {
 		return rows.length > 0 && "children" in rows[0] && Array.isArray(rows[0].children);
 	}
+
 	/**
     * Build a tree structure from flat data with path indicators /
     * @param rows - Array of records with path information
@@ -105,7 +110,9 @@ class STWTree extends STWContent {
 		return root.children.length === 1 ? root.children[0] : root;
 	}
 }
+
 registerElement("Tree", STWTree);
+
 export {
 	STWTree
 };

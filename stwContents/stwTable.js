@@ -11,17 +11,21 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+
 class STWTable extends STWContent {
 	constructor(content) {
 		super(content);
 	}
+
 	async render(_request, session, records) {
 		if (!records.fields.length || !records.rows.length)
 			return "";
+
 		const placeholders = new Map(session.placeholders);
 		placeholders.set("@@stwuuid", this.uuid);
 		if (placeholders.has(`@stwO${this.uuid}`))
 			placeholders.set("@stworderby", placeholders.get(`@stwO${this.uuid}`) || "");
+
 		records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
 		const layout = this.getLayout(session, "lf".repeat(records.fields.length));
 		let { settings, HTML: body } = await layout.render(records.fields, placeholders, session, "thead");
@@ -35,6 +39,7 @@ class STWTable extends STWContent {
 			records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[row]?.[field] || ""));
 		}
 		body += `</tbody><tfoot>${(await layout.render(records.fields, placeholders, session, "tfoot")).HTML}</tfoot>`;
+
 		return `<div style="overflow:auto"><form id="stwFS${this.uuid}"></form><form id="stwFE${this.uuid}"></form><table>${body}</table></div>
 <script name="STWTable" onload="fnSTWTable('${this.uuid}')">
  function fnSTWTable(id) {
@@ -54,7 +59,9 @@ class STWTable extends STWContent {
 <\/script>`;
 	}
 }
+
 registerElement("Table", STWTable);
+
 export {
 	STWTable
 };

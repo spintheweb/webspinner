@@ -375,6 +375,23 @@ END {
 				</area>
 			</children>
 		</area>
+		<area uuid="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="wGGpiW7IjjrFqapqVuZopW">
+			<name>
+				<text xml:lang="en" slug="stws"><![CDATA[Studio]]></text>
+			</name>
+			<visibility>
+				<role id="developers" visibility="true" />
+			</visibility>
+			<children>
+				<content uuid="c9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="form"
+					section="main" sequence="1">
+					<name>
+						<text xml:lang="en" slug="content"><![CDATA[Content]]></text>
+					</name>
+					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"contents": $string(contents), "name": name, "slug": slug, "section": section, "sequence": sequence, "datasource": datasource}]]></query>
+				</content>
+			</children>
+		</area>
 		<page uuid="pBMD2db90OORrnHEXlmSiq" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>

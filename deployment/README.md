@@ -26,20 +26,24 @@ Notes:
 
 ## Developer WBOL API
 
-Authenticated sessions with the `developers` role can manage the in-memory webbase at `/wbol`:
+Authenticated sessions with the `developers` role can manage the in-memory webbase at `/wbol`. Element access observes Developer-role RBV: an element explicitly hidden from developers, including by inherited visibility, is not available through the development API.
 
 - `GET /wbol` returns the portal tree; `GET /wbol/<uuid>` returns one element and its children.
 - `POST /wbol` creates an element. The JSON body contains `parentId` and an `element` definition accepted by the registered element constructor.
-- `PATCH /wbol/<uuid>` updates an element through its runtime update method. Include `parentId` to move it, with optional `position` for its new child index.
+- `PATCH /wbol/<uuid>` updates an element through its runtime update method. Include `parentId` to move it, with optional `position` for its new child index. Localized string values update only `?locale=<portal-locale>`; without it, the Developer's session language is used. Localized maps merge locale entries rather than replacing the other locales.
 - `DELETE /wbol/<uuid>` removes an element and its descendants.
+- `GET /wbol/<uuid>/visibility` reads explicit role visibility. `PUT` replaces the role-to-boolean map; `PATCH` merges it, and a `null` value removes that role's override.
+- `GET /wbol/<uuid>/options` reads options for content types that define them (for example menus, tabs, and accordions); `PUT` replaces the complete options array. `PATCH` with `?locale=<portal-locale>` and `{"path":[0],"name":"Label"}` updates one option name at its array-index path, preserving its other locale values. The session language is the default.
+- `GET /wbol/<portal-uuid>/datasources` reads the portal's datasource values; `PUT` replaces the name-to-value map.
+- `GET /wbol/<portal-uuid>/roles` lists known roles; `POST` with `{"role":"editors"}` creates a role.
 
-Root or administrator sessions can also manage accounts and configuration:
+Root or administrator sessions can manage accounts and datasource connection configuration through separate admin routes:
 
 - `GET /wbol/users` lists accounts without password hashes. `POST` creates an account; `PATCH /wbol/users/<user>` changes its name, email, password, or role assignments; `DELETE` removes it.
 - `GET /wbol/roles` lists known roles. `POST` with `{"role":"editors"}` creates one; `PATCH /wbol/roles/<role>` with `{"role":"new-name"}` renames it; `DELETE` removes it from accounts and in-memory visibility rules. Mandatory roles cannot be renamed or deleted.
 - `GET /wbol/datasources` lists datasource definitions with credentials redacted. `POST` creates one; `PATCH /wbol/datasources/<name>` updates it; `DELETE` removes it only when no content references it. Updated definitions are written to the configured `DATASOURCES` file and reloaded.
 
-Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Datasource passwords may be supplied when creating or updating a datasource, but are never returned by the API. The `developers` role is sufficient for webbase edits; account, role, and datasource management requires `root` or `administrators`.
+Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Datasource passwords may be supplied when creating or updating a datasource, but are never returned by the admin API. The `developers` role is required for webbase edits; it does not grant account administration. The separate account, role, and datasource-configuration routes require `root` or `administrators`.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
 
 ## Quick start (docker-compose)

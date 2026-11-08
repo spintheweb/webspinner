@@ -6,6 +6,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createConnection } from "mysql2/promise";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
+import { getWbolContent } from "./stwWBOLApi.js";
 class STWDatasources {
 	static datasources = new Map();
 	static #initializationPromise = null;
@@ -176,6 +177,7 @@ class STWDatasources {
 		}
 		let records = { affectedRows: 0, fields: [], rows: [{}] };
 		try {
+			if (content.dsn === "WBOLApi") return await fetchWBOLApiData(session, content);
 			await this.initialize();
 			const datasource = STWDatasources.datasources.get(content.dsn) || {};
 			if (content.dsn === "json") {
@@ -320,6 +322,21 @@ async function fetchAPIData(session, content, datasource) {
 			rows: Array.isArray(json) ? json : [json]
 		})
 	);
+}
+async function fetchWBOLApiData(session, content) {
+	if (!session.roles.includes("developers")) {
+		return { affectedRows: 0, fields: ["error"], rows: [{ error: "Forbidden" }] };
+	}
+	const params = new URLSearchParams(WBPL(content.params, session.placeholders).replace(/^\?/, ""));
+	const data = getWbolContent(params.get("uuid"), session);
+	if (!data) return { affectedRows: 0, fields: ["error"], rows: [{ error: "Content not found" }] };
+	const result = await jsonata(WBPL(content.query, session.placeholders)).evaluate(data);
+	const rows = Array.isArray(result) ? result : [result];
+	return {
+		affectedRows: rows.length,
+		fields: rows.length && rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+		rows
+	};
 }
 export {
 	STWDatasources

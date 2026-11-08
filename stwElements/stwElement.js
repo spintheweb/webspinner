@@ -33,11 +33,13 @@ class STWElement {
 	children = [];
 	modified;
 	extra;
+	
 	constructor(element) {
 		this.uuid = element.uuid ? element.uuid : newId();
 		this.type = element.type || this.constructor.name.replace("STW", "");
 		this.name = new Map(Object.entries(element.name || { "en": `New ${this.type}` }));
 		this.slug = new Map(Object.entries(element.slug || { "en": `New ${this.type}`.replace(/[^a-z0-9_]/gi, "").toLowerCase() }));
+		for (const slug of this.slug.values()) assertSlugAllowed(slug);
 		this.keywords = new Map(Object.entries(element.keywords || {}));
 		this.description = new Map(Object.entries(element.description || {}));
 		this.visibility = new Map(Object.entries(element.visibility || {}));
@@ -76,7 +78,7 @@ class STWElement {
 	}
 	localize(session, name, value = "") {
 		if (value) {
-			value = name === "slug" ? value.replace(/[^a-z0-9_]/gi, "").toLowerCase() : value;
+			value = name === "slug" ? assertSlugAllowed(value.replace(/[^a-z0-9_]/gi, "").toLowerCase()) : value;
 			this[name].set(session.lang, value);
 			return value;
 		}
@@ -126,35 +128,29 @@ class STWElement {
 	}
 	// Export element as XML
 	export() {
-		let xml = `<${this.type} id="${this.uuid}" type="${this.type}" subtype="${this.type}" modified="${this.modified}">
-`;
+		let xml = `<${this.type} id="${this.uuid}" type="${this.type}" subtype="${this.type}" modified="${this.modified}">\n`;
 		for (const [key, value] of Object.entries(this)) {
 			if (key === "parent" || key === "children") {
 				continue;
 			}
 			if (key === "visibility") {
-				xml += `	<${key}>
-`;
+				xml += `	<${key}>\n`;
 				for (const [role, visible] of Object.entries(value)) {
-					xml += `		<${role} ${visible ? 'visible="true"' : 'visible="false"'} />
-`;
+					xml += `		<${role} ${visible ? 'visible="true"' : 'visible="false"'} />\n`;
 				}
-				xml += `	</${key}>
-`;
+				xml += `	</${key}>\n`;
 			} else if (typeof value === "object") {
-				xml += `	<${key}>${JSON.stringify(value)}</${key}>
-`;
+				xml += `	<${key}>${JSON.stringify(value)}</${key}>\n`;
 			} else {
-				xml += `	<${key}>${value}</${key}>
-`;
+				xml += `	<${key}>${value}</${key}>\n`;
 			}
 		}
-		return xml + `</${this.type}>
-`;
+		return xml + `</${this.type}>\n`;
 	}
+
 	update(session, data) {
-		this.updateLocalizedField(session, "name", data.name);
 		this.updateLocalizedField(session, "slug", data.slug);
+		this.updateLocalizedField(session, "name", data.name);
 		this.updateLocalizedField(session, "keywords", data.keywords);
 		this.updateLocalizedField(session, "description", data.description);
 		this.modified = Date.now();
@@ -169,6 +165,7 @@ class STWElement {
 			}
 		}
 	}
+
 	updateLocalizedField(session, field, value) {
 		if (typeof value === "string") {
 			if (field === "name" || field === "slug") this.localize(session, field, value);
@@ -180,6 +177,9 @@ class STWElement {
 		if (!entries.every((entry) => typeof entry[1] === "string")) {
 			throw new TypeError(`${field} must be a string or a map of language codes to strings`);
 		}
+		if (field === "slug") {
+			for (const [, slug] of entries) assertSlugAllowed(slug);
+		}
 		this[field].clear();
 		for (const [lang, localizedValue] of entries) {
 			this[field].set(
@@ -188,10 +188,19 @@ class STWElement {
 			);
 		}
 	}
+
 	serve(_req, _session, _ref) {
 		return Promise.resolve(secureResponse("Not implemented", { status: 501 }));
 	}
 }
+
+function assertSlugAllowed(slug) {
+	if (typeof slug === "string" && slug.replace(/[^a-z0-9_]/gi, "").toLowerCase() === "wbol") {
+		throw new TypeError("The slug 'wbol' is reserved");
+	}
+	return slug;
+}
+
 function serializeSTWElement(element) {
 	const result = {};
 	for (const [key, value] of Object.entries(element)) {
@@ -207,6 +216,7 @@ function serializeSTWElement(element) {
 	}
 	return result;
 }
+
 function serializeElementValue(value) {
 	if (value instanceof Map) {
 		return Object.fromEntries([...value].map(([key, entry]) => [key, serializeElementValue(entry)]));
@@ -218,7 +228,9 @@ function serializeElementValue(value) {
 	}
 	return value;
 }
+
 export {
+	assertSlugAllowed,
 	STWElement,
 	serializeSTWElement
 };

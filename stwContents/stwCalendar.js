@@ -16,6 +16,7 @@ class STWCalendar extends STWContent {
 	constructor(content) {
 		super(content);
 	}
+
 	async render(_request, session, records) {
 		const fields = records.fields;
 		const firstRow = records.rows[0];
@@ -39,6 +40,7 @@ class STWCalendar extends STWContent {
 				rowPlaceholders.set(`@@${name}`, String(value));
 			return (await layout.render(fields, rowPlaceholders, session)).HTML;
 		};
+
 		const recordMap = {};
 		for (const row of records.rows || []) {
 			const dt = row[datetimeKey] ? new Date(row[datetimeKey]) : null;
@@ -52,6 +54,7 @@ class STWCalendar extends STWContent {
 			if (!recordMap[key]) recordMap[key] = [];
 			recordMap[key].push(row);
 		}
+		
 		let body = "";
 		if (mode === "week") {
 			const firstDayOfWeek = getFirstDayOfWeek(session);
@@ -116,6 +119,7 @@ class STWCalendar extends STWContent {
 		return body;
 	}
 }
+
 function getFirstDayOfWeek(session) {
 	const locale = new Intl.Locale(session.langs?.[0] || session.lang || "en");
 	const firstDay = locale.weekInfo?.firstDay ?? locale.getWeekInfo?.().firstDay;
@@ -123,6 +127,7 @@ function getFirstDayOfWeek(session) {
 	const sundayRegions = new Set(["CA", "IL", "JP", "MX", "PH", "US"]);
 	return sundayRegions.has(locale.region) ? 0 : 1;
 }
+
 function toLocalDateString(date, session) {
 	const formatter = new Intl.DateTimeFormat(session.langs[0], {
 		timeZone: session.tz,
@@ -136,7 +141,9 @@ function toLocalDateString(date, session) {
 	const day = parts.find((p) => p.type === "day")?.value;
 	return `${year}-${month}-${day}`;
 }
+
 registerElement("Calendar", STWCalendar);
+
 export {
 	STWCalendar
 };

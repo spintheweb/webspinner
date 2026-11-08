@@ -15,10 +15,12 @@ import { STWDatasources } from "../stwComponents/stwDatasources.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
+
 class STWText extends STWContent {
 	constructor(content) {
 		super(content);
 	}
+
 	async serve(req, session, ref) {
 		if (!ref && !this.isVisible(session)) {
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
@@ -41,7 +43,8 @@ class STWText extends STWContent {
 		};
 		return new Promise((resolve) => resolve(secureResponse(JSON.stringify(data))));
 	}
-	async render(_req, session, records) {
+
+	async render(_request, session, records) {
 		const layoutValue = this.layout?.get(session.lang);
 		let layoutText = typeof layoutValue === "string" ? layoutValue : layoutValue?.toString?.() ?? "";
 		if (!layoutText) {
@@ -54,6 +57,7 @@ class STWText extends STWContent {
 			}
 		} else
 			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
+
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {
 				const mergedObj = { ...Object.fromEntries(session.placeholders), ...row };
@@ -64,7 +68,9 @@ class STWText extends STWContent {
 		return WBPL(layoutText, new Map(session.placeholders));
 	}
 }
+
 registerElement("Text", STWText);
+
 export {
 	STWText
 };

@@ -42,6 +42,7 @@ class STWList extends STWContent {
 }
 
 registerElement("List", STWList);
+
 export {
 	STWList
 };

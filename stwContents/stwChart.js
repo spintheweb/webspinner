@@ -11,10 +11,12 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+
 class STWChart extends STWContent {
   constructor(content) {
     super(content);
   }
+
   async render(_req, _session, _records) {
     return `<canvas id="Chart${this.uuid}"></canvas>
 			<script name="chart" src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
@@ -39,7 +41,9 @@ class STWChart extends STWContent {
 			<\/script>`;
   }
 }
+
 registerElement("Chart", STWChart);
+
 export {
   STWChart
 };

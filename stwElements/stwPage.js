@@ -18,18 +18,22 @@ import { serveFile } from "../stwComponents/stwNode.js";
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
 import { STWElement } from "./stwElement.js";
+
 class STWPage extends STWElement {
 	template;
+
 	constructor(page) {
 		super(page);
 		this.template = page.template || "index.html";
 	}
+
 	toLocalizedJSON(session) {
 		return {
 			...super.toLocalizedJSON(session),
 			template: this.template
 		};
 	}
+
 	/**
     * Given a page, determine all the visible contents: these are not only its children, but also 
     * contents that are direct children of the parents areas up to the portal.
@@ -49,6 +53,7 @@ class STWPage extends STWElement {
 			}
 		}
 	}
+
 	/**
     * Resolve a {@linkcode Response} with the requested page
     * 
@@ -60,12 +65,15 @@ class STWPage extends STWElement {
 		debugLog(`${(new Date()).toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
 		return serveFile(req, `./public/${this.template}`);
 	}
+
 	update(session, data) {
 		super.update(session, data);
 		this.template = data.template || this.template;
 	}
 }
+
 registerElement("Page", STWPage);
+
 export {
 	STWPage
 };

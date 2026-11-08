@@ -13,8 +13,10 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { newId } from "../stwComponents/stwIds.js";
+
 class STWTabs extends STWContent {
 	options = [];
+
 	constructor(content) {
 		super(content, { mode: "horizontal" });
 		if (content.options)
@@ -22,6 +24,7 @@ class STWTabs extends STWContent {
 				(option) => this.options.push({ name: new Map(Object.entries(option.name || {})), ref: option.ref || "", parameters: option.parameters || "" })
 			);
 	}
+
 	async render(request, session, records) {
 		const layout = this.getLayout(session);
 		const settings = (await layout.render(records.fields, session.placeholders, session)).settings;
@@ -76,6 +79,7 @@ class STWTabs extends STWContent {
 	});
  }
 <\/script>`;
+
 		async function closable(session2, id2) {
 			const tab = STWIndex.get(id2);
 			if (tab instanceof STWContent) {
@@ -88,7 +92,9 @@ class STWTabs extends STWContent {
 		}
 	}
 }
+
 registerElement("Tabs", STWTabs);
+
 export {
 	STWTabs
 };

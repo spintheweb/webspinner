@@ -1,5 +1,18 @@
+/**
+ * @fileoverview Holds the server-side state for one Webspinner client session.
+ *
+ * STWSession tracks the session identity, remote address, user and role defaults,
+ * language and timezone preferences, linked portal, and development mode. It also
+ * stores per-session placeholders populated from request query parameters, cookies,
+ * headers, and rendered records; per-tab WebSocket connections; and stateful content
+ * values. The timeout method refreshes the session's inactivity timer using the
+ * configured TIMEOUT in minutes (15 minutes by default).
+ *
+ * @module stwSession
+ */
 import { getCookies } from "./stwNode.js";
 import { debugLog, envGet } from "./stwConfig.js";
+
 class STWSession {
 	sessionId;
 	remoteAddr;

@@ -14,6 +14,7 @@ import { STWContent } from "../stwElements/stwContent.js";
 import * as path from "node:path";
 import { stat } from "node:fs/promises";
 import { runCommand } from "../stwComponents/stwNode.js";
+
 function validateShellScript(script) {
 	const dangerous = [
 		/\bsudo\b/i,
