@@ -383,12 +383,42 @@ END {
 				<role id="developers" visibility="true" />
 			</visibility>
 			<children>
-				<content uuid="c9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="form"
-					section="main" sequence="1">
+				<content uuid="c9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="tabs"
+					section="stwShowModal">
 					<name>
-						<text xml:lang="en" slug="content"><![CDATA[Content]]></text>
+						<text xml:lang="en" slug="page-editor"><![CDATA[Edit Page]]></text>
 					</name>
-					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"contents": $string(contents), "name": name, "slug": slug, "section": section, "sequence": sequence, "datasource": datasource}]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('mode="horizontal"')]]></text>
+					</layout>
+					<options>
+						<option ref="c4kZgjaGvc8sXy1tOC9xFT4">
+							<text xml:lang="en"><![CDATA[Page]]></text>
+						</option>
+						<option ref="c14CwuoPVf2N9c2u244fhe1">
+							<text xml:lang="en"><![CDATA[Visibility]]></text>
+						</option>
+					</options>
+				</content>
+				<content uuid="c4kZgjaGvc8sXy1tOC9xFT4" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="form"
+					section="dialog" sequence="1">
+					<name>
+						<text xml:lang="en" slug="page-details"><![CDATA[Page details]]></text>
+					</name>
+					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"uuid":contents.uuid,"name":name,"slug":slug,"template":contents.template,"keywords":contents.keywords.en,"description":contents.description.en}]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Page details" key="uuid"')h('uuid')l('Name')e\rl('Slug')e\rl('Template')e\rl('Keywords')m\rl('Description')m\rb('/wbol/@@uuid;stwupdate')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c14CwuoPVf2N9c2u244fhe1" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="table"
+					section="dialog" sequence="2">
+					<name>
+						<text xml:lang="en" slug="page-visibility"><![CDATA[Page visibility]]></text>
+					</name>
+					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[$keys(contents.visibility)@$role.{"uuid":contents.uuid,"role":$role,"visibility":$lookup(contents.visibility,$role)}]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Role visibility" key="role"')h('uuid')l('Role')f\rl('Visible')d(';;2;true;True;false;False')b('/wbol/@@uuid/visibility;stwupdate')t('Save')]]></text>
+					</layout>
 				</content>
 			</children>
 		</area>

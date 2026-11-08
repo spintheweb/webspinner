@@ -18,7 +18,7 @@ COPY deployment/entrypoint.sh deployment/config-server.mjs ./deployment/
 COPY .env.example ./.env
 COPY LICENSE README.md ./
 
-RUN mkdir -p public/.data .cert \
+RUN mkdir -p .data .cert \
     && chown -R node:node /app \
     && chmod +x /app/deployment/entrypoint.sh
 

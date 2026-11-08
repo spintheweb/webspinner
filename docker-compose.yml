@@ -46,7 +46,7 @@ services:
     
     volumes:
       # Persist application data
-      - webspinner-data:/app/public/.data
+      - webspinner-data:/app/.data
       
       # Optional: Mount custom webbaselets
       # - ./custom-webbaselets:/app/webbaselets/custom:ro
