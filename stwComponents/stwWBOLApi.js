@@ -35,6 +35,7 @@ import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { STWDatasources } from "./stwDatasources.js";
 import { STWSecurity } from "./stwSecurity.js";
+
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
 
 async function handleWbolApi(request, session) {
