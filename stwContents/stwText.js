@@ -1,7 +1,7 @@
 /**
  * @fileoverview Defines the text content element.
  *
- * Executes the text content datasource command, applies WBPL placeholders,
+ * Executes the text content connector command, applies WBPL placeholders,
  * and serves localized text responses with the configured content type.
  *
  * @author Giancarlo
@@ -11,7 +11,7 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
-import { STWDatasources } from "../stwComponents/stwDatasources.js";
+import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
@@ -27,11 +27,11 @@ class STWText extends STWContent {
 		}
 		if (ref) {
 			debugLog(
-				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)}  Text @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(new Date()).toISOString()}: \u251C\u2500 Text (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  Text @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
 		const data = {
@@ -39,7 +39,7 @@ class STWText extends STWContent {
 			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
-			body: await this.render(req, session, await STWDatasources.command(session, this))
+			body: await this.render(req, session, await STWConnectors.command(session, this))
 		};
 		return new Promise((resolve) => resolve(secureResponse(JSON.stringify(data))));
 	}

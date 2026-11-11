@@ -46,7 +46,9 @@ class STWMenus extends STWContent {
 	async render(request, session) {
 		let body = "";
 		const layout = this.getLayout(session);
-		const firstRender = await layout.render([], session.placeholders, session);
+		const placeholders = new Map(session.placeholders);
+		placeholders.set("@@stwOrigin", this.uuid);
+		const firstRender = await layout.render([], placeholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const settings = firstRender.settings;
 
 		this.options.forEach((option) => subrender(option));

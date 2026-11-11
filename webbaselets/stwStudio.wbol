@@ -15,9 +15,9 @@
 					<name>
 						<text xml:lang="en" slug="edit-site"><![CDATA[Edit Site]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[["uuid", "name", "slug", "URL", "lang", "mainpage"]]]></query>
+					<query connector="stw"><![CDATA[["uuid", "name", "slug", "URL", "lang", "mainpage"]]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name' key="uuid"')hl('Name')el('Slug')el('URL')el('Language')el('Homepage')e\rb(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name' key="uuid"')hl('Name')el('Slug')el('URL')el('Language')el('Homepage')e\rb(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -25,9 +25,9 @@
 					<name>
 						<text xml:lang="en" slug="edit-area"><![CDATA[Edit Area]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[["uuid", "name", "slug", "mainpage"]]]></query>
+					<query connector="stw"><![CDATA[["uuid", "name", "slug", "mainpage"]]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name' key="uuid"')hl('Name')el('Slug')el('Mainpage')e\rb(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name' key="uuid"')hl('Name')el('Slug')el('Mainpage')e\rb(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -35,9 +35,9 @@
 					<name>
 						<text xml:lang="en" slug="edit-page"><![CDATA[Edit Page]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[["uuid", "name", "slug", "template"]]]></query>
+					<query connector="stw"><![CDATA[["uuid", "name", "slug", "template"]]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name' key="uuid"')hl('Name')el('Slug')el('Template')e\rb(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name' key="uuid"')hl('Name')el('Slug')el('Template')e\rb(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -45,28 +45,28 @@
 					<name>
 						<text xml:lang="en" slug="edit-content"><![CDATA[Edit content]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[["uuid", "name", "slug", "subtype", "section", "sequence", "dsn", "command", "params", "layout"]]]></query>
+					<query connector="stw"><![CDATA[["uuid", "name", "slug", "subtype", "section", "sequence", "connector", "command", "params", "layout"]]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name' key="uuid"')hl('Name')e\rl('Slug')e\rl('Type')\rD(';;1;Text;Table;Tree;List;Form;Calendar;Graph;Map;Plot')\rl('Section')el('Sequence')e\rl('DSN')e\rl('Command')m\rl('Parameters')e\rl('Layout')m\rb(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name' key="uuid"')hl('Name')e\rl('Slug')e\rl('Type')\rD(';;1;Text;Table;Tree;List;Form;Calendar;Graph;Map;Plot')\rl('Section')el('Sequence')e\rl('Connector')e\rl('Command')m\rl('Parameters')e\rl('Layout')m\rb(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6SyclmGzAM2uOpnred9ceG" origin="a6T6S55WbZjerGVamxGi8kA" type="table"
 					class="stwFormCompact">
 					<name>
-						<text xml:lang="en" slug="edit-datasource"><![CDATA[Edit datasource]]></text>
+						<text xml:lang="en" slug="edit-connector"><![CDATA[Edit connector]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[["name", "type", "host", "port", "user", "password", "database", "contentType"]]]></query>
+					<query connector="stw"><![CDATA[["name", "type", "host", "port", "user", "password", "database", "contentType"]]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="name"')l('Name')el('Type')d(';;2;mysql;mySQL;api;API')l('Host')el('Port')e\a('type="number"')l('User')el('Password')wl('Database')el('Content-Type')d(';;1;application/json')b(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="name"')l('Name')el('Type')d(';;2;mysql;mySQL;api;API')l('Host')el('Port')e\a('type="number"')l('User')el('Password')wl('Database')el('Content-Type')d(';;1;application/json')b(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6SyclmGzAM2uOK0hCP7VyK" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
 					<name>
 						<text xml:lang="en" slug="role-visibility"><![CDATA[Role Visibility]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[$keys(visibility)\@$v.{"name": $v,"value": $lookup(visibility, $v)}]]></query>
+					<query connector="stw"><![CDATA[$keys(visibility)\@$v.{"name": $v,"value": $lookup(visibility, $v)}]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="name"')l('Name')fl('Visible')d(';;2;1;True;0;False')b(';stw;update')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="name"')l('Name')fl('Visible')d(';;2;1;True;0;False')b(';stwupdate')t('Save')]]></text>
 					</layout>
 				</content>
 			</children>
@@ -83,7 +83,7 @@
 					<text xml:lang="en"><![CDATA[Structure <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>]]></text>
 				</option>
 				<option target="c6SyclmGzAM2uOpnred9ceG">
-					<text xml:lang="en"><![CDATA[Data sources <span style="float:right"><i class="fa-thin fa-plus" aria-label="New data source"></i></span>]]></text>
+					<text xml:lang="en"><![CDATA[Connector <span style="float:right"><i class="fa-thin fa-plus" aria-label="New connector"></i></span>]]></text>
 				</option>
 				<option target="c6SyclmGzAM2uOK0hCP7VyK">
 					<text xml:lang="en"><![CDATA[Roles <span style="float:right"><i class="fa-thin fa-plus" aria-label="New role"></i></span>]]></text>
@@ -96,7 +96,7 @@
 				<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('header="&emsp;SEARCH"')e\a('placeholder="Search"')e\a('placeholder="Replace"')b(';stw;search')t('Search')\nt('search results')]]></text>
+				<text xml:lang="en"><![CDATA[\s('header="&emsp;SEARCH"')e\a('placeholder="Search"')e\a('placeholder="Replace"')b(';stwsearch')t('Search')\nt('search results')]]></text>
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -140,7 +140,7 @@
 					<name>
 						<text xml:lang="en" slug="webbase"><![CDATA[Webbase]]></text>
 					</name>
-					<query datasource="stw"><![CDATA[($tree:=function($node){{"icon":$node.type & ($node.section ? "" : "*"),"url":"/stws/edit/" & $lowercase($node.type),"uuid":$node.uuid,"name":$node.name.en,"children":$node.children?$map($node.children,$tree):[]}};$tree($))]]></query>
+					<query connector="stw"><![CDATA[($tree:=function($node){{"icon":$node.type & ($node.section ? "" : "*"),"url":"/stws/edit/" & $lowercase($node.type),"uuid":$node.uuid,"name":$node.name.en,"children":$node.children?$map($node.children,$tree):[]}};$tree($))]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[n('2;Site*;<i class="fa-light fa-globe"></i>;Area*;<i class="fa-light fa-folder"></i>;Page*;<i class="fa-light fa-file"></i>;Content*;<i class="fa-light fa-cloud"></i>;;<i class="fa-light fa-rectangle"></i>')apf]]></text>
 					</layout>
@@ -149,7 +149,7 @@
 					<name>
 						<text xml:lang="en" slug="explorer"><![CDATA[Explorer]]></text>
 					</name>
-					<query datasource="bash"><![CDATA[ls -l ./public]]></query>
+					<query connector="bash"><![CDATA[ls -l ./public]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[]]></text>
 					</layout>
@@ -159,7 +159,7 @@
 						<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Logon"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';Logon;;stw;logon;@@usr;@@pwd')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Logon"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';stwlogon;@@usr;@@pwd')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true"></role>

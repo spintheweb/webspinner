@@ -1,14 +1,16 @@
-import { STWDatasources } from "./stwDatasources.js";
+import { STWConnectors } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";
+
 class STWActionRouter {
 	handlers;
+
 	constructor() {
 		this.handlers = new Map();
 		this.registerDefaultHandlers();
 	}
 	/**
     * Register a custom action handler.
-    * @param action Full action string "namespace;subaction" (e.g., "stw;insert")
+    * @param action Full action name (e.g., "stwinsert")
     * @param handler Async function that processes the action
     */
 	register(action, handler) {
@@ -47,131 +49,62 @@ class STWActionRouter {
     * Register built-in STW action handlers.
     */
 	registerDefaultHandlers() {
-		this.register("stw;insert", this.handleInsert.bind(this));
-		this.register("stw;update", this.handleUpdate.bind(this));
-		this.register("stw;delete", this.handleDelete.bind(this));
-		this.register("stw;search", this.handleSearch.bind(this));
-		this.register("stw;filter", this.handleFilter.bind(this));
-		this.register("stw;submit", this.handleSubmit.bind(this));
-		this.register("stw;logon", this.handleLogon.bind(this));
-		this.register("stw;logoff", this.handleLogoff.bind(this));
-		this.register("stw;pwdreset", this.handlePasswordReset.bind(this));
+		this.register("stwinsert", this.handleInsert.bind(this));
+		this.register("stwupdate", this.handleUpdate.bind(this));
+		this.register("stwdelete", this.handleDelete.bind(this));
+		this.register("stwsearch", this.handleSearch.bind(this));
+		this.register("stwfilter", this.handleFilter.bind(this));
+		this.register("stwsubmit", this.handleSubmit.bind(this));
+		this.register("stwlogon", this.handleLogon.bind(this));
+		this.register("stwlogoff", this.handleLogoff.bind(this));
+		this.register("stwpwdreset", this.handlePasswordReset.bind(this));
 	}
 	/**
-    * Handle insert action - add new record to datasource.
+    * Handle insert action - add new record to connector.
     */
 	async handleInsert(ctx) {
-		const { content, formData } = ctx;
-		if (!content.dsn) {
-			return { ok: false, error: { name: "NoDatasource", message: "Content has no datasource" } };
-		}
-		const fields = {};
-		for (const [key, value] of formData.entries()) {
-			if (!key.startsWith("stw")) {
-				fields[key] = value.toString();
-			}
-		}
-		const columns = Object.keys(fields).join(", ");
-		const placeholders = Object.keys(fields).map(() => "?").join(", ");
-		const values = Object.values(fields);
-		const command = `INSERT INTO ${content.table || "records"} (${columns}) VALUES (${placeholders})`;
-		try {
-			const sqlContent = content;
-			sqlContent.query = command;
-			sqlContent.params = "";
-			await STWDatasources.command(ctx.session, sqlContent);
-			return {
-				ok: true,
-				redirect: ctx.url || ctx.req.url,
-				data: { inserted: fields }
-			};
-		} catch (error) {
-			return {
-				ok: false,
-				error: {
-					name: "InsertFailed",
-					message: error.message,
-					stack: error.stack
-				}
-			};
-		}
+		return await this.handleCrud(ctx, "insert");
 	}
 	/**
     * Handle update action - modify existing record.
     */
 	async handleUpdate(ctx) {
-		const { content, formData } = ctx;
-		if (!content.dsn) {
-			return { ok: false, error: { name: "NoDatasource", message: "Content has no datasource" } };
-		}
-		const keyField = content.key || "id";
-		const keyValue = formData.get(keyField)?.toString();
-		if (!keyValue) {
-			return { ok: false, error: { name: "NoKey", message: `Missing key field: ${keyField}` } };
-		}
-		const fields = {};
-		for (const [key, value] of formData.entries()) {
-			if (!key.startsWith("stw") && key !== keyField) {
-				fields[key] = value.toString();
-			}
-		}
-		const setClauses = Object.keys(fields).map((k) => `${k} = ?`).join(", ");
-		const values = [...Object.values(fields), keyValue];
-		const command = `UPDATE ${content.table || "records"} SET ${setClauses} WHERE ${keyField} = ?`;
-		try {
-			const sqlContent = content;
-			sqlContent.query = command;
-			sqlContent.params = "";
-			await STWDatasources.command(ctx.session, sqlContent);
-			return {
-				ok: true,
-				redirect: ctx.url || ctx.req.url,
-				data: { updated: fields }
-			};
-		} catch (error) {
-			return {
-				ok: false,
-				error: {
-					name: "UpdateFailed",
-					message: error.message,
-					stack: error.stack
-				}
-			};
-		}
+		return await this.handleCrud(ctx, "update");
 	}
 	/**
     * Handle delete action - remove record.
     */
 	async handleDelete(ctx) {
+		return await this.handleCrud(ctx, "delete");
+	}
+	async handleCrud(ctx, operation) {
 		const { content, formData } = ctx;
-		if (!content.dsn) {
-			return { ok: false, error: { name: "NoDatasource", message: "Content has no datasource" } };
+		const actionName = operation[0].toUpperCase() + operation.slice(1);
+		ctx.session.placeholders.set("@@stwKeyValue", "");
+		const fail = (name, message, error) => ({
+			ok: false,
+			error: { name, message, ...(error?.stack ? { stack: error.stack } : {}) }
+		});
+		const connector = ctx.args?.[0] || content?.connector;
+		const query = ctx.args?.length > 1 ? ctx.args.slice(1).join(";") : content?.query;
+		if (!connector || !query) {
+			return fail("NoConnector", "Content has no connector");
 		}
-		const keyField = content.key || "id";
-		const keyValue = formData.get(keyField)?.toString();
-		if (!keyValue) {
-			return { ok: false, error: { name: "NoKey", message: `Missing key field: ${keyField}` } };
-		}
-		const command = `DELETE FROM ${content.table || "records"} WHERE ${keyField} = ?`;
 		try {
-			const sqlContent = content;
-			sqlContent.query = command;
-			sqlContent.params = "";
-			await STWDatasources.command(ctx.session, sqlContent);
-			return {
-				ok: true,
-				redirect: ctx.url || ctx.req.url,
-				data: { deleted: keyValue }
-			};
+			const fields = submittedFields(formData);
+			const session = actionSession(ctx.session, formData);
+			const result = await STWConnectors.getType(connector) === "mysql"
+				? await STWConnectors.executeCrud(session, { connector, query }, operation, fields, content?.key || getKeyField(content, ctx.session) || getKeyFieldFromQuery(query) || "id")
+				: await STWConnectors.executeAction(session, connector, query, operationMethod(operation), fields);
+			ctx.session.placeholders.set("@@stwKeyValue", result.keyValue ?? "");
+			const data = operation === "insert"
+				? { inserted: result.fields, affectedRows: result.affectedRows }
+				: operation === "update"
+					? { updated: result.fields, affectedRows: result.affectedRows }
+					: { deleted: result.keyValue, affectedRows: result.affectedRows };
+			return { ok: true, redirect: ctx.url || ctx.req.url, data };
 		} catch (error) {
-			return {
-				ok: false,
-				error: {
-					name: "DeleteFailed",
-					message: error.message,
-					stack: error.stack
-				}
-			};
+			return fail(`${actionName}Failed`, error instanceof Error ? error.message : String(error), error);
 		}
 	}
 	/**
@@ -216,6 +149,12 @@ class STWActionRouter {
     */
 	async handleSubmit(ctx) {
 		const { content, session, req, formData } = ctx;
+		const connector = ctx.args?.[0];
+		if (connector) {
+			const command = ctx.args.slice(1).join(";");
+			const result = await STWConnectors.executeAction(actionSession(session, formData), connector, command, "POST", submittedFields(formData));
+			return { ok: true, redirect: ctx.url || req.url, data: result };
+		}
 		const page = content.parent;
 		if (!page) {
 			return { ok: false, error: { name: "NoPage", message: "Content has no parent page" } };
@@ -257,8 +196,8 @@ class STWActionRouter {
     */
 	async handleLogon(ctx) {
 		const { formData, session } = ctx;
-		const username = formData.get("username")?.toString();
-		const password = formData.get("password")?.toString();
+		const username = actionValue(ctx.args?.[0], "username", formData, session);
+		const password = actionValue(ctx.args?.[1], "password", formData, session);
 		if (!username || !password) {
 			return {
 				ok: false,
@@ -299,17 +238,24 @@ class STWActionRouter {
     * Handle password reset.
     */
 	async handlePasswordReset(ctx) {
-		const { formData } = ctx;
-		const email = formData.get("email")?.toString();
-		if (!email) {
+		const { formData, session } = ctx;
+		const oldPassword = actionValue(ctx.args?.[0], "old", formData, session);
+		const newPassword = actionValue(ctx.args?.[1], "new1", formData, session);
+		const confirmation = actionValue(ctx.args?.[2], "new2", formData, session);
+		if (!oldPassword || !newPassword || !confirmation) {
 			return {
 				ok: false,
-				error: { name: "InvalidEmail", message: "Email required" }
+				error: { name: "InvalidPassword", message: "Current password and both new password fields are required" }
 			};
 		}
+		if (newPassword !== confirmation) {
+			return { ok: false, error: { name: "PasswordMismatch", message: "New passwords do not match" } };
+		}
+		await STWSecurity.changePassword(session.user, oldPassword, newPassword);
 		return {
 			ok: true,
-			data: { message: "Password reset email sent" }
+			redirect: ctx.url || ctx.req.url,
+			data: { message: "Password changed" }
 		};
 	}
 }
@@ -318,3 +264,53 @@ export {
 	STWActionRouter,
 	actionRouter
 };
+function getTableFromQuery(query) {
+	const match = /^\s*SELECT\b[\s\S]*?\bFROM\s+((?:`[^`]+`|[A-Za-z0-9_$]+)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z0-9_$]+))?)([\s\S]*)$/i.exec(query ?? "");
+	if (!match) {
+		throw new TypeError("CUD actions require a SELECT query with a single table source");
+	}
+	const table = match[1].replaceAll("`", "").replace(/\s*\.\s*/g, ".");
+	if (!/^[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)?$/.test(table)) {
+		throw new TypeError("The SELECT query contains an unsupported table identifier");
+	}
+	if (/^\s*(?:(?:AS\s+)?[A-Za-z0-9_$]+)?\s*(?:,|\bJOIN\b)/i.test(match[2])) {
+		throw new TypeError("CUD actions require a SELECT query with a single table source");
+	}
+	return table;
+}
+function getKeyField(content, session) {
+	const wbll = content?.layout?.get(session.lang)?.wbll || "";
+	const settings = /\\s\('([^']*)'\)/.exec(wbll)?.[1] || "";
+	return /\bkey="([^"]+)"/.exec(settings)?.[1];
+}
+function getKeyFieldFromQuery(query) {
+	return /\bWHERE\s+(?:[A-Za-z0-9_$]+\s*\.\s*)?`?([A-Za-z0-9_$]+)`?\s*=/i.exec(query)?.[1];
+}
+function submittedFields(formData) {
+	const fields = {};
+	for (const [name, value] of formData.entries()) {
+		if (!name.startsWith("stw")) fields[name] = value.toString();
+	}
+	return fields;
+}
+function actionSession(session, formData) {
+	const placeholders = new Map(session.placeholders);
+	for (const [name, value] of formData.entries()) {
+		if (!name.startsWith("stw") && typeof value === "string") {
+			placeholders.set(`@@${name}`, value);
+			placeholders.set(`@${name}`, value);
+		}
+	}
+	return { ...session, placeholders };
+}
+function actionValue(argument, fallbackName, formData, session) {
+	const value = argument || `@@${fallbackName}`;
+	const match = /^@@?(.+)$/.exec(value);
+	if (match) {
+		return formData.get(match[1])?.toString() ?? session.placeholders.get(value)?.toString() ?? "";
+	}
+	return value;
+}
+function operationMethod(operation) {
+	return operation === "insert" ? "PUT" : operation === "update" ? "PATCH" : "DELETE";
+}

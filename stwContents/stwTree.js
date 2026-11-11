@@ -1,7 +1,7 @@
 /**
  * @fileoverview Defines the tree content element.
  *
- * Converts hierarchical or path-based datasource records into a localized
+ * Converts hierarchical or path-based connector records into a localized
  * tree rendered through the configured WBLL layout.
  *
  * @author Giancarlo

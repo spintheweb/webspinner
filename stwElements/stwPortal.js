@@ -31,14 +31,14 @@ class STWPortal extends STWElement {
 	static #instance;
 	static index = STWIndex;
 	langs;
-	datasources;
+	connectors;
 	mainpage;
 	version;
 
 	constructor(portal) {
 		super(portal);
 		this.langs = portal.langs || ["en"];
-		this.datasources = new Map(Object.entries(portal.datasources || { name: "STW", value: "" }));
+		this.connectors = new Map(Object.entries(portal.connectors || { name: "STW", value: "" }));
 		this.mainpage = portal.mainpage;
 		this.version = portal.version || `v1.0.0 ${(new Date()).toISOString()}`;
 		STWIndex.set(portal.uuid, this);
@@ -47,7 +47,7 @@ class STWPortal extends STWElement {
 		return {
 			...super.toLocalizedJSON(session),
 			langs: this.langs,
-			datasources: Object.fromEntries(this.datasources),
+			connectors: Object.fromEntries(this.connectors),
 			mainpage: this.mainpage,
 			version: this.version
 		};
@@ -155,7 +155,7 @@ class STWPortal extends STWElement {
 	update(session, data) {
 		super.update(session, data);
 		this.langs = data.langs || this.langs;
-		if (data.datasources) this.datasources = new Map(Object.entries(data.datasources));
+		if (data.connectors) this.connectors = new Map(Object.entries(data.connectors));
 		this.mainpage = data.mainpage || this.mainpage;
 		this.version = data.version || this.version;
 	}

@@ -28,7 +28,7 @@ These elemets can contain children, allowing for nested portal structures (e.g.,
 - **STWArea**: Groups related sub-areas, pages and contents.
 - **STWPage**: Represents an individual page and its contents.
 - **STWContent**: Abstract base for reusable content blocks or widgets, with concrete implementations in the `stwContents` folder.  
-  The purpose of a content, i.e., a class derived from the abstract class `STWContent`, is to interact with data. Each content has a fundamental nature, for example, representing data as a table, list, calendar, tabs, graph, tree, text, map, even an API. The content connects to a datasource, send a command, and displays the returned data as HTML without requiring further configuration or exposes an API, for example by calling a stored procedure or providing an endpoint for integration.
+  The purpose of a content, i.e., a class derived from the abstract class `STWContent`, is to interact with data. Each content has a fundamental nature, for example, representing data as a table, list, calendar, tabs, graph, tree, text, map, even an API. The content connects to a connector, send a command, and displays the returned data as HTML without requiring further configuration or exposes an API, for example by calling a stored procedure or providing an endpoint for integration.
 
   **Examples:**
   - An `STWTabs` content includes as children other contents, each representing a page within the tabbed interface.

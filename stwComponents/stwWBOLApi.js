@@ -13,16 +13,16 @@
  *     and PATCH merges them (`null` removes a role override).
  *   - GET /wbol/:uuid/options reads content options; PUT replaces the option tree;
  *     PATCH updates an option name by index path in the selected locale.
- *   - GET/PUT /wbol/:portalUuid/datasources reads or replaces portal datasource
+ *   - GET/PUT /wbol/:portalUuid/connectors reads or replaces portal connectors
  *     values; GET/POST /wbol/:portalUuid/roles lists or creates roles.
  *
- * Administrative routes under /wbol/users, /wbol/roles, and /wbol/datasources
+ * Administrative routes under /wbol/users, /wbol/roles, and /wbol/connectors
  * require `root` or `administrators` and are checked separately from development
  * access. Request bodies are limited to 2 MiB.
  *
  * Element routes enforce effective Developer-role visibility. Property routes
  * expose visibility for every element and options for content types that define
- * them. Portal-scoped routes expose portal datasources and role creation.
+ * them. Portal-scoped routes expose portal connectors and role creation.
  *
  * @module stwWBOLAPI
  * @license GPL-3.0-or-later
@@ -33,7 +33,7 @@ import { STWContent } from "../stwElements/stwContent.js";
 import { assertSlugAllowed, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
-import { STWDatasources } from "./stwDatasources.js";
+import { STWConnectors } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
@@ -54,7 +54,7 @@ async function handleWbolApi(request, session) {
 		if (!isDeveloperVisible(element)) return jsonResponse({ error: "Forbidden" }, 403);
 		if (segments[2] === "visibility") return handleVisibilityRoute(request, element);
 		if (segments[2] === "options") return handleOptionsRoute(request, element, session);
-		if (segments[2] === "datasources" && element instanceof STWPortal) return handlePortalDatasourcesRoute(request, element);
+		if (segments[2] === "connectors" && element instanceof STWPortal) return handlePortalConnectorsRoute(request, element);
 		if (segments[2] === "roles" && element instanceof STWPortal) return handlePortalRolesRoute(request);
 		return jsonResponse({ error: "Not found" }, 404);
 	}
@@ -319,20 +319,20 @@ function getOptionAtPath(options, path) {
 	return option;
 }
 
-async function handlePortalDatasourcesRoute(request, portal) {
+async function handlePortalConnectorsRoute(request, portal) {
 	const method = request.method.toUpperCase();
-	if (method === "GET") return jsonResponse(Object.fromEntries(portal.datasources));
+	if (method === "GET") return jsonResponse(Object.fromEntries(portal.connectors));
 	if (method !== "PUT") return methodNotAllowed("GET, PUT");
 	try {
-		const datasources = await readJson(request);
-		if (!isRecord(datasources) || !Object.values(datasources).every((value) => typeof value === "string")) {
-			throw new TypeError("Expected a datasource name-to-value object");
+		const connectors = await readJson(request);
+		if (!isRecord(connectors) || !Object.values(connectors).every((value) => typeof value === "string")) {
+			throw new TypeError("Expected a connector name-to-value object");
 		}
-		portal.datasources = new Map(Object.entries(datasources));
+		portal.connectors = new Map(Object.entries(connectors));
 		portal.modified = Date.now();
-		return jsonResponse(Object.fromEntries(portal.datasources));
+		return jsonResponse(Object.fromEntries(portal.connectors));
 	} catch (error) {
-		return apiErrorResponse(error, "WBOL portal datasource update failed:");
+		return apiErrorResponse(error, "WBOL portal connector update failed:");
 	}
 }
 
@@ -480,14 +480,14 @@ function getWbolContent(uuid, session) {
 		slug: element.localize(session, "slug"),
 		section: element.section,
 		sequence: element.sequence,
-		datasource: element.dsn
+		connector: element.connector
 	};
 }
 
-const datasourceTypes = new Set(["api", "mysql", "shell"]);
+const connectorTypes = new Set(["api", "mysql", "shell"]);
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId] = segments;
-	if (!["users", "roles", "datasources"].includes(resource || "")) return null;
+	if (!["users", "roles", "connectors"].includes(resource || "")) return null;
 	if (!session.roles.includes("root") && !session.roles.includes("administrators")) {
 		return jsonResponse({ error: "Forbidden" }, 403);
 	}
@@ -501,7 +501,7 @@ async function handleWbolAdminApi(request, session, segments) {
 	try {
 		if (resource === "users") return await usersRoute(request, method, id);
 		if (resource === "roles") return await rolesRoute(request, method, id);
-		return await datasourcesRoute(request, method, id);
+		return await connectorsRoute(request, method, id);
 	} catch (error) {
 		if (error instanceof AdminApiError) return jsonResponse({ error: error.message }, error.status);
 		if (error instanceof SyntaxError || error instanceof TypeError) {
@@ -593,48 +593,48 @@ async function rolesRoute(request, method, id) {
 	}
 	return methodNotAllowed("GET, POST, PATCH, DELETE");
 }
-async function datasourcesRoute(request, method, id) {
+async function connectorsRoute(request, method, id) {
 	if (method === "GET" && !id) {
-		return jsonResponse((await STWDatasources.getConfigurations()).map(redactDatasource));
+		return jsonResponse((await STWConnectors.getConfigurations()).map(redactConnector));
 	}
 	if (method === "POST" && !id) {
 		const body = await readAdminJson(request);
-		if (!isRecord(body)) throw new AdminApiError(400, "Expected a datasource object");
-		validateDatasourceFields(body);
-		const datasource = validateDatasource(body);
-		const configurations = await STWDatasources.getConfigurations();
-		if (configurations.some((item) => item.name === datasource.name)) {
-			throw new AdminApiError(409, "Datasource already exists");
+		if (!isRecord(body)) throw new AdminApiError(400, "Expected a connector object");
+		validateConnectorFields(body);
+		const connector = validateConnector(body);
+		const configurations = await STWConnectors.getConfigurations();
+		if (configurations.some((item) => item.name === connector.name)) {
+			throw new AdminApiError(409, "Connector already exists");
 		}
-		configurations.push(datasource);
-		await STWDatasources.saveConfigurations(configurations);
-		return jsonResponse(redactDatasource(datasource), 201);
+		configurations.push(connector);
+		await STWConnectors.saveConfigurations(configurations);
+		return jsonResponse(redactConnector(connector), 201);
 	}
 	if (method === "PATCH" && id) {
 		const body = await readAdminJson(request);
 		if (!isRecord(body)) throw new AdminApiError(400, "Expected a JSON object");
-		validateDatasourceFields(body);
+		validateConnectorFields(body);
 		if (body.name !== void 0 && body.name !== id) {
-			throw new AdminApiError(400, "Datasource name cannot be changed through PATCH");
+			throw new AdminApiError(400, "Connector name cannot be changed through PATCH");
 		}
-		const configurations = await STWDatasources.getConfigurations();
+		const configurations = await STWConnectors.getConfigurations();
 		const index = configurations.findIndex((item) => item.name === id);
-		if (index < 0) throw new AdminApiError(404, "Datasource not found");
+		if (index < 0) throw new AdminApiError(404, "Connector not found");
 		const old = configurations[index];
-		const updated = validateDatasource({ ...old, ...body, name: id });
+		const updated = validateConnector({ ...old, ...body, name: id });
 		configurations[index] = updated;
-		await STWDatasources.saveConfigurations(configurations);
-		return jsonResponse(redactDatasource(updated));
+		await STWConnectors.saveConfigurations(configurations);
+		return jsonResponse(redactConnector(updated));
 	}
 	if (method === "DELETE" && id) {
-		const configurations = await STWDatasources.getConfigurations();
+		const configurations = await STWConnectors.getConfigurations();
 		const index = configurations.findIndex((item) => item.name === id);
-		if (index < 0) throw new AdminApiError(404, "Datasource not found");
-		if (isDatasourceReferenced(id)) {
-			throw new AdminApiError(409, "Datasource is used by one or more content elements");
+		if (index < 0) throw new AdminApiError(404, "Connector not found");
+		if (isConnectorReferenced(id)) {
+			throw new AdminApiError(409, "Connector is used by one or more content elements");
 		}
 		configurations.splice(index, 1);
-		await STWDatasources.saveConfigurations(configurations);
+		await STWConnectors.saveConfigurations(configurations);
 		return secureResponse(null, { status: 204 });
 	}
 	return methodNotAllowed("GET, POST, PATCH, DELETE");
@@ -667,19 +667,19 @@ function renameVisibilityRole(oldRole, newRole) {
 		element.visibility.set(newRole, allowed ?? false);
 	}
 }
-function isDatasourceReferenced(name) {
+function isConnectorReferenced(name) {
 	for (const element of STWIndex.values()) {
-		if (element instanceof STWContent && element.dsn === name) return true;
+		if (element instanceof STWContent && element.connector === name) return true;
 	}
 	return false;
 }
-function validateDatasource(value) {
+function validateConnector(value) {
 	const name = requireNonEmptyString(value.name, "name");
 	const type = requireNonEmptyString(value.type, "type");
 	if (name === "json" || !/^[A-Za-z0-9_-]+$/.test(name)) {
-		throw new AdminApiError(400, "Invalid or reserved datasource name");
+		throw new AdminApiError(400, "Invalid or reserved connector name");
 	}
-	if (!datasourceTypes.has(type)) throw new AdminApiError(400, `Unsupported datasource type: ${type}`);
+	if (!connectorTypes.has(type)) throw new AdminApiError(400, `Unsupported connector type: ${type}`);
 	const result = { name, type };
 	for (const key of ["host", "user", "password", "database", "contentType"]) {
 		if (value[key] !== void 0) result[key] = requireString(value[key], key);
@@ -691,21 +691,21 @@ function validateDatasource(value) {
 		result.port = value.port;
 	}
 	if (type === "mysql" && (!result.host || !result.user || !result.database)) {
-		throw new AdminApiError(400, "mysql datasources require host, user, and database");
+		throw new AdminApiError(400, "mysql connector requires host, user, and database");
 	}
-	if (type === "api" && !result.host) throw new AdminApiError(400, "api datasources require host");
+	if (type === "api" && !result.host) throw new AdminApiError(400, "api connector requires host");
 	if (type === "shell" && !result.host && !result.name) {
-		throw new AdminApiError(400, "shell datasources require an executable in host");
+		throw new AdminApiError(400, "shell connector requires an executable in host");
 	}
 	return result;
 }
-function validateDatasourceFields(value) {
+function validateConnectorFields(value) {
 	const allowed = new Set(["name", "type", "host", "user", "password", "database", "contentType", "port"]);
 	for (const key of Object.keys(value)) {
-		if (!allowed.has(key)) throw new AdminApiError(400, `Unsupported datasource field: ${key}`);
+		if (!allowed.has(key)) throw new AdminApiError(400, `Unsupported connector field: ${key}`);
 	}
 }
-function redactDatasource(configuration) {
+function redactConnector(configuration) {
 	const { password, ...safe } = configuration;
 	return { ...safe, hasPassword: typeof password === "string" && password.length > 0 };
 }

@@ -16,7 +16,7 @@
 						<text xml:lang="en" slug="settings"><![CDATA[Settings]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Configuration" header="HOST is not set"')l('HOST')e('url;host')\a('required placeholder="e.g. www.spintheweb.org"')\rb(';stw;saveHost')t('Save Settings')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Configuration" header="HOST is not set"')l('HOST')e('url;host')\a('required placeholder="e.g. www.spintheweb.org"')\rb(';stwsaveHost')t('Save Settings')]]></text>
 					</layout>
 				</content>
 				<content uuid="c3hT4AotxY6HUsbJ2a3QCxA" origin="a6T6S55WbZjerBB8QbSCr9y"
@@ -36,9 +36,9 @@
 			<name>
 				<text xml:lang="en" slug="password-recovery"><![CDATA[Password Recovery]]></text>
 			</name>
-			<query datasource="json"><![CDATA[{"email":""}]]></query>
+			<query connector="json"><![CDATA[{"email":""}]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption="Password Recovery"')l('Email')e(';email')\rb(';stw;pwdreset')t('Send Reset Link')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption="Password Recovery"')l('Email')e(';email')\rb(';stwpwdreset')t('Send Reset Link')]]></text>
 			</layout>
 		</content>
 		<content uuid="c2hvVEcjC57XCDxmovj54PD" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
@@ -46,9 +46,9 @@
 			<name>
 				<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
 			</name>
-			<query datasource="json"><![CDATA[{"usr":"john","pwd":"smith"}]]></query>
+			<query connector="json"><![CDATA[{"usr":"john","pwd":"smith"}]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stw;logon')t('Logon')t(' ')b(';stw;reset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stwlogon')t('Logon')t(' ')b(';stwreset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
 			</layout>
 			<visibility>
 				<role id="users" visibility="false" />

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Defines the shell-script content element.
  *
- * Executes shell scripts stored in content layouts against datasource records
+ * Executes shell scripts stored in content layouts against connector records
  * using the module's restricted filesystem and environment contract.
  *
  * @author Giancarlo
@@ -63,7 +63,7 @@ class STWShellScript extends STWContent {
 	}
 	/**
     * Override render to execute the shell script.
-    * The script processes the datasource records and can perform file operations.
+    * The script processes the connector records and can perform file operations.
     */
 	async render(_req, session, records) {
 		const script = this._extractCode(session);

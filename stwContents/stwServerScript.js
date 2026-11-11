@@ -1,8 +1,8 @@
 /**
  * @fileoverview Defines the server-script content element.
  *
- * Executes JavaScript stored in content layouts against datasource records
- * with restricted filesystem and datasource helper APIs.
+ * Executes JavaScript stored in content layouts against connector records
+ * with restricted filesystem and connector helper APIs.
  *
  * @author Giancarlo
  * @version 1.0.0
@@ -11,7 +11,7 @@
  * @license GPL-3.0-or-later
  */
 import { STWContent } from "../stwElements/stwContent.js";
-import { STWDatasources } from "../stwComponents/stwDatasources.js";
+import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 import * as path from "node:path";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
@@ -115,32 +115,31 @@ class SafeFileSystem {
 	}
 }
 
-class DatasourceHelper {
+class ConnectorHelper {
 	session;
 	constructor(session) {
 		this.session = session;
 	}
 	/**
-    * Execute a command on a datasource.
+    * Execute a command on a connector.
     * Returns the ISTWRecords result.
     */
-	async execute(dsn, command, params = "") {
+	async execute(connector, command, params = "") {
 		const tempContent = {
 			uuid: `temp-\${Date.now()}`,
-			dsn,
+			connector,
 			command,
-			params,
-			cache: 0
+			params
 		};
-		return await STWDatasources.command(this.session, tempContent);
+		return await STWConnectors.command(this.session, tempContent);
 	}
 	/**
     * Execute a WBPL-processed command.
     * Placeholders in the command will be replaced before execution.
     */
-	async executeWBPL(dsn, command, placeholders) {
+	async executeWBPL(connector, command, placeholders) {
 		const processedCommand = WBPL(command, placeholders);
-		return await this.execute(dsn, processedCommand);
+		return await this.execute(connector, processedCommand);
 	}
 }
 
@@ -150,7 +149,7 @@ class STWServerScript extends STWContent {
 	}
 	/**
     * Override render to execute the server-side script.
-    * The script processes the datasource records and can perform side effects.
+    * The script processes the connector records and can perform side effects.
     */
 	async render(req, session, records) {
 		const code = this._extractCode(session);
@@ -160,15 +159,15 @@ class STWServerScript extends STWContent {
 		}
 		try {
 			const fs = new SafeFileSystem(["public", "data"]);
-			const datasources = new DatasourceHelper(session);
+			const connector = new ConnectorHelper(session);
 			const fn = new Function(
 				"placeholders",
 				"records",
 				"fs",
-				"datasources",
+				"connector",
 				'"use strict";\\nreturn (async function() {\\n' + code + "\\n})();"
 			);
-			const result = await fn(session.placeholders, records, fs, datasources);
+			const result = await fn(session.placeholders, records, fs, connector);
 			return JSON.stringify({ ok: true, result });
 		} catch (error) {
 			console.error(`ServerScript \${this.uuid} execution error:`, error);

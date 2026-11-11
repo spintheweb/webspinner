@@ -9,6 +9,7 @@
  * @license GPL-3.0-or-later
  */
 import { WBPL } from "./stwWBPL.js";
+import { signAction } from "./stwActionToken.js";
 const WBLL = { a, A, b, c, d, D, e, f, h, i, j, k, l, L, m, n, o, O, r, s, S, t, u, v, w, x, y, z, $s, $A, $r, $n, $t, $mc };
 const FLAGS = {
 	stwnone: 0,
@@ -27,6 +28,13 @@ const FLAGS = {
 	stwcud: 7,
 	stwany: -1
 };
+function normalizeAction(value) {
+	const normalized = (value || "").toLocaleLowerCase().replace(/^stw[;]?/, "");
+	return `stw${normalized}`;
+}
+function escapeAttribute(value) {
+	return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
 
 class STWLayout {
 	wbll;
@@ -62,9 +70,9 @@ class STWLayout {
 					code.push(`WBLL.$mc(${(pattern[0].at(0) === "<" ? -1 : 1) * pattern[0].length}, ${expression.index}, runtime)`);
 				else {
 					const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] != null ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
-					if (pattern[0].match(/(p|q|\\a)/) || code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyz]/) && !closed) {
+					if (pattern[0].match(/(p|q|\\a)/) || code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyzt]/) && !closed) {
 						code[code.length - 1] = code[code.length - 1] + `.${fragment}`;
-						closed = pattern[0].match(/^[defintvxyz]/) !== null;
+						closed = pattern[0].match(/^[defintvxyzt]/) !== null;
 					} else {
 						code.push("WBLL." + fragment);
 						closed = false;
@@ -89,7 +97,7 @@ class STWLayout {
 		this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
 	}
 
-	async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "") {
+	async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "", contentId = "") {
 		const runtime = {
 			Session: session,
 			Fields: fields,
@@ -102,6 +110,7 @@ class STWLayout {
 			FldIndex: 0,
 			Settings: new Map(),
 			Actions: "", // Filtering, CRUD, Summary
+			ContentId: contentId,
 			Cols: 1,
 			Index: 0,
 			Downgrade: false, // From table to form
@@ -116,12 +125,32 @@ class STWLayout {
 				runtime.FormFields = 0;
 				runtime.FldIndex = 0;
 				runtime.Actions = "";
-				runtime.Mode = FLAGS.stwnovalue;
+				runtime.Mode = runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter);
 				await this.renderer(WBLL, WBPL, runtime);
 				runtime.HTML += `<tr><td colspan="${runtime.Cols}">${runtime.Actions}</td></tr>`;
 			}
 			if (renderIn === "thead" && runtime.Flags & FLAGS.stwinsert) {
-				runtime.HTML += `<tr><td colspan="${runtime.Cols}">...</td></tr>`;
+				const precedingHTML = runtime.HTML;
+				runtime.RenderIn = "tbody";
+				runtime.FormFields = 0;
+				runtime.FldIndex = 0;
+				runtime.Actions = "";
+				runtime.HTML = "";
+				runtime.Mode = FLAGS.stwinsert;
+				runtime.Flags = FLAGS.stwinsert;
+				await this.renderer(WBLL, WBPL, runtime);
+				const actionMarkup = runtime.Actions;
+				const insertRow = runtime.HTML.replace("</tr>", `<td><span class="stwTableInsertActions" hidden>${actionMarkup}</span></tr>`)
+					.replace(/<tr(?=[\s>])/, "<tr data-stw-insert-row hidden");
+				runtime.HTML = `${precedingHTML}<tr class="stwTableInsertCommand"><th colspan="${runtime.Cols}"><button type="button" class="stwTableEditInsert">Edit</button></th></tr>${insertRow}`;
+			}
+			if (renderIn === "tbody" && runtime.Actions) {
+				const rowActions = runtime.Actions;
+				const canEdit = /\bvalue="stw(?:update|delete)"/.test(rowActions);
+				const actionCell = canEdit
+					? `<td><button type="button" class="stwTableEditRow">Edit</button><span class="stwTableRowActions" hidden>${rowActions}</span></td>`
+					: `<td>${rowActions}</td>`;
+				runtime.HTML = runtime.HTML.replace("</tr>", `${actionCell}</tr>`);
 			}
 			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
 				return { settings: runtime.Settings, HTML: "" };
@@ -153,7 +182,7 @@ class RootSymbol {
 	}
 
 	toString() {
-		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
 		return `<${this.tagName}${htmlAttrs}>`;
 	}
 	
@@ -196,7 +225,7 @@ class BaseSymbol extends RootSymbol {
 
 	toString() {
 		if (!this.tagName) return this.text;
-		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
 		switch (this.tagName) {
 			case "input":
 			case "img":
@@ -338,6 +367,10 @@ class FormSymbol extends BaseSymbol {
 			this.attrs.set("id", `stwE${runtime.FormFields}`);
 		if (!this.attrs.has("name"))
 			this.attrs.set("name", this.args[1] || runtime.Fields[runtime.FldIndex] || `stwE${runtime.FormFields}`);
+		if (runtime.ContentId && ["thead", "tbody"].includes(runtime.RenderIn))
+			this.attrs.set("form", `stwF${runtime.Mode & (FLAGS.stwsearch | FLAGS.stwfilter) ? "S" : "E"}${runtime.ContentId}`);
+		if (runtime.ContentId && runtime.RenderIn === "tbody" && !(runtime.Mode & (FLAGS.stwsearch | FLAGS.stwfilter | FLAGS.stwinsert)))
+			this.attrs.set("hidden", true);
 		if (!this.attrs.has("value"))
 			this.attrs.set("value", this.attrs.get("name") !== runtime.Fields[runtime.FldIndex] || runtime.Flags & (FLAGS.stwsearch | FLAGS.stwfilter | FLAGS.stwinsert) ? this.args[2] ?? "" : Field(runtime));
 		++runtime.FormFields;
@@ -369,37 +402,60 @@ class TextAreaSymbol extends FormSymbol {
 			this.attrs.set("contenteditable", "");
 		} else if (this.args[0])
 			this.attrs.set("class", this.args[0]);
-		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
 		const fragment = `<${this.tagName}${htmlAttrs}>${this.text || ""}</${this.tagName}>`;
 		return fragment;
 	}
 }
 class ButtonSymbol extends FormSymbol {
 	url;
+	currentUrl;
+	relativeUrl;
+	params = new Map();
 	constructor(args, tagName = "button", runtime) {
 		super(args, tagName, runtime);
 		this.attrs.set("type", "submit");
 		this.attrs.delete("value");
-		try {
+		const rawArgs = [...this.args];
+		this.args[0] = WBPL(this.args[0] || "", runtime.Placeholders);
+		this.relativeUrl = !/^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/.test(this.args[0]);
+		if (!this.relativeUrl) {
 			this.url = new URL(this.args[0]);
-		} catch {
-			this.url = new URL(this.args[0] ?? "", `https://${runtime.Session.baseurl}`);
+		} else {
+			this.url = new URL(this.args[0] || ".", "http://stw.invalid");
 		}
-		const action = this.action(this.args[1]);
-		this.attrs.set("formaction", this.url.toString());
+		this.currentUrl = rawArgs[0] === ".";
+		const actionName = normalizeAction(this.args[1]);
+		const action = this.action(actionName.replace(";", ""));
+		const argsForAction = rawArgs.slice(2);
+		const token = signAction({
+			action: actionName,
+			args: argsForAction,
+			currentUrl: this.currentUrl,
+			redirect: this.urlValue(),
+			origin: runtime.ContentId,
+			params: []
+		});
+		this.attrs.set("name", "stwAction");
+		this.attrs.set("value", actionName);
+		this.attrs.set("data-stw-origin", runtime.ContentId);
+		this.attrs.set("data-stw-params", "[]");
+		if (this.currentUrl) this.attrs.set("data-stw-current-url", "true");
+		this.attrs.set("data-stw-action-token", token);
+		this.attrs.set("formaction", this.urlValue());
 		if (action & (FLAGS.stwsearch | FLAGS.stwfilter)) {
 			this.text = action & FLAGS.stwsearch ? "Search" : "Filter";
 			this.attrs.delete("name");
 			this.attrs.set("formmethod", "GET");
 		} else if (action & FLAGS.stwdelete) {
 			this.text = "Delete";
-			this.attrs.set("formmethod", "DELETE");
+			this.attrs.set("formmethod", "POST");
 		} else if (action & FLAGS.stwupdate) {
 			this.text = "Update";
-			this.attrs.set("formmethod", "PATCH");
+			this.attrs.set("formmethod", "POST");
 		} else if (action & FLAGS.stwinsert) {
 			this.text = "Insert";
-			this.attrs.set("formmethod", "PUT");
+			this.attrs.set("formmethod", "POST");
 		} else if (action & FLAGS.stwreset) {
 			this.text = "Reset";
 			this.attrs.set("type", "reset");
@@ -415,8 +471,10 @@ class ButtonSymbol extends FormSymbol {
 		runtime.Index = index;
 		args = WBPL(args, runtime.Placeholders);
 		const search = `${args};;`.split(";");
+		this.params.set(search[0] ?? "", search[1] ?? "");
 		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
-		this.attrs.set("formaction", this.url.toString());
+		this.updateActionToken();
+		this.attrs.set("formaction", this.urlValue());
 		return this;
 	}
 	q(args, index, runtime) {
@@ -430,7 +488,10 @@ class ButtonSymbol extends FormSymbol {
 			const params = new URLSearchParams(qs);
 			for (const [k2, v2] of params.entries())
 				this.url.searchParams.set(k2, v2);
-			this.attrs.set("formaction", this.url.toString());
+			for (const [k2, v2] of params.entries())
+				this.params.set(k2, v2);
+			this.updateActionToken();
+			this.attrs.set("formaction", this.urlValue());
 		} catch {
 		}
 		return this;
@@ -454,6 +515,15 @@ class ButtonSymbol extends FormSymbol {
 		value = (value || "").toLocaleLowerCase();
 		const action = Object.entries(FLAGS).find(([name, member]) => name === value && typeof member === "number")?.[1];
 		return typeof action === "number" ? action : FLAGS.stwnone;
+	}
+	updateActionToken() {
+		const payload = JSON.parse(Buffer.from(this.attrs.get("data-stw-action-token").split(".")[0], "base64url").toString("utf8"));
+		payload.params = [...this.params.entries()];
+		this.attrs.set("data-stw-params", JSON.stringify(payload.params));
+		this.attrs.set("data-stw-action-token", signAction(payload));
+	}
+	urlValue() {
+		return this.relativeUrl ? `${this.url.pathname}${this.url.search}${this.url.hash}` : this.url.toString();
 	}
 }
 class ChoiceSymbol extends FormSymbol {
@@ -615,7 +685,7 @@ class ProgressSymbol extends BaseSymbol {
 	toString() {
 		if (!Number.isFinite(this.value) || this.value < 0 || this.value > 1)
 			return "";
-		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value}"`).join("");
+		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
 		return `<div${htmlAttrs}><div style="display:block;width:${this.value * 100}%;height:1rem;background-color:currentColor"></div></div>`;
 	}
 }
@@ -638,7 +708,6 @@ function A(url, index, runtime) {
 }
 function b(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
 	const symbol = new ButtonSymbol(args, void 0, runtime);
 	return symbol;
 }

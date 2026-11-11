@@ -11,6 +11,66 @@
 
 let stwWS;
 
+document.addEventListener("submit", async (event) => {
+	const button = event.submitter;
+	const token = button?.dataset.stwActionToken;
+	if (!token) return;
+	event.preventDefault();
+	const form = event.target;
+	const action = button.value || "stwsubmit";
+	const method = action === "stwsearch" || action === "stwfilter" ? "GET"
+		: action === "stwinsert" ? "PUT"
+			: action === "stwupdate" ? "PATCH"
+				: action === "stwdelete" ? "DELETE" : "POST";
+	const target = button.dataset.stwCurrentUrl === "true"
+		? new URL(window.location.href)
+		: new URL(button.formAction || form.action || window.location.href, window.location.href);
+	try {
+		for (const [key, value] of JSON.parse(button.dataset.stwParams || "[]")) {
+			target.searchParams.set(key, value);
+		}
+		let formData = new FormData(form, button);
+		const tableActions = button.closest(".stwTableRowActions, .stwTableInsertActions");
+		if (form.id.startsWith("stwFE") && tableActions) {
+			const row = button.closest("tr");
+			const tableFormData = new FormData();
+			for (const control of row.querySelectorAll("input,select,textarea")) {
+				if (control.disabled || !control.name || ["button", "submit", "reset"].includes(control.type)) continue;
+				if (["checkbox", "radio"].includes(control.type) && !control.checked) continue;
+				if (control instanceof HTMLSelectElement && control.multiple) {
+					for (const option of control.selectedOptions) tableFormData.append(control.name, option.value);
+				} else if (control instanceof HTMLInputElement && control.type === "file") {
+					for (const file of control.files) tableFormData.append(control.name, file);
+				} else {
+					tableFormData.append(control.name, control.value);
+				}
+			}
+			if (formData.has("stwOrigin")) tableFormData.set("stwOrigin", formData.get("stwOrigin"));
+			formData = tableFormData;
+		}
+		formData.set("stwAction", action);
+		formData.set("stwActionToken", token);
+		formData.set("stwRedirect", target.href);
+		if (!formData.has("stwOrigin") && button.dataset.stwOrigin) {
+			formData.set("stwOrigin", button.dataset.stwOrigin);
+		}
+		let url = new URL(target);
+		const request = { method, redirect: "follow" };
+		if (method === "GET") {
+			for (const [key, value] of formData.entries()) {
+				if (!(value instanceof File)) url.searchParams.append(key, value);
+			}
+		} else {
+			request.body = formData;
+		}
+		const response = await fetch(url, request);
+		if (!response.ok) throw new Error(`Action failed (${response.status})`);
+		window.location.assign(response.url || target.href);
+	} catch (error) {
+		window.alert(error instanceof Error ? error.message : String(error));
+	}
+});
+
 window.addEventListener("load", () => {
 	stwStartWebsocket();
 	if (_hasStudioCookie() && !document.getElementById("stwStudio")) {

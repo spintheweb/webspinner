@@ -2,13 +2,13 @@
  * @fileoverview Defines the abstract Spin the Web content element.
  *
  * Provides shared content metadata, localized layout handling, session state,
- * datasource execution, response rendering, visibility behavior, and runtime
+ * connector execution, response rendering, visibility behavior, and runtime
  * updates for concrete content elements.
  *
  * @author Giancarlo
  * @version 1.0.0
  * @module stwContent
- * @requires ../stwComponents/stwDatasources.js
+ * @requires ../stwComponents/stwConnectors.js
  * @requires ../stwComponents/stwSession.js
  * @requires ./stwElement.js
  * @requires ../stwComponents/stwWBLL.js
@@ -16,7 +16,7 @@
  * @requires ../stwComponents/stwResponse.js
  * @license GPL-3.0-or-later
  */
-import { STWDatasources } from "../stwComponents/stwDatasources.js";
+import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { assertSlugAllowed, STWElement } from "./stwElement.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
@@ -27,12 +27,11 @@ class STWContent extends STWElement {
 	cssClass;
 	section;
 	sequence;
-	dsn;
+	connector;
 	query;
 	params;
 	layout;
 	stateful;
-	cache;
 	contentType;
 
 	constructor(content, _settings) {
@@ -41,11 +40,10 @@ class STWContent extends STWElement {
 		this.cssClass = content.class || "";
 		this.section = content.section || "";
 		this.sequence = content.sequence || 0;
-		this.dsn = content.dsn || "";
+		this.connector = content.connector || "";
 		this.query = content.query || "";
 		this.params = content.params || "";
 		this.stateful = content.stateful || false;
-		this.cache = content.cache || 0;
 		this.contentType = content.contentType || "text/html; charset=utf-8";
 
 		if (!["Text", "ClientScript", "Shortcut"].includes(this.type) && content.layout) {
@@ -69,7 +67,7 @@ class STWContent extends STWElement {
 			cssClass: this.cssClass,
 			section: this.section,
 			sequence: this.sequence,
-			dsn: this.dsn,
+			connector: this.connector,
 			command: this.query,
 			params: this.params,
 			layout: this.layout.get(session.lang),
@@ -124,17 +122,17 @@ class STWContent extends STWElement {
 			return secureResponse(null, { status: 204 });
 		if (ref) {
 			debugLog(
-				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)} ${this.type} \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)}  ${this.type} @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)} ${this.type} \xA7${this.section}.${this.sequence} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type} @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
 		let settings, HTML, records;
 		const layout = this.getLayout(session);
 		try {
-			records = await STWDatasources.command(session, this);
+			records = await STWConnectors.command(session, this);
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
 			const placeholders = new Map(session.placeholders);
 			if (records.rows.length)
@@ -143,6 +141,9 @@ class STWContent extends STWElement {
 			if (settings.get("visible") === "false")
 				return secureResponse(null, { status: 204 });
 			HTML = await this.render(request, session, records);
+			if (HTML?.includes("data-stw-action-token") && !/<form\b/i.test(HTML)) {
+				HTML = `<form id="stwFA${this.uuid}"><input type="hidden" name="stwOrigin" value="${this.uuid}"></form>${HTML}`;
+			}
 			if (!HTML) {
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
@@ -155,7 +156,7 @@ ${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : 
 			}
 		} catch (error) {
 			const safeStringify = (obj) => {
-				const keys = ["subtype", "cssClass", "section", "sequence", "dsn", "command", "params", "layout"];
+				const keys = ["subtype", "cssClass", "section", "sequence", "connector", "command", "params", "layout"];
 				const filtered = {};
 				for (const key of keys) {
 					filtered[key] = obj[key];
@@ -193,7 +194,7 @@ ${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : 
 		this.cssClass = data.cssClass || this.cssClass;
 		this.section = data.section || this.section;
 		this.sequence = data.sequence || this.sequence;
-		this.dsn = data.dsn || this.dsn;
+		this.connector = data.connector || this.connector;
 		this.query = data.command || this.query;
 		this.params = data.params || this.params;
 		this.contentType = data.contentType || this.contentType;

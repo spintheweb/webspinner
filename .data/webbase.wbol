@@ -118,7 +118,7 @@
 					<name>
 						<text xml:lang="en" slug="list"><![CDATA[Customers]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[SELECT 'fufi' as stwFufi, customers.* FROM customers WHERE [customername like '%@txt%']]]></query>
+					<query connector="mysqlsample"><![CDATA[SELECT 'fufi' as stwFufi, customers.* FROM customers WHERE [customername like '%@txt%']]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="3" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers/customer')pfl('Contact last name;')el('Contact name;;sum')flfb(';stwsearch')]]></text>
 					</layout>
@@ -132,7 +132,7 @@
 					<name>
 						<text xml:lang="en" slug="customer"><![CDATA[Customer]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
+					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption='<i class="fas fa-fw fa-user"></i> @@customerName' ')>>
 							l('Contact last name')\tf\n
@@ -156,7 +156,7 @@
 					<name>
 						<text xml:lang="en" slug="db-schema"><![CDATA[DB Schema]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[SELECT 'TABLES' as TYPE, 'TABLES' as NAME, null as rows, '' as DATA_TYPE, '' as COLUMN_TYPE, '' as COLUMN_KEY, 'TABLE' as PATH
+					<query connector="mysqlsample"><![CDATA[SELECT 'TABLES' as TYPE, 'TABLES' as NAME, null as rows, '' as DATA_TYPE, '' as COLUMN_TYPE, '' as COLUMN_KEY, 'TABLE' as PATH
 								UNION
 								SELECT 'TABLE', T.TABLE_NAME, T.TABLE_ROWS, '', '', '', concat_ws('/', 'TABLE', T.TABLE_NAME)
 								    FROM information_schema.tables T 
@@ -246,7 +246,7 @@
 						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stw;submit')p('fufi;what')q('.')t('Submit')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stwsubmit')p('fufi;what')q('.')t('Submit')]]></text>
 					</layout>
 					<visibility>
 						<role id="guests" visibility="true" />
@@ -269,11 +269,11 @@
 					<name>
 						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[select * from offices]]></query>
+					<query connector="mysqlsample"><![CDATA[select * from offices]]></query>
 					<layout>
 						<!--text
 						xml:lang="en"><![CDATA[\s('caption="Offices"
-						key="officeId"')l('City')hel('Tel.')e('tel')b(';stw;delete')t('-')b(';stw;insert')t('+')]]></text-->
+						key="officeId"')l('City')hel('Tel.')e('tel')b(';stwdelete')t('-')b(';stwinsert')t('+')]]></text-->
 						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
 					</layout>
 					<visibility>
@@ -308,7 +308,7 @@
 					<name>
 						<text xml:lang="en" slug="files"><![CDATA[Files]]></text>
 					</name>
-					<query datasource="bash"><![CDATA[ls -l ./public | awk '
+					<query connector="bash"><![CDATA[ls -l ./public | awk '
 BEGIN {
     print "["
 }
@@ -326,7 +326,7 @@ END {
 					<name>
 						<text xml:lang="en" slug="objects"><![CDATA[Objects]]></text>
 					</name>
-					<query datasource="objects" parameters="id=3&amp;id=5&amp;id=10"><![CDATA[$.({"name":name,"color":data.color})]]></query>
+					<query connector="objects" parameters="id=3&amp;id=5&amp;id=10"><![CDATA[$.({"name":name,"color":data.color})]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('rownumber="False" closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
 					</layout>
@@ -339,7 +339,7 @@ END {
 					<name>
 						<text xml:lang="en" slug="employees"><![CDATA[Employees]]></text>
 					</name>
-					<query datasource="mysqlsample"><![CDATA[select *, 'collapsible' as foo from employees limit 3]]></query>
+					<query connector="mysqlsample"><![CDATA[select *, 'collapsible' as foo from employees limit 3]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Employees" key="employeeNumber" @@foo ')
 								l('Name;1')a('dashboard')pp('fufi;@@foo')ff
@@ -405,7 +405,7 @@ END {
 					<name>
 						<text xml:lang="en" slug="page-details"><![CDATA[Page details]]></text>
 					</name>
-					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"uuid":contents.uuid,"name":name,"slug":slug,"template":contents.template,"keywords":contents.keywords.en,"description":contents.description.en}]]></query>
+					<query connector="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"uuid":contents.uuid,"name":name,"slug":slug,"template":contents.template,"keywords":contents.keywords.en,"description":contents.description.en}]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Page details" key="uuid"')h('uuid')l('Name')e\rl('Slug')e\rl('Template')e\rl('Keywords')m\rl('Description')m\rb('/wbol/@@uuid;stwupdate')t('Save')]]></text>
 					</layout>
@@ -415,7 +415,7 @@ END {
 					<name>
 						<text xml:lang="en" slug="page-visibility"><![CDATA[Page visibility]]></text>
 					</name>
-					<query datasource="WBOLApi" parameters="uuid=@uuid"><![CDATA[$keys(contents.visibility)@$role.{"uuid":contents.uuid,"role":$role,"visibility":$lookup(contents.visibility,$role)}]]></query>
+					<query connector="WBOLApi" parameters="uuid=@uuid"><![CDATA[$keys(contents.visibility)@$role.{"uuid":contents.uuid,"role":$role,"visibility":$lookup(contents.visibility,$role)}]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption="Role visibility" key="role"')h('uuid')l('Role')f\rl('Visible')d(';;2;true;True;false;False')b('/wbol/@@uuid/visibility;stwupdate')t('Save')]]></text>
 					</layout>

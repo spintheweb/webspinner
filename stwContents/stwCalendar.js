@@ -1,7 +1,7 @@
 /**
  * @fileoverview Defines the calendar content element.
  *
- * Groups datasource records by date and renders calendar views using the
+ * Groups connector records by date and renders calendar views using the
  * configured layout and localized session context.
  *
  * @author Giancarlo
@@ -21,11 +21,12 @@ class STWCalendar extends STWContent {
 		const fields = records.fields;
 		const firstRow = records.rows[0];
 		const firstPlaceholders = new Map(session.placeholders);
+		firstPlaceholders.set("@@stwOrigin", this.uuid);
 		if (firstRow)
 			for (const [name, value] of Object.entries(firstRow))
 				firstPlaceholders.set(`@@${name}`, String(value));
 		const layout = this.getLayout(session, "lf\\r".repeat(fields.length));
-		const firstRender = await layout.render(fields, firstPlaceholders, session);
+		const firstRender = await layout.render(fields, firstPlaceholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const settings = firstRender.settings;
 		const mode = String(settings.get("mode") ?? "month");
 		const datetimeKey = String(settings.get("key") ?? "date");
@@ -36,9 +37,10 @@ class STWCalendar extends STWContent {
 			if (row === firstRow)
 				return firstRender.HTML;
 			const rowPlaceholders = new Map(session.placeholders);
+			rowPlaceholders.set("@@stwOrigin", this.uuid);
 			for (const [name, value] of Object.entries(row))
 				rowPlaceholders.set(`@@${name}`, String(value));
-			return (await layout.render(fields, rowPlaceholders, session)).HTML;
+			return (await layout.render(fields, rowPlaceholders, session, "", this.uuid, `stwFA${this.uuid}`)).HTML;
 		};
 
 		const recordMap = {};

@@ -6,6 +6,7 @@ import { secureResponse } from "./stwResponse.js";
 import { envGet } from "./stwConfig.js";
 import { actionRouter } from "./stwActions.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
+import { verifyAction } from "./stwActionToken.js";
 
 async function handleHttp(request, session, sessionId) {
 	const pathname = new URL(request.url).pathname;
@@ -14,7 +15,7 @@ async function handleHttp(request, session, sessionId) {
 	}
 	const element = STWPortal.instance.find(session, pathname);
 	let response = secureResponse(null, { status: 204 });
-	if (request.method === "GET") {
+	if (request.method === "GET" && !new URL(request.url).searchParams.has("stwActionToken")) {
 		if (!element && !pathname.includes("/."))
 			response = await serveFile(request, `./public${pathname}`);
 		else if (element?.type === "Page" || element?.type === "Area" || element?.type === "Portal")
@@ -39,10 +40,15 @@ async function handleHttp(request, session, sessionId) {
 			return secureResponse(response.body, { headers, status: response.status });
 		}
 		return response;
-	} else if (request.method === "POST") {
+	} else if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method) || request.method === "GET" && new URL(request.url).searchParams.has("stwActionToken")) {
 		try {
 			const maxupload = parseInt(envGet("MAX_UPLOADSIZE") || "2") * 1024 * 1024;
-			const formData = await request.formData();
+			const formData = request.method === "GET"
+				? new FormData()
+				: await request.formData();
+			if (request.method === "GET") {
+				new URL(request.url).searchParams.forEach((value, key) => formData.append(key, value));
+			}
 			const fieldMap = {};
 			for (const [key, value] of formData.entries()) {
 				if (!fieldMap[key]) fieldMap[key] = [];
@@ -67,13 +73,12 @@ async function handleHttp(request, session, sessionId) {
 				rows.push(row);
 			}
 			if (rows.length > 1) rows.shift();
-			const fields = Object.keys(fieldMap).filter((name) => name !== "stwOrigin" && name !== "stwAction").map((name) => ({ name }));
+			const fields = Object.keys(fieldMap).filter((name) => !name.startsWith("stw")).map((name) => ({ name }));
 			const stwOrigin = rows[0]?.stwOrigin;
 			const stwAction = rows[0]?.stwAction;
-			for (const row of rows) {
-				delete row.stwOrigin;
-				delete row.stwAction;
-			}
+			for (const row of rows)
+				for (const name of Object.keys(row))
+					if (name.startsWith("stw")) delete row[name];
 			const records = {
 				fields,
 				rows,
@@ -81,56 +86,77 @@ async function handleHttp(request, session, sessionId) {
 				stwOrigin,
 				stwAction
 			};
-			const origin = STWIndex.get(records.stwOrigin || "");
-			if (origin instanceof STWContent && origin?.isVisible(session, false)) {
-				try {
-					const _result = origin.getLayout(session).handleAction(stwAction);
-					const msg = JSON.stringify({ method: "PUT", section: "stwShowModal", body: `<label>Form data ${stwAction}</label><pre>${JSON.stringify(records, null, 4)}</pre>` });
-					const targets = Array.from(session.sockets.values());
-					for (const s of targets) {
-						try {
-							s.send(msg);
-						} catch (_e) {
-						}
-					}
-				} catch (error) {
-					const msg = JSON.stringify({ method: "PUT", section: "stwShowModal", body: `<label>Error</label><pre>${error.message}</pre>` });
-					const targets = Array.from(session.sockets.values());
-					for (const s of targets) {
-						try {
-							s.send(msg);
-						} catch (_e) {
-						}
-					}
-				}
-			}
 			if (formData.has("stwAction")) {
 				const actionValue = formData.get("stwAction").toString();
+				const token = formData.get("stwActionToken")?.toString();
+				const payload = verifyAction(token);
+				if (token && (!payload || payload.action !== actionValue || !Array.isArray(payload.args))) {
+					return secureResponse("Invalid action token", { status: 400 });
+				}
+				if (payload && actionMethod(payload.action) !== request.method) {
+					return secureResponse("Action method does not match the button", { status: 405 });
+				}
+				const originId = payload?.origin || records.stwOrigin || "";
+				if (payload?.origin && formData.get("stwOrigin")?.toString() !== payload.origin) {
+					return secureResponse("Action origin does not match the button", { status: 400 });
+				}
+				const actionContent = STWIndex.get(originId);
+				if (!(actionContent instanceof STWContent) || !(actionContent.isVisible(session, false) & 1)) {
+					return secureResponse("Action content is unavailable", { status: 403 });
+				}
+				const redirect = new URL(
+					formData.get("stwRedirect")?.toString() || payload?.redirect || request.url,
+					request.url
+				);
+				if (redirect.origin !== new URL(request.url).origin) {
+					return secureResponse("Redirect must remain on this site", { status: 400 });
+				}
 				const ctx = {
 					req: request,
 					session,
-					content: origin,
+					content: actionContent,
 					formData,
-					action: actionValue,
-					url: formData.get("stwRedirect")?.toString()
+					action: payload?.action || actionValue,
+					args: payload?.args || [],
+					url: redirect.href
 				};
 				const result = await actionRouter.execute(ctx);
-				if (result.redirect) {
-					return Response.redirect(result.redirect, 303);
-				}
 				if (!result.ok && result.error) {
 					session.placeholders.set("ERROR", result.error.message);
 				}
 				if (result.data) {
 					session.placeholders.set("RESULT", JSON.stringify(result.data));
 				}
+				if (result.redirect || payload) {
+					const destination = new URL(result.redirect || redirect.href, request.url);
+					if (destination.origin !== new URL(request.url).origin) {
+						return secureResponse("Redirect must remain on this site", { status: 400 });
+					}
+					return Response.redirect(destination.href, 303);
+				}
 			}
 			return secureResponse(null, { status: 204 });
-		} catch (_error) {
+		} catch (error) {
+			console.error("Error processing form action:", error);
 			return secureResponse("Error processing form data", { status: 400 });
 		}
 	}
 	return response;
+}
+function actionMethod(action) {
+	switch (action) {
+		case "stwsearch":
+		case "stwfilter":
+			return "GET";
+		case "stwinsert":
+			return "PUT";
+		case "stwupdate":
+			return "PATCH";
+		case "stwdelete":
+			return "DELETE";
+		default:
+			return "POST";
+	}
 }
 export {
 	handleHttp

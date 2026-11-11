@@ -391,9 +391,9 @@ fi
 
 # Ensure essential data files exist; copy from payload if missing (both install and upgrade)
 mkdir -p "$INSTALL_DIR/.data"
-if [ ! -f "$INSTALL_DIR/.data/datasources.json" ] && [ -f "$TEMP_EXTRACT/.data/datasources.json" ]; then
-  cp "$TEMP_EXTRACT/.data/datasources.json" "$INSTALL_DIR/.data/"
-  echo "Copied missing .data/datasources.json from payload"
+if [ ! -f "$INSTALL_DIR/.data/connectors.json" ] && [ -f "$TEMP_EXTRACT/.data/connectors.json" ]; then
+  cp "$TEMP_EXTRACT/.data/connectors.json" "$INSTALL_DIR/.data/"
+  echo "Copied missing .data/connectors.json from payload"
 fi
 if [ ! -f "$INSTALL_DIR/.data/users.json" ] && [ -f "$TEMP_EXTRACT/.data/users.json" ]; then
   cp "$TEMP_EXTRACT/.data/users.json" "$INSTALL_DIR/.data/"
@@ -543,7 +543,7 @@ PORTAL_ROOT="./public"
 WEBBASE="./.data/webbase.wbol"
 COMMON_WEBBASE="./webbaselets/stwCommon.wbol"
 MAX_UPLOADSIZE=$MAX_UPLOADSIZE
-DATASOURCES="./.data/datasources.json"
+CONNECTORS="./.data/connectors.json"
 USERS="./.data/users.json"
 ALLOW_DEV=$ALLOW_DEV
 EOF
@@ -643,8 +643,8 @@ if [ ! -f "$INSTALL_DIR/.data/users.json" ]; then
 EOF
 fi
 
-if [ ! -f "$INSTALL_DIR/.data/datasources.json" ]; then
-  cat > "$INSTALL_DIR/.data/datasources.json" << 'EOF'
+if [ ! -f "$INSTALL_DIR/.data/connectors.json" ]; then
+  cat > "$INSTALL_DIR/.data/connectors.json" << 'EOF'
 []
 EOF
 fi

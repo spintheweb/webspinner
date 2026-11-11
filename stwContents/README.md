@@ -1,6 +1,6 @@
 # stwContents Folder Overview
 
-This folder contains content modules. Each file defines a specific type of content that can be rendered or managed in the system. Most modules query a datasource and render one or more records, providing interactive or visual representations of the underlying data. The name of each content module suggests how the queried data will be rendered (e.g., as a tree, chart, or table). The precise details of presentation and arrangement are described in the layout using WBLL (Webbase Layout Language).
+This folder contains content modules. Each file defines a specific type of content that can be rendered or managed in the system. Most modules query a connector and render one or more records, providing interactive or visual representations of the underlying data. The name of each content module suggests how the queried data will be rendered (e.g., as a tree, chart, or table). The precise details of presentation and arrangement are described in the layout using WBLL (Webbase Layout Language).
 
 ---
 
@@ -60,7 +60,7 @@ Implements the `STWLanguages` content type. Displays a language selection bar fo
 
 ## stwList.js
 
-Implements the `STWList` content type. Renders lists of items from data sources with customizable layouts.
+Implements the `STWList` content type. Renders lists of items from connector with customizable layouts.
 
 ---
 

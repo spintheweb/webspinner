@@ -27,7 +27,9 @@ class STWTabs extends STWContent {
 
 	async render(request, session, records) {
 		const layout = this.getLayout(session);
-		const settings = (await layout.render(records.fields, session.placeholders, session)).settings;
+		const placeholders = new Map(session.placeholders);
+		placeholders.set("@@stwOrigin", this.uuid);
+		const settings = (await layout.render(records.fields, placeholders, session, "", this.uuid, `stwFA${this.uuid}`)).settings;
 		const search = new URL(request.url).search;
 		let body = "<div>", id = "", href = "";
 		for (const option of this.options) {

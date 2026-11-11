@@ -67,8 +67,15 @@ function WBOLFragment(element) {
 			case "description":
 				obj[localName(child)] = parseText(child);
 				break;
+			case "connectors":
+				obj.connectors = {};
+				childElements(child).filter((connector) => localName(connector) === "connector").forEach((connector) => {
+					const id = connector.getAttribute("id");
+					if (id) obj.connectors[id] = connector.getAttribute("connection-string") || innerText(connector);
+				});
+				break;
 			case "query":
-				obj.dsn = child.getAttribute("datasource") ?? void 0;
+				obj.connector = child.getAttribute("connector") ?? void 0;
 				obj.params = child.getAttribute("parameters") ?? void 0;
 				obj.query = innerText(child);
 				break;

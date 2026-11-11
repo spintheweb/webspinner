@@ -38,6 +38,30 @@ const STWSecurity = new class {
 		if (patch.roles !== void 0) person.roles = patch.roles.join(",");
 		await this.writeUsers(users);
 	}
+	async changePassword(user, oldPassword, newPassword) {
+		if (!user || user === "guest") throw new Error("You must be logged in to change your password");
+		const users = await this.readUsers();
+		const person = users.find((entry) => entry.user === user);
+		if (!person?.password) throw new Error("User not found");
+		const [saltHex, hashHex] = person.password.split(":");
+		if (!saltHex || !hashHex) throw new Error("Stored password is invalid");
+		const salt = fromHex(saltHex);
+		const keyMaterial = await crypto.subtle.importKey(
+			"raw",
+			new TextEncoder().encode(oldPassword),
+			{ name: "PBKDF2" },
+			false,
+			["deriveBits"]
+		);
+		const derivedBits = await crypto.subtle.deriveBits(
+			{ ...pbkdf2Params, salt: salt.buffer },
+			keyMaterial,
+			256
+		);
+		if (toHex(derivedBits) !== hashHex) throw new Error("Current password is incorrect");
+		person.password = await this.hashPassword(newPassword);
+		await this.writeUsers(users);
+	}
 	async deleteUser(user) {
 		const users = await this.readUsers();
 		const index = users.findIndex((person) => person.user === user);
