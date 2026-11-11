@@ -16,6 +16,7 @@ import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { signAction, verifyAction } from "../stwComponents/stwActionToken.js";
 import { STWActionRouter } from "../stwComponents/stwActions.js";
 import { handleHttp } from "../stwComponents/stwHttpHandler.js";
+import { STWConnectors } from "../stwComponents/stwConnectors.js";
 
 test("cookie helpers parse and set session cookies", () => {
 	const cookies = getCookies(new Headers({ cookie: "sessionId=a%20b; theme=dark" }));
@@ -439,3 +440,288 @@ test("connector administration uses the renamed connectors route and configurati
 		await rm(directory, { recursive: true, force: true });
 	}
 });
+
+test("admin connector reconnect resets and attempts every configured connector", async () => {
+	const previousConnectorsPath = process.env.CONNECTORS;
+	const originalConnectDatabase = STWConnectors.connectDatabase;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-connector-retry-"));
+	const connectorsPath = join(directory, "connectors.json");
+	const originalConfigurations = [
+		{ name: "mysqlsample", type: "mysql", host: "old-db.example.test", user: "portal", database: "portal" },
+		{ name: "pgsample", type: "postgres", host: "pg.example.test", user: "portal", database: "portal" }
+	];
+	await writeFile(connectorsPath, JSON.stringify(originalConfigurations));
+	process.env.CONNECTORS = connectorsPath;
+	const connectCalls = [];
+	const closed = [];
+	let failReconnect = false;
+	STWConnectors.connectDatabase = async (configuration) => {
+		connectCalls.push(configuration);
+		if (configuration.name === "mysqlsample" && failReconnect && configuration.host === "new-db.example.test") {
+			throw new Error("IP access denied");
+		}
+		return {
+			type: configuration.type,
+			client: {
+				end: async () => closed.push(configuration.name),
+				close: async () => closed.push(configuration.name)
+			}
+		};
+	};
+	try {
+		await STWConnectors.resetRuntime();
+		await STWConnectors.initialize();
+		const originalPeerConnection = STWConnectors.connectors.get("pgsample");
+		assert.equal(connectCalls.length, 2);
+
+		const adminSession = { roles: ["root"] };
+		const statusResponse = await handleWbolApi(new Request("http://localhost/wbol/connectors"), adminSession);
+		assert.equal(statusResponse.status, 200);
+		const [connector] = (await statusResponse.json()).filter(({ name }) => name === "mysqlsample");
+		assert.equal("password" in connector, false);
+		assert.equal("connectionStatus" in connector, false);
+
+		const forbidden = await handleWbolApi(
+			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
+			{ roles: ["developers"] }
+		);
+		assert.equal(forbidden.status, 403);
+
+		const changedConfigurations = originalConfigurations.map((configuration) =>
+			configuration.name === "mysqlsample"
+				? { ...configuration, host: "new-db.example.test" }
+				: configuration
+		);
+		await writeFile(connectorsPath, JSON.stringify(changedConfigurations));
+		failReconnect = true;
+		const failedReconnect = await handleWbolApi(
+			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
+			adminSession
+		);
+		assert.equal(failedReconnect.status, 503);
+		assert.deepEqual(await failedReconnect.json(), {
+			reconnected: false,
+			errors: ['Connector "mysqlsample" failed to initialize: IP access denied']
+		});
+		assert.equal(STWConnectors.connectors.has("mysqlsample"), false);
+		assert.notEqual(STWConnectors.connectors.get("pgsample"), originalPeerConnection);
+		assert.equal(STWConnectors.connectors.get("pgsample").type, "postgres");
+		assert.deepEqual(connectCalls.slice(2).map(({ name }) => name), ["mysqlsample", "pgsample"]);
+		assert.deepEqual(closed, ["mysqlsample", "pgsample"]);
+
+		failReconnect = false;
+		const successfulReconnect = await handleWbolApi(
+			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
+			adminSession
+		);
+		assert.equal(successfulReconnect.status, 200);
+		assert.deepEqual(await successfulReconnect.json(), { reconnected: true });
+		assert.deepEqual(connectCalls.slice(4).map(({ name }) => name), ["mysqlsample", "pgsample"]);
+		assert.equal(connectCalls[4].host, "new-db.example.test");
+		assert.equal(STWConnectors.connectors.get("mysqlsample").type, "mysql");
+		assert.equal(STWConnectors.connectors.get("pgsample").type, "postgres");
+		assert.deepEqual(closed, ["mysqlsample", "pgsample", "pgsample"]);
+	} finally {
+		await STWConnectors.resetRuntime();
+		STWConnectors.connectDatabase = originalConnectDatabase;
+		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousConnectorsPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test("CRUD actions use the connector capability instead of a MySQL type check", async () => {
+	const originalSupportsCrud = STWConnectors.supportsCrud;
+	const originalExecuteCrud = STWConnectors.executeCrud;
+	const originalExecuteAction = STWConnectors.executeAction;
+	let executed = false;
+	STWConnectors.supportsCrud = async () => true;
+	STWConnectors.executeCrud = async (session, content, operation) => {
+		executed = true;
+		assert.equal(content.connector, "relational");
+		assert.equal(operation, "insert");
+		return { fields: ["name"], affectedRows: 1, keyValue: 42 };
+	};
+	STWConnectors.executeAction = async () => {
+		throw new Error("Database CRUD should not use the API action path");
+	};
+	try {
+		const formData = new FormData();
+		formData.set("name", "Ada");
+		const session = { placeholders: new Map() };
+		const result = await new STWActionRouter().execute({
+			action: "stwinsert",
+			args: ["relational", "SELECT * FROM customers"],
+			content: {},
+			formData,
+			session,
+			url: "/customers",
+			req: { url: "/customers" }
+		});
+		assert.equal(executed, true);
+		assert.equal(result.ok, true);
+		assert.equal(session.placeholders.get("@@stwKeyValue"), 42);
+	} finally {
+		STWConnectors.supportsCrud = originalSupportsCrud;
+		STWConnectors.executeCrud = originalExecuteCrud;
+		STWConnectors.executeAction = originalExecuteAction;
+	}
+});
+
+test("SQL CRUD generates provider-specific commands for MySQL, PostgreSQL, and SQL Server", async () => {
+	const previousPath = process.env.CONNECTORS;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-crud-"));
+	const connectorsPath = join(directory, "connectors.json");
+	await writeFile(connectorsPath, "[]");
+	process.env.CONNECTORS = connectorsPath;
+	try {
+		for (const type of ["mysql", "postgres", "mssql"]) {
+			await STWConnectors.resetRuntime();
+			let statement = "";
+			let parameters = [];
+			const client = createFakeSqlClient(type, (query, values) => {
+				statement = query;
+				parameters = values;
+			});
+			STWConnectors.connectors.set(type, { type, client });
+			assert.equal(await STWConnectors.supportsCrud(type), true);
+			const result = await STWConnectors.executeCrud(
+				{ placeholders: new Map() },
+				{ connector: type, query: "SELECT * FROM customers" },
+				"insert",
+				{ name: "Ada" },
+				"id"
+			);
+			assert.deepEqual(result, { fields: { name: "Ada" }, affectedRows: 1, keyValue: 42 });
+			assert.deepEqual(parameters, ["Ada"]);
+			if (type === "mysql") {
+				assert.match(statement, /INSERT INTO `customers` \(`name`\) VALUES \(\?\)/);
+			} else if (type === "postgres") {
+				assert.match(statement, /INSERT INTO "customers" \("name"\) VALUES \(\$1\) RETURNING "id"/);
+			} else {
+				assert.match(statement, /INSERT INTO \[customers\] \(\[name\]\) OUTPUT INSERTED\.\[id\] VALUES \(@p0\)/);
+			}
+			const updated = await STWConnectors.executeCrud(
+				{ placeholders: new Map() },
+				{ connector: type, query: "SELECT * FROM customers" },
+				"update",
+				{ id: "42", name: "Ada" },
+				"id"
+			);
+			assert.deepEqual(updated, { fields: { name: "Ada" }, affectedRows: 1, keyValue: "42" });
+			assert.deepEqual(parameters, ["Ada", "42"]);
+			if (type === "mysql") assert.match(statement, /UPDATE `customers` SET `name` = \? WHERE `id` = \?/);
+			else if (type === "postgres") assert.match(statement, /UPDATE "customers" SET "name" = \$1 WHERE "id" = \$2/);
+			else assert.match(statement, /UPDATE \[customers\] SET \[name\] = @p0 WHERE \[id\] = @p1/);
+
+			const deleted = await STWConnectors.executeCrud(
+				{ placeholders: new Map() },
+				{ connector: type, query: "SELECT * FROM customers" },
+				"delete",
+				{ id: "42" },
+				"id"
+			);
+			assert.deepEqual(deleted, { fields: { id: "42" }, affectedRows: 1, keyValue: "42" });
+			assert.deepEqual(parameters, ["42"]);
+			if (type === "mysql") assert.match(statement, /DELETE FROM `customers` WHERE `id` = \?/);
+			else if (type === "postgres") assert.match(statement, /DELETE FROM "customers" WHERE "id" = \$1/);
+			else assert.match(statement, /DELETE FROM \[customers\] WHERE \[id\] = @p0/);
+		}
+	} finally {
+		await STWConnectors.resetRuntime();
+		if (previousPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test("MongoDB CRUD uses the native collection command and shared key contract", async () => {
+	const previousPath = process.env.CONNECTORS;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-mongodb-crud-"));
+	const connectorsPath = join(directory, "connectors.json");
+	await writeFile(connectorsPath, "[]");
+	process.env.CONNECTORS = connectorsPath;
+	let update;
+	try {
+		await STWConnectors.resetRuntime();
+		STWConnectors.connectors.set("documents", {
+			type: "mongodb",
+			client: { close: async () => {} },
+			database: {
+				collection(name) {
+					assert.equal(name, "customers");
+					return {
+						updateOne: async (filter, changes) => {
+							update = { filter, changes };
+							return { modifiedCount: 1 };
+						}
+					};
+				}
+			}
+		});
+		assert.equal(await STWConnectors.supportsCrud("documents"), true);
+		const result = await STWConnectors.executeCrud(
+			{ placeholders: new Map() },
+			{ connector: "documents", query: '{"collection":"customers","filter":{"status":"active"}}' },
+			"update",
+			{ _id: "507f1f77bcf86cd799439011", name: "Ada" }
+		);
+		assert.deepEqual(result, {
+			fields: { name: "Ada" },
+			affectedRows: 1,
+			keyValue: "507f1f77bcf86cd799439011"
+		});
+		assert.equal(update.filter.status, "active");
+		assert.equal(update.filter._id.toHexString(), "507f1f77bcf86cd799439011");
+		assert.deepEqual(update.changes, { $set: { name: "Ada" } });
+	} finally {
+		await STWConnectors.resetRuntime();
+		if (previousPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+function createFakeSqlClient(type, capture) {
+	if (type === "mysql") {
+		return {
+			execute: async (query, values) => {
+				capture(query, values);
+				if (query.includes("LIMIT 0")) return [[], [{ name: "id" }, { name: "name" }]];
+				return [{ affectedRows: 1, insertId: 42 }, []];
+			},
+			end: async () => {}
+		};
+	}
+	if (type === "postgres") {
+		return {
+			query: async (query, values) => {
+				capture(query, values);
+				if (query.endsWith("LIMIT 0")) {
+					return { rowCount: 0, rows: [], fields: [{ name: "id" }, { name: "name" }] };
+				}
+				return { rowCount: 1, rows: [{ id: 42 }], fields: [{ name: "id" }] };
+			},
+			end: async () => {}
+		};
+	}
+	return {
+		request() {
+			const values = [];
+			return {
+				input(name, value) {
+					values.push([name, value]);
+					return this;
+				},
+				query: async (query) => {
+					capture(query, values.map(([, value]) => value));
+					const recordset = [];
+					recordset.columns = query.includes("TOP 0") ? { id: {}, name: {} } : { id: {} };
+					if (!query.includes("TOP 0")) recordset.push({ id: 42 });
+					return { recordset, rowsAffected: [query.includes("TOP 0") ? 0 : 1] };
+				}
+			};
+		},
+		close: async () => {}
+	};
+}

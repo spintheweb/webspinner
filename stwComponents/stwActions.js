@@ -93,8 +93,8 @@ class STWActionRouter {
 		try {
 			const fields = submittedFields(formData);
 			const session = actionSession(ctx.session, formData);
-			const result = await STWConnectors.getType(connector) === "mysql"
-				? await STWConnectors.executeCrud(session, { connector, query }, operation, fields, content?.key || getKeyField(content, ctx.session) || getKeyFieldFromQuery(query) || "id")
+			const result = await STWConnectors.supportsCrud(connector)
+				? await STWConnectors.executeCrud(session, { connector, query }, operation, fields, content?.key || getKeyField(content, ctx.session) || getKeyFieldFromQuery(query))
 				: await STWConnectors.executeAction(session, connector, query, operationMethod(operation), fields);
 			ctx.session.placeholders.set("@@stwKeyValue", result.keyValue ?? "");
 			const data = operation === "insert"

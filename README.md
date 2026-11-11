@@ -17,6 +17,20 @@ A Webbase is a declarative WBOL model that defines a portal’s structure, navig
 
 A Webbaselet is a standalone module that describes a functionality—e.g., a webmail client (POP3/SMTP), an ERP client, or a BPMS client—that can be linked to a Webbase. Each integrates with its backend while presenting a uniform UX within the portal.
 
+## Database connectors and data actions
+
+Database connector types are adapters, not the connector model itself. The runtime supports MySQL (`mysql`), PostgreSQL (`postgres`), SQL Server (`mssql`), and MongoDB (`mongodb`), alongside API and shell connectors. The `stwinsert`, `stwupdate`, and `stwdelete` actions use the same CRUD action contract for these database connectors; SQL adapters handle their dialect-specific identifier quoting and parameter binding.
+
+SQL content uses native SQL. For MongoDB, content queries use JSON Extended JSON with a collection name and optional query options, for example:
+
+```json
+{"collection":"customers","filter":{"status":"active"},"projection":{"name":1},"limit":50}
+```
+
+MongoDB CRUD actions use the query's `collection` and optional `filter`, plus submitted form fields. Update and delete actions target the configured key field (default `_id`); updates apply submitted fields with `$set`. A 24-character hexadecimal `_id` submitted by a form is treated as an ObjectId.
+
+Administrators can force a full connector reload and reconnect all configured databases with `POST /wbol/connectors/reconnect`. This reconnects every configured database connector, not only failed ones; failures are returned in the response.
+
 ## Run Webspinner
 
 Webspinner requires Node.js 22.18 or later. From this repository:

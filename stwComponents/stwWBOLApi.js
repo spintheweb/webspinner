@@ -18,7 +18,8 @@
  *
  * Administrative routes under /wbol/users, /wbol/roles, and /wbol/connectors
  * require `root` or `administrators` and are checked separately from development
- * access. Request bodies are limited to 2 MiB.
+ * access. POST /wbol/connectors/reconnect reconnects all configured connectors.
+ * Request bodies are limited to 2 MiB.
  *
  * Element routes enforce effective Developer-role visibility. Property routes
  * expose visibility for every element and options for content types that define
@@ -484,9 +485,9 @@ function getWbolContent(uuid, session) {
 	};
 }
 
-const connectorTypes = new Set(["api", "mysql", "shell"]);
+const connectorTypes = new Set(["api", "mysql", "postgres", "mssql", "mongodb", "shell"]);
 async function handleWbolAdminApi(request, session, segments) {
-	const [resource, rawId] = segments;
+	const [resource, rawId, action] = segments;
 	if (!["users", "roles", "connectors"].includes(resource || "")) return null;
 	if (!session.roles.includes("root") && !session.roles.includes("administrators")) {
 		return jsonResponse({ error: "Forbidden" }, 403);
@@ -501,6 +502,10 @@ async function handleWbolAdminApi(request, session, segments) {
 	try {
 		if (resource === "users") return await usersRoute(request, method, id);
 		if (resource === "roles") return await rolesRoute(request, method, id);
+		if (resource === "connectors" && rawId === "reconnect" && action === void 0) {
+			return await reconnectConnectorsRoute(method);
+		}
+		if (action !== void 0) return jsonResponse({ error: "Not found" }, 404);
 		return await connectorsRoute(request, method, id);
 	} catch (error) {
 		if (error instanceof AdminApiError) return jsonResponse({ error: error.message }, error.status);
@@ -639,6 +644,21 @@ async function connectorsRoute(request, method, id) {
 	}
 	return methodNotAllowed("GET, POST, PATCH, DELETE");
 }
+async function reconnectConnectorsRoute(method) {
+	if (method !== "POST") return methodNotAllowed("POST");
+	try {
+		return jsonResponse(await STWConnectors.reconnectAll());
+	} catch (error) {
+		console.error("Failed to reconnect all connectors:", error);
+		const errors = error instanceof AggregateError
+			? error.errors.map((item) => item instanceof Error ? item.message : String(item))
+			: [error instanceof Error ? error.message : String(error)];
+		return jsonResponse({
+			reconnected: false,
+			errors
+		}, 503);
+	}
+}
 async function validateRoles(value) {
 	if (!Array.isArray(value) || !value.every((role) => typeof role === "string" && role.length > 0)) {
 		throw new AdminApiError(400, "roles must be an array of role names");
@@ -690,8 +710,11 @@ function validateConnector(value) {
 		}
 		result.port = value.port;
 	}
-	if (type === "mysql" && (!result.host || !result.user || !result.database)) {
-		throw new AdminApiError(400, "mysql connector requires host, user, and database");
+	if (["mysql", "postgres", "mssql"].includes(type) && (!result.host || !result.user || !result.database)) {
+		throw new AdminApiError(400, `${type} connector requires host, user, and database`);
+	}
+	if (type === "mongodb" && (!result.host || !result.database)) {
+		throw new AdminApiError(400, "mongodb connector requires host and database");
 	}
 	if (type === "api" && !result.host) throw new AdminApiError(400, "api connector requires host");
 	if (type === "shell" && !result.host && !result.name) {

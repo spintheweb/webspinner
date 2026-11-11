@@ -10,6 +10,7 @@
  */
 import { WBPL } from "./stwWBPL.js";
 import { signAction } from "./stwActionToken.js";
+
 const WBLL = { a, A, b, c, d, D, e, f, h, i, j, k, l, L, m, n, o, O, r, s, S, t, u, v, w, x, y, z, $s, $A, $r, $n, $t, $mc };
 const FLAGS = {
 	stwnone: 0,
@@ -28,10 +29,6 @@ const FLAGS = {
 	stwcud: 7,
 	stwany: -1
 };
-function normalizeAction(value) {
-	const normalized = (value || "").toLocaleLowerCase().replace(/^stw[;]?/, "");
-	return `stw${normalized}`;
-}
 function escapeAttribute(value) {
 	return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
@@ -425,8 +422,8 @@ class ButtonSymbol extends FormSymbol {
 			this.url = new URL(this.args[0] || ".", "http://stw.invalid");
 		}
 		this.currentUrl = rawArgs[0] === ".";
-		const actionName = normalizeAction(this.args[1]);
-		const action = this.action(actionName.replace(";", ""));
+		const actionName = (this.args[1] || "stw").toLocaleLowerCase();
+		const action = FLAGS[actionName] ?? FLAGS.stwnone;
 		const argsForAction = rawArgs.slice(2);
 		const token = signAction({
 			action: actionName,
@@ -510,11 +507,6 @@ class ButtonSymbol extends FormSymbol {
 			return "";
 		}
 		return fragment;
-	}
-	action(value) {
-		value = (value || "").toLocaleLowerCase();
-		const action = Object.entries(FLAGS).find(([name, member]) => name === value && typeof member === "number")?.[1];
-		return typeof action === "number" ? action : FLAGS.stwnone;
 	}
 	updateActionToken() {
 		const payload = JSON.parse(Buffer.from(this.attrs.get("data-stw-action-token").split(".")[0], "base64url").toString("utf8"));

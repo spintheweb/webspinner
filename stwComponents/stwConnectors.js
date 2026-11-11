@@ -4,14 +4,16 @@ import { dirname } from "node:path";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createConnection } from "mysql2/promise";
+import { Client } from "pg";
+import sql from "mssql";
+import { BSON, MongoClient, ObjectId } from "mongodb";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
 import { getWbolContent } from "./stwWBOLApi.js";
 class STWConnectors {
 	static connectors = new Map();
 	static #initializationPromise = null;
-	// Keep connector settings to reconnect when needed
-	static mysqlConfigs = new Map();
+	static connectorConfigs = new Map();
 	static async getConfigurations() {
 		const path = envGet("CONNECTORS") || "./.data/connectors.json";
 		try {
@@ -69,19 +71,19 @@ class STWConnectors {
 	static async resetRuntime() {
 		const closeErrors = [];
 		for (const connector of this.connectors.values()) {
-			if (isMySQLConnection(connector)) {
+			if (isDatabaseConnection(connector)) {
 				try {
-					await connector.end();
+					await closeDatabaseConnection(connector);
 				} catch (error) {
 					closeErrors.push(error);
 				}
 			}
 		}
 		this.connectors.clear();
-		this.mysqlConfigs.clear();
+		this.connectorConfigs.clear();
 		this.#initializationPromise = null;
 		if (closeErrors.length > 0) {
-			throw new AggregateError(closeErrors, "One or more MySQL connections could not be closed");
+			throw new AggregateError(closeErrors, "One or more database connections could not be closed");
 		}
 	}
 	static initialize(strict = false) {
@@ -97,8 +99,12 @@ class STWConnectors {
 					);
 					return;
 				}
+				const initializationErrors = [];
 				for (const settings of connectors) {
 					try {
+						if (isDatabaseType(settings.type)) {
+							this.connectorConfigs.set(settings.name, settings);
+						}
 						switch (settings.type) {
 							case "api":
 								this.connectors.set(settings.name, settings);
@@ -106,64 +112,59 @@ class STWConnectors {
 							case "shell":
 								this.connectors.set(settings.name, { ...settings, name: settings.name });
 								break;
-							case "mysql": {
-								this.mysqlConfigs.set(settings.name, settings);
-								const client = await createConnection({
-									host: settings.host,
-									port: settings.port ?? 3306,
-									user: settings.user,
-									password: settings.password,
-									database: settings.database
-								});
-								this.connectors.set(settings.name, client);
+							case "mysql":
+							case "postgres":
+							case "mssql":
+							case "mongodb": {
+								const connection = await this.connectDatabase(settings);
+								this.connectors.set(settings.name, connection);
 								break;
 							}
-							case "postgres":
-								if (strict) throw new TypeError(`Unsupported connector type: ${settings.type}`);
-								break;
-							case "mongodb":
-								if (strict) throw new TypeError(`Unsupported connector type: ${settings.type}`);
-								break;
 							default:
 								throw new TypeError(`Unsupported connector type: ${settings.type}`);
 						}
 					} catch (error) {
-						if (strict) throw error;
+						if (strict) {
+							initializationErrors.push(new Error(
+								`Connector "${settings.name}" failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+								{ cause: error }
+							));
+						}
 						console.error(
 							`Error processing connector configuration: ${error instanceof Error ? error.message : String(error)}`
 						);
 						continue;
 					}
 				}
+				if (strict && initializationErrors.length) {
+					throw new AggregateError(initializationErrors, "One or more connectors failed to initialize");
+				}
 			})();
 		}
 		return this.#initializationPromise;
 	}
-	// Ensure a live MySQL connection; reconnect if needed
-	static async getMySqlClient(name) {
-		const connection = this.connectors.get(name);
-		if (!isMySQLConnection(connection)) return null;
+	static async connectDatabase(settings) {
+		return await createDatabaseConnection(settings);
+	}
+	static async reconnectAll() {
+		let resetError;
 		try {
-			await connection.execute("SELECT 1");
-			return connection;
-		} catch {
-			const cfg = this.mysqlConfigs.get(name);
-			if (!cfg) return null;
-			try {
-				const client = await createConnection({
-					host: cfg.host,
-					port: cfg.port ?? 3306,
-					user: cfg.user,
-					password: cfg.password,
-					database: cfg.database
-				});
-				this.connectors.set(name, client);
-				return client;
-			} catch (e) {
-				console.warn(`MySQL reconnect failed for connector "${name}": ${e instanceof Error ? e.message : String(e)}`);
-				return null;
-			}
+			await this.resetRuntime();
+		} catch (error) {
+			resetError = error;
 		}
+		let initializationError;
+		try {
+			await this.initialize(true);
+		} catch (error) {
+			initializationError = error;
+		}
+		if (resetError && initializationError) {
+			throw new AggregateError([resetError, initializationError], "Reconnect completed with errors");
+		}
+		if (resetError) throw resetError;
+		if (initializationError) throw initializationError;
+		return { reconnected: true };
 	}
 	static async query(session, connector, query) {
 		return await this.execute(session, { connector, query, params: "" });
@@ -174,50 +175,66 @@ class STWConnectors {
 	static async executeCommand(session, connector, query, values = []) {
 		if (!connector) throw new TypeError("Connector name is required");
 		await this.initialize();
-		const connection = this.connectors.get(connector);
-		if (!isMySQLConnection(connection)) {
-			throw new TypeError(`Connector "${connector}" is not a configured MySQL connector`);
-		}
+		const connection = requireSqlConnection(connector, this.connectors.get(connector));
 		const sql = WBPL(query, session.placeholders);
-		try {
-			return await executeMySQL(connection, sql, values);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			if (!/closed|gone away/i.test(message)) throw error;
-			const client = await this.getMySqlClient(connector);
-			if (!client) throw error;
-			return await executeMySQL(client, sql, values);
-		}
+		return await this.executeSqlCommand(connector, connection, sql, values);
 	}
 	static async executeBoundCommand(connector, query, values = []) {
 		if (!connector) throw new TypeError("Connector name is required");
 		await this.initialize();
-		const connection = this.connectors.get(connector);
-		if (!isMySQLConnection(connection)) {
-			throw new TypeError(`Connector "${connector}" is not a configured MySQL connector`);
-		}
+		const connection = requireSqlConnection(connector, this.connectors.get(connector));
+		return await this.executeSqlCommand(connector, connection, query, values);
+	}
+	static async executeSqlCommand(name, connection, query, values = []) {
 		try {
-			return await executeMySQL(connection, query, values);
+			return await executeSql(connection, query, values);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			if (!/closed|gone away/i.test(message)) throw error;
-			const client = await this.getMySqlClient(connector);
-			if (!client) throw error;
-			return await executeMySQL(client, query, values);
+			if (connection.type !== "mysql" || !/closed|gone away/i.test(error instanceof Error ? error.message : String(error))) {
+				throw error;
+			}
+			const reconnected = await this.getMySqlConnection(name);
+			if (!reconnected) throw error;
+			return await executeSql(reconnected, query, values);
+		}
+	}
+	static async getMySqlConnection(name) {
+		const connection = this.connectors.get(name);
+		if (!connection || connection.type !== "mysql") return null;
+		try {
+			await executeSql(connection, "SELECT 1");
+			return connection;
+		} catch {
+			const settings = this.connectorConfigs.get(name);
+			if (!settings) return null;
+			try {
+				const reconnected = await createDatabaseConnection(settings);
+				this.connectors.set(name, reconnected);
+				return reconnected;
+			} catch (error) {
+				console.warn(`MySQL reconnect failed for connector "${name}": ${error instanceof Error ? error.message : String(error)}`);
+				return null;
+			}
 		}
 	}
 	static async getType(connector) {
 		await this.initialize();
 		const configuration = this.connectors.get(connector);
-		if (isMySQLConnection(configuration)) return "mysql";
-		return configuration?.type ?? null;
+		if (isDatabaseConnection(configuration)) return configuration.type;
+		return configuration?.type ?? this.connectorConfigs.get(connector)?.type ?? null;
+	}
+	static async supportsCrud(connector) {
+		const type = await this.getType(connector);
+		return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
 	}
 	static async executeAction(session, connector, command, method, fields = {}) {
 		if (!connector) throw new TypeError("Connector name is required");
 		await this.initialize();
 		const configuration = this.connectors.get(connector);
-		if (isMySQLConnection(configuration)) {
-			const { query, values } = bindSqlPlaceholders(command, session.placeholders);
+		if (isDatabaseConnection(configuration)) {
+			if (configuration.type === "mongodb") {
+				throw new TypeError("MongoDB writes must use stwinsert, stwupdate, or stwdelete");
+			}
+			const { query, values } = bindSqlPlaceholders(command, session.placeholders, configuration.type);
 			return await this.executeBoundCommand(connector, query, values);
 		}
 		if (!configuration) throw new TypeError(`Connector "${connector}" is not configured`);
@@ -280,58 +297,23 @@ class STWConnectors {
 		if (!["insert", "update", "delete"].includes(operation)) {
 			throw new TypeError(`Unsupported CRUD operation: ${operation}`);
 		}
-		const table = getTableFromQuery(WBPL(content.query, session.placeholders));
-		const tableInfo = await this.executeCommand(
-			session,
-			content.connector,
-			`SELECT * FROM ${quoteIdentifier(table)} LIMIT 0`
+		await this.initialize();
+		const connection = this.connectors.get(content.connector);
+		if (!isDatabaseConnection(connection)) {
+			throw new TypeError(`Connector "${content.connector}" does not support database CRUD`);
+		}
+		const command = WBPL(content.query, session.placeholders);
+		if (connection.type === "mongodb") {
+			return await executeMongoCrud(connection, command, operation, submittedFields, keyField || "_id");
+		}
+		return await executeSqlCrud(
+			connection,
+			command,
+			operation,
+			submittedFields,
+			keyField || "id",
+			(query, values) => this.executeBoundCommand(content.connector, query, values)
 		);
-		const columns = new Map(tableInfo.fields.map((column) => [column.toLowerCase(), column]));
-		const canonicalKey = columns.get(keyField.toLowerCase());
-		if (operation !== "insert" && !canonicalKey) {
-			throw new TypeError(`Key field is not a column in ${table}: ${keyField}`);
-		}
-
-		const fields = {};
-		for (const [name, value] of Object.entries(submittedFields)) {
-			const column = columns.get(name.toLowerCase());
-			if (column) fields[column] = value;
-		}
-		let query;
-		let values;
-		let recordKey;
-		if (operation === "insert") {
-			const submittedKey = canonicalKey ? fields[canonicalKey] : void 0;
-			if (submittedKey === "") delete fields[canonicalKey];
-			const names = Object.keys(fields);
-			if (!names.length) throw new TypeError("No submitted fields match columns in the connector table");
-			query = `INSERT INTO ${quoteIdentifier(table)} (${names.map(quoteIdentifier).join(", ")}) VALUES (${names.map(() => "?").join(", ")})`;
-			values = names.map((name) => fields[name]);
-			recordKey = submittedKey;
-		} else {
-			recordKey = Object.entries(submittedFields).find(([name]) => name.toLowerCase() === canonicalKey.toLowerCase())?.[1];
-			if (recordKey === void 0 || recordKey === "") {
-				throw new TypeError(`Missing key field: ${canonicalKey}`);
-			}
-			if (operation === "update") {
-				delete fields[canonicalKey];
-				const names = Object.keys(fields);
-				if (!names.length) throw new TypeError("No submitted fields to update");
-				query = `UPDATE ${quoteIdentifier(table)} SET ${names.map((name) => `${quoteIdentifier(name)} = ?`).join(", ")} WHERE ${quoteIdentifier(canonicalKey)} = ?`;
-				values = [...names.map((name) => fields[name]), recordKey];
-			} else {
-				query = `DELETE FROM ${quoteIdentifier(table)} WHERE ${quoteIdentifier(canonicalKey)} = ?`;
-				values = [recordKey];
-			}
-		}
-		const result = await this.executeCommand(session, content.connector, query, values);
-		return {
-			fields,
-			affectedRows: result.affectedRows,
-			keyValue: operation === "insert" && (recordKey === void 0 || recordKey === "")
-				? result.insertId ?? ""
-				: recordKey
-		};
 	}
 	static async execute(session, content) {
 		if (!content.connector) {
@@ -408,31 +390,20 @@ class STWConnectors {
 					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
 					records = { affectedRows: 0, fields: [], rows: [{}] };
 				}
-			} else if (isMySQLConnection(configuration)) {
-				const sql = WBPL(content.query, session.placeholders);
-				try {
-					records = await executeMySQL(configuration, sql);
-				} catch (error) {
-					const msg = error instanceof Error ? error.message : String(error);
-					if (/closed/i.test(msg) || /gone away/i.test(msg)) {
-						const client = await this.getMySqlClient(content.connector);
-						if (client) {
-							try {
-								records = await executeMySQL(client, sql);
-							} catch (e2) {
-								console.warn(
-									`MySQL query failed after reconnect for connector "${content.connector}": ${e2 instanceof Error ? e2.message : String(e2)}`
-								);
-								records = { affectedRows: 0, fields: [], rows: [{}] };
-							}
-						} else {
-							console.warn(`MySQL reconnect not available for connector "${content.connector}": ${msg}`);
-							records = { affectedRows: 0, fields: [], rows: [{}] };
-						}
-					} else {
-						console.warn(`MySQL query failed for connector "${content.connector}": ${msg}`);
+			} else if (isDatabaseConnection(configuration)) {
+				const command = WBPL(content.query, session.placeholders);
+				if (configuration.type === "mongodb") {
+					records = await executeMongoQuery(configuration, command);
+				} else if (configuration.type === "mysql") {
+					try {
+						records = await this.executeSqlCommand(content.connector, configuration, command);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						console.warn(`MySQL query failed for connector "${content.connector}": ${message}`);
 						records = { affectedRows: 0, fields: [], rows: [] };
 					}
+				} else {
+					records = await executeSql(configuration, command);
 				}
 			}
 		} catch (error) {
@@ -444,37 +415,253 @@ class STWConnectors {
 		return records;
 	}
 }
-function bindSqlPlaceholders(query, placeholders) {
+function bindSqlPlaceholders(query, placeholders, type) {
 	const values = [];
 	const sql = query.replace(/(['"])(@@[A-Za-z0-9_$.]+)\1|(@@[A-Za-z0-9_$.]+)/g, (match, quote, quoted, plain) => {
 		const name = quoted || plain;
 		if (!placeholders.has(name)) return match;
 		values.push(placeholders.get(name));
-		return "?";
+		return sqlPlaceholder(type, values.length - 1);
 	});
 	return { query: sql, values };
 }
-function isMySQLConnection(value) {
-	return value !== null && value !== void 0 && typeof value === "object" && "execute" in value && "end" in value;
+const SQL_CONNECTOR_TYPES = new Set(["mysql", "postgres", "mssql"]);
+function isDatabaseType(type) {
+	return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
 }
-async function executeMySQL(client, sql, values = []) {
-	const [result, fieldPackets] = await client.execute(sql, values);
-	const rows = Array.isArray(result) ? result : [];
-	const affectedRows = Array.isArray(result) ? rows.length : Number(result.affectedRows ?? 0);
+function isDatabaseConnection(value) {
+	return value !== null && typeof value === "object" && (SQL_CONNECTOR_TYPES.has(value.type) || value.type === "mongodb");
+}
+function requireSqlConnection(name, connection) {
+	if (!isDatabaseConnection(connection) || !SQL_CONNECTOR_TYPES.has(connection.type)) {
+		throw new TypeError(`Connector "${name}" is not a configured SQL database connector`);
+	}
+	return connection;
+}
+async function createDatabaseConnection(settings) {
+	switch (settings.type) {
+		case "mysql": {
+			const client = await createConnection({
+				host: settings.host,
+				port: settings.port ?? 3306,
+				user: settings.user,
+				password: settings.password,
+				database: settings.database
+			});
+			return { type: settings.type, client };
+		}
+		case "postgres": {
+			const client = new Client({
+				host: settings.host,
+				port: settings.port ?? 5432,
+				user: settings.user,
+				password: settings.password,
+				database: settings.database
+			});
+			await client.connect();
+			return { type: settings.type, client };
+		}
+		case "mssql": {
+			const client = await new sql.ConnectionPool({
+				server: settings.host,
+				port: settings.port ?? 1433,
+				user: settings.user,
+				password: settings.password,
+				database: settings.database
+			}).connect();
+			return { type: settings.type, client };
+		}
+		case "mongodb": {
+			const uri = /^(mongodb(?:\+srv)?:\/\/)/i.test(settings.host)
+				? settings.host
+				: `mongodb://${settings.host}`;
+			const client = new MongoClient(uri, settings.user
+				? { auth: { username: settings.user, password: settings.password ?? "" } }
+				: {});
+			await client.connect();
+			return { type: settings.type, client, database: client.db(settings.database) };
+		}
+		default:
+			throw new TypeError(`Unsupported database connector type: ${settings.type}`);
+	}
+}
+async function closeDatabaseConnection(connection) {
+	if (connection.type === "mysql") await connection.client.end();
+	else if (connection.type === "postgres") await connection.client.end();
+	else if (connection.type === "mssql") await connection.client.close();
+	else if (connection.type === "mongodb") await connection.client.close();
+}
+async function executeSql(connection, query, values = []) {
+	if (connection.type === "mysql") {
+		const [result, fields] = await connection.client.execute(query, values);
+		const rows = Array.isArray(result) ? result : [];
+		return {
+			affectedRows: Array.isArray(result) ? rows.length : Number(result.affectedRows ?? 0),
+			insertId: Array.isArray(result) ? 0 : result.insertId ?? 0,
+			fields: (fields ?? []).map((field) => field.name),
+			rows
+		};
+	}
+	if (connection.type === "postgres") {
+		const result = await connection.client.query(query, values);
+		return {
+			affectedRows: Number(result.rowCount ?? result.rows.length),
+			insertId: 0,
+			fields: (result.fields ?? []).map((field) => field.name),
+			rows: result.rows
+		};
+	}
+	const request = connection.client.request();
+	values.forEach((value, index) => request.input(`p${index}`, value));
+	const result = await request.query(query);
+	const rows = result.recordset ?? [];
 	return {
-		affectedRows,
-		insertId: Array.isArray(result) ? 0 : result.insertId ?? 0,
-		fields: (fieldPackets ?? []).map((field) => field.name),
+		affectedRows: Number(result.rowsAffected?.reduce((total, count) => total + count, 0) ?? rows.length),
+		insertId: 0,
+		fields: rows.length ? Object.keys(rows[0]) : Object.keys(result.recordset?.columns ?? {}),
 		rows
 	};
 }
+async function executeSqlCrud(connection, command, operation, submittedFields, keyField, execute = executeSql) {
+	const table = getTableFromQuery(command);
+	const metadataQuery = connection.type === "mssql"
+		? `SELECT TOP 0 * FROM ${quoteIdentifier(table, connection.type)}`
+		: `SELECT * FROM ${quoteIdentifier(table, connection.type)} LIMIT 0`;
+	const tableInfo = await execute(metadataQuery);
+	const columns = new Map(tableInfo.fields.map((column) => [column.toLowerCase(), column]));
+	const canonicalKey = columns.get(keyField.toLowerCase());
+	if (operation !== "insert" && !canonicalKey) {
+		throw new TypeError(`Key field is not a column in ${table}: ${keyField}`);
+	}
+	const fields = {};
+	for (const [name, value] of Object.entries(submittedFields)) {
+		const column = columns.get(name.toLowerCase());
+		if (column) fields[column] = value;
+	}
+	let query;
+	let values;
+	let recordKey;
+	if (operation === "insert") {
+		recordKey = canonicalKey ? fields[canonicalKey] : void 0;
+		if (recordKey === "") delete fields[canonicalKey];
+		const names = Object.keys(fields);
+		if (!names.length) throw new TypeError("No submitted fields match columns in the connector table");
+		const placeholders = names.map((_, index) => sqlPlaceholder(connection.type, index));
+		const output = connection.type === "mssql" && canonicalKey
+			? ` OUTPUT INSERTED.${quoteIdentifier(canonicalKey, connection.type)}`
+			: "";
+		query = `INSERT INTO ${quoteIdentifier(table, connection.type)} (${names.map((name) => quoteIdentifier(name, connection.type)).join(", ")})${output} VALUES (${placeholders.join(", ")})`;
+		if (connection.type === "postgres" && canonicalKey) {
+			query += ` RETURNING ${quoteIdentifier(canonicalKey, connection.type)}`;
+		}
+		values = names.map((name) => fields[name]);
+	} else {
+		recordKey = Object.entries(submittedFields).find(([name]) => name.toLowerCase() === canonicalKey.toLowerCase())?.[1];
+		if (recordKey === void 0 || recordKey === "") throw new TypeError(`Missing key field: ${canonicalKey}`);
+		if (operation === "update") {
+			delete fields[canonicalKey];
+			const names = Object.keys(fields);
+			if (!names.length) throw new TypeError("No submitted fields to update");
+			query = `UPDATE ${quoteIdentifier(table, connection.type)} SET ${names.map((name, index) => `${quoteIdentifier(name, connection.type)} = ${sqlPlaceholder(connection.type, index)}`).join(", ")} WHERE ${quoteIdentifier(canonicalKey, connection.type)} = ${sqlPlaceholder(connection.type, names.length)}`;
+			values = [...names.map((name) => fields[name]), recordKey];
+		} else {
+			query = `DELETE FROM ${quoteIdentifier(table, connection.type)} WHERE ${quoteIdentifier(canonicalKey, connection.type)} = ${sqlPlaceholder(connection.type, 0)}`;
+			values = [recordKey];
+		}
+	}
+	const result = await execute(query, values);
+	const generatedKey = result.rows[0]?.[canonicalKey] ?? result.insertId;
+	return {
+		fields,
+		affectedRows: result.affectedRows,
+		keyValue: operation === "insert" && (recordKey === void 0 || recordKey === "")
+			? generatedKey ?? ""
+			: recordKey
+	};
+}
+async function executeMongoCrud(connection, command, operation, submittedFields, keyField) {
+	const specification = parseMongoCommand(command);
+	const collection = connection.database.collection(specification.collection);
+	const fields = { ...submittedFields };
+	const recordKey = fields[keyField];
+	if (operation === "insert") {
+		if (fields[keyField] === "") delete fields[keyField];
+		if (!Object.keys(fields).length) throw new TypeError("No submitted fields to insert");
+		const result = await collection.insertOne(fields);
+		return {
+			fields,
+			affectedRows: result.acknowledged ? 1 : 0,
+			keyValue: recordKey && recordKey !== "" ? recordKey : result.insertedId
+		};
+	}
+	if (recordKey === void 0 || recordKey === "") throw new TypeError(`Missing key field: ${keyField}`);
+	const filter = { ...specification.filter, [keyField]: mongoKeyValue(keyField, recordKey) };
+	if (operation === "update") {
+		delete fields[keyField];
+		if (!Object.keys(fields).length) throw new TypeError("No submitted fields to update");
+		const result = await collection.updateOne(filter, { $set: fields });
+		return { fields, affectedRows: result.modifiedCount, keyValue: recordKey };
+	}
+	const result = await collection.deleteOne(filter);
+	return { fields: {}, affectedRows: result.deletedCount, keyValue: recordKey };
+}
+async function executeMongoQuery(connection, command) {
+	const specification = parseMongoCommand(command);
+	let cursor = connection.database.collection(specification.collection).find(specification.filter, {
+		projection: specification.projection,
+		sort: specification.sort
+	});
+	if (specification.limit !== void 0) cursor = cursor.limit(specification.limit);
+	const rows = await cursor.toArray();
+	return {
+		affectedRows: rows.length,
+		fields: rows.length && rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+		rows
+	};
+}
+function parseMongoCommand(command) {
+	let specification;
+	try {
+		specification = BSON.EJSON.parse(command);
+	} catch (error) {
+		throw new TypeError("MongoDB connector queries must be JSON objects", { cause: error });
+	}
+	if (!specification || typeof specification !== "object" || Array.isArray(specification)) {
+		throw new TypeError("MongoDB connector queries must be JSON objects");
+	}
+	if (typeof specification.collection !== "string" || !specification.collection.trim()) {
+		throw new TypeError("MongoDB connector queries require a collection name");
+	}
+	for (const key of ["filter", "projection", "sort"]) {
+		if (specification[key] !== void 0 && (!specification[key] || typeof specification[key] !== "object" || Array.isArray(specification[key]))) {
+			throw new TypeError(`MongoDB query ${key} must be an object`);
+		}
+	}
+	if (specification.limit !== void 0 && (!Number.isInteger(specification.limit) || specification.limit < 0)) {
+		throw new TypeError("MongoDB query limit must be a non-negative integer");
+	}
+	return {
+		collection: specification.collection,
+		filter: specification.filter ?? {},
+		projection: specification.projection,
+		sort: specification.sort,
+		limit: specification.limit
+	};
+}
+function mongoKeyValue(keyField, value) {
+	return keyField === "_id" && /^[a-f\d]{24}$/i.test(value) ? new ObjectId(value) : value;
+}
+function sqlPlaceholder(type, index) {
+	return type === "postgres" ? `$${index + 1}` : type === "mssql" ? `@p${index}` : "?";
+}
 function getTableFromQuery(query) {
-	const match = /^\s*SELECT\b[\s\S]*?\bFROM\s+((?:`[^`]+`|[A-Za-z0-9_$]+)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z0-9_$]+))?)([\s\S]*)$/i.exec(query ?? "");
+	const identifier = "(?:`[^`]+`|\"[^\"]+\"|\\[[^\\]]+\\]|[A-Za-z0-9_$]+)";
+	const match = new RegExp(`^\\s*SELECT\\b[\\s\\S]*?\\bFROM\\s+(${identifier}(?:\\s*\\.\\s*${identifier}){0,2})([\\s\\S]*)$`, "i").exec(query ?? "");
 	if (!match) {
 		throw new TypeError("CUD actions require a SELECT query with a single table source");
 	}
-	const table = match[1].replaceAll("`", "").replace(/\s*\.\s*/g, ".");
-	if (!/^[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)?$/.test(table)) {
+	const table = match[1].split(".").map((part) => part.trim().replace(/^(?:`([^`]+)`|"([^"]+)"|\[([^\]]+)\])$/, "$1$2$3")).join(".");
+	if (!table.split(".").every((part) => /^[A-Za-z0-9_$]+$/.test(part))) {
 		throw new TypeError("The SELECT query contains an unsupported table identifier");
 	}
 	if (/^\s*(?:(?:AS\s+)?[A-Za-z0-9_$]+)?\s*(?:,|\bJOIN\b)/i.test(match[2])) {
@@ -482,8 +669,12 @@ function getTableFromQuery(query) {
 	}
 	return table;
 }
-function quoteIdentifier(identifier) {
-	return identifier.split(".").map((part) => `\`${part.replaceAll("`", "``")}\``).join(".");
+function quoteIdentifier(identifier, type) {
+	return identifier.split(".").map((part) => {
+		if (type === "mssql") return `[${part.replaceAll("]", "]]")}]`;
+		if (type === "postgres") return `"${part.replaceAll("\"", "\"\"")}"`;
+		return `\`${part.replaceAll("`", "``")}\``;
+	}).join(".");
 }
 async function fetchAPIData(session, content, connector) {
 	const query = WBPL(content.query, session.placeholders);
