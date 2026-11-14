@@ -2,13 +2,13 @@
     {
         "user": "guest",
         "name": "Guest",
-        "roles": "guest,root,developer,leaddeveloper"
+        "roles": "guest"
     },
     {
         "user": "root",
         "name": "Root",
         "password": "root",
-        "roles": "root,developer,leaddeveloper",
+        "roles": "root",
         "email": "security@spintheweb.org"
     },
     {
@@ -21,8 +21,8 @@
     {
         "user": "user",
         "name": "John Doe",
-        "password": "user",
-        "roles": "user",
+        "password": "johndoe",
+        "roles": "user,leaddeveloper",
         "email": "user@spintheweb.org"
     }
 ]
