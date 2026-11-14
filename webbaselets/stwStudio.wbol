@@ -162,7 +162,7 @@
 						<text xml:lang="en"><![CDATA[\s('caption="Logon"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';stwlogon;@@usr;@@pwd')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true"></role>
+						<role id="guest" visibility="true"></role>
 					</visibility>
 				</content>
 			</children>

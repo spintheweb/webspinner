@@ -101,7 +101,7 @@ async function handleHttp(request, session, sessionId) {
 					return secureResponse("Action origin does not match the button", { status: 400 });
 				}
 				const actionContent = STWIndex.get(originId);
-				if (!(actionContent instanceof STWContent) || !(actionContent.isVisible(session, false) & 1)) {
+				if (!(actionContent instanceof STWContent) || !(actionContent.isVisible(session) & 1)) {
 					return secureResponse("Action content is unavailable", { status: 403 });
 				}
 				const redirect = new URL(

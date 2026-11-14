@@ -3,11 +3,11 @@
 	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
 	<visibility>
 		<role id="root" />
-		<role id="administrators" />
-		<role id="guests" />
-		<role id="users" />
-		<role id="developers" />
-		<role id="translators" />
+		<role id="administrator" />
+		<role id="guest" />
+		<role id="user" />
+		<role id="developer" />
+		<role id="leaddeveloper" />
 		<role id="seo" />
 	</visibility>
 	<name>
@@ -23,7 +23,7 @@
 				<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
 			</layout>
 			<visibility>
-				<role id="guests" visibility="true" />
+				<role id="guest" visibility="true" />
 			</visibility>
 			<options>
 				<option>
@@ -84,7 +84,7 @@
 				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
 			</layout>
 			<visibility>
-				<role id="guests" visibility="true" />
+				<role id="guest" visibility="true" />
 			</visibility>
 		</content>
 		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="languages"
@@ -93,7 +93,7 @@
 				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
 			</name>
 			<visibility>
-				<role id="guests" visibility="true" />
+				<role id="guest" visibility="true" />
 			</visibility>
 		</content>
 		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">
@@ -110,7 +110,7 @@
 						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b('/customers;stwsearch')\a('style="margin-right:0.5rem" ')b(';stwreset')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
@@ -123,8 +123,8 @@
 						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="3" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers/customer')pfl('Contact last name;')el('Contact name;;sum')flfb(';stwsearch')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
-						<role id="users" />
+						<role id="guest" visibility="true" />
+						<role id="user" />
 					</visibility>
 				</content>
 				<content uuid="cGGpiZrNdTKE3Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
@@ -134,14 +134,14 @@
 					</name>
 					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fas fa-fw fa-user"></i> @@customerName' ')>>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-solid fa-fw fa-user"></i> @@customerName' ')>>
 							l('Contact last name')\tf\n
 							l('Contact name')\tf\n
 							l\tf]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
-						<role id="users" />
+						<role id="guest" visibility="true" />
+						<role id="user" />
 					</visibility>
 				</content>
 			</children>
@@ -193,7 +193,7 @@
 						<text xml:lang="en"><![CDATA[\s('caption="DB Schema" key="PATH"')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="false" />
+						<role id="guest" visibility="false" />
 					</visibility>
 				</content>
 				<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
@@ -208,7 +208,7 @@
 								</form>')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="false"></role>
+						<role id="guest" visibility="false"></role>
 					</visibility>
 				</content>
 				<content uuid="c4sHhypzM0UjizY20BICPrH" origin="wGGpiW7IjjrFqapqVuZopW" type="tabs"
@@ -220,7 +220,7 @@
 						<text xml:lang="en"><![CDATA[]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 					<options>
 						<option ref="c3YCLoAbUczj9NNvlOFO081" parameters="id=3">
@@ -237,7 +237,7 @@
 						<text xml:lang="en" slug="map"><![CDATA[Map]]></text>
 					</name>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
@@ -249,7 +249,7 @@
 						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stwsubmit')p('fufi;what')q('.')t('Submit')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="c4sHhypzNzBJ7LpOv3ROBvX" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
@@ -261,7 +261,7 @@
 						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <strong>HTML (HyperText Markup Language)</strong> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, <strong>WBOL (Webbase Ontology Language)</strong> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
@@ -277,7 +277,7 @@
 						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
@@ -290,7 +290,7 @@
 						<text xml:lang="en"><![CDATA[\s('key="date"')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 			</children>
@@ -300,7 +300,7 @@
 				<text xml:lang="en" slug="sales"><![CDATA[Sales]]></text>
 			</name>
 			<visibility>
-				<role id="guests" visibility="true" />
+				<role id="guest" visibility="true" />
 			</visibility>
 			<children>
 				<content uuid="c3YCLoAbUczj9NNvlOFO081" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
@@ -331,7 +331,7 @@ END {
 						<text xml:lang="en"><![CDATA[\s('rownumber="False" closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
 					</layout>
 					<visibility>
-						<role id="guests" visibility="true" />
+						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
 				<content uuid="c7mIXOTljyDnSgsnYFNOqrh" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
@@ -368,7 +368,7 @@ END {
 								<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 							</name>
 							<visibility>
-								<role id="guests" visibility="true" />
+								<role id="guest" visibility="true" />
 							</visibility>
 						</page>
 					</children>
@@ -380,7 +380,7 @@ END {
 				<text xml:lang="en" slug="stws"><![CDATA[Studio]]></text>
 			</name>
 			<visibility>
-				<role id="developers" visibility="true" />
+				<role id="developer" visibility="true" />
 			</visibility>
 			<children>
 				<content uuid="c9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="tabs"
@@ -427,7 +427,7 @@ END {
 				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
 			</name>
 			<visibility>
-				<role id="guests" visibility="true" />
+				<role id="guest" visibility="true" />
 			</visibility>
 		</page>
 	</children>

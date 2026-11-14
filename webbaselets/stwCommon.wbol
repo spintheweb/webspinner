@@ -51,7 +51,7 @@
 				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stwlogon')t('Logon')t(' ')b(';stwreset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
 			</layout>
 			<visibility>
-				<role id="users" visibility="false" />
+				<role id="user" visibility="false" />
 			</visibility>
 		</content>
 	</children>

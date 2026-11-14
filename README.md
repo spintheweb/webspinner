@@ -29,7 +29,7 @@ SQL content uses native SQL. For MongoDB, content queries use JSON Extended JSON
 
 MongoDB CRUD actions use the query's `collection` and optional `filter`, plus submitted form fields. Update and delete actions target the configured key field (default `_id`); updates apply submitted fields with `$set`. A 24-character hexadecimal `_id` submitted by a form is treated as an ObjectId.
 
-Administrators can force a full connector reload and reconnect all configured databases with `POST /wbol/connectors/reconnect`. This reconnects every configured database connector, not only failed ones; failures are returned in the response.
+Users with the `root` or `leaddeveloper` role can force a full connector reload and reconnect all configured databases with `POST /wbol/connectors/reconnect`. This reconnects every configured database connector, not only failed ones; failures are returned in the response.
 
 ## Run Webspinner
 
@@ -41,6 +41,8 @@ npm start
 ```
 
 The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `CERTFILE` and `KEYFILE` in the environment or `.env` file to configure the listener.
+
+Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions.
 
 ## Learn more
 Explore WBOL and the Webspinner architecture:

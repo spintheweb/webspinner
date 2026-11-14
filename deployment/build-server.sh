@@ -528,6 +528,7 @@ SESSION_TIMEOUT=24
 MAX_USERS=0
 MAX_UPLOADSIZE=200
 ALLOW_DEV="false"
+ALLOW_ROOT="false"
 
 # Create .env file
 cat > "$INSTALL_DIR/.env" << EOF
@@ -546,6 +547,7 @@ MAX_UPLOADSIZE=$MAX_UPLOADSIZE
 CONNECTORS="./.data/connectors.json"
 USERS="./.data/users.json"
 ALLOW_DEV=$ALLOW_DEV
+ALLOW_ROOT=$ALLOW_ROOT
 EOF
 
 # Setup PostgreSQL database
@@ -630,13 +632,13 @@ if [ ! -f "$INSTALL_DIR/.data/users.json" ]; then
     {
         "user": "guest",
         "name": "Guest",
-        "roles": "guests"
+        "roles": "guest"
     },
     {
         "user": "root",
         "name": "Root",
         "password": "root",
-        "roles": "administrators,developers",
+        "roles": "administrator,developer",
         "email": "security@spintheweb.org"
     }
 ]

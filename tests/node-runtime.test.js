@@ -17,6 +17,7 @@ import { signAction, verifyAction } from "../stwComponents/stwActionToken.js";
 import { STWActionRouter } from "../stwComponents/stwActions.js";
 import { handleHttp } from "../stwComponents/stwHttpHandler.js";
 import { STWConnectors } from "../stwComponents/stwConnectors.js";
+import { STWSecurity } from "../stwComponents/stwSecurity.js";
 
 test("cookie helpers parse and set session cookies", () => {
 	const cookies = getCookies(new Headers({ cookie: "sessionId=a%20b; theme=dark" }));
@@ -141,12 +142,12 @@ test("search and filter actions redirect with the expected query-string behavior
 test("GET action requests execute on the server and redirect with 303", async () => {
 	const id = `action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, slug: { en: "action" } });
-	content.visibility.set("users", true);
+	content.visibility.set("user", true);
 	STWIndex.set(id, content);
 	const portal = STWPortal.instance;
 	const session = {
 		portal,
-		roles: ["users"],
+		roles: ["user"],
 		lang: "en",
 		placeholders: new Map(),
 		sockets: new Map()
@@ -178,12 +179,12 @@ test("GET action requests execute on the server and redirect with 303", async ()
 test("POST action requests execute and return a GET redirect", async () => {
 	const id = `logout-${Date.now()}`;
 	const content = new STWContent({ uuid: id, slug: { en: "logout" } });
-	content.visibility.set("users", true);
+	content.visibility.set("user", true);
 	STWIndex.set(id, content);
 	const portal = STWPortal.instance;
 	const session = {
 		portal,
-		roles: ["users"],
+		roles: ["user"],
 		lang: "en",
 		user: "alice",
 		name: "Alice",
@@ -209,7 +210,7 @@ test("POST action requests execute and return a GET redirect", async () => {
 		assert.equal(response.status, 303);
 		assert.equal(response.headers.get("location"), "http://localhost/");
 		assert.equal(session.user, "guest");
-		assert.equal(session.roles[0], "guests");
+		assert.equal(session.roles[0], "guest");
 		assert.equal(session.placeholders.has("AUTHENTICATED"), false);
 	} finally {
 		STWIndex.delete(id);
@@ -219,11 +220,11 @@ test("POST action requests execute and return a GET redirect", async () => {
 test("actions require RBV visibility with or without a signed token", async () => {
 	const id = `hidden-action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, subtype: "Text", slug: { en: "hidden-action" } });
-	content.visibility.set("users", true);
+	content.visibility.set("user", true);
 	STWIndex.set(id, content);
 	const session = {
 		portal: STWPortal.instance,
-		roles: ["guests"],
+		roles: ["guest"],
 		lang: "en",
 		user: "alice",
 		name: "Alice",
@@ -269,13 +270,14 @@ test("WBOL parser reads connector definitions from the webbase", () => {
 			<connector id="main" queryLanguage="SQL" connection-string="mysql://main" />
 			<connector id="archive">postgres://archive</connector>
 		</connectors>
-		<visibility><role id="users" /></visibility>
+		<visibility><role id="user" /><role id="developer" /></visibility>
 		<children />
 	</webbase>`);
 	assert.deepEqual(portal.connectors, {
 		main: "mysql://main",
 		archive: "postgres://archive"
 	});
+	assert.deepEqual(portal.visibility, { root: true, user: false, developer: false });
 });
 
 test("the reserved wbol slug is rejected when elements are created or updated", () => {
@@ -291,25 +293,70 @@ test("the reserved wbol slug is rejected when elements are created or updated", 
 	assert.equal(content.slug.get("en"), "home");
 });
 
-test("WBOL element API requires the developers role", async () => {
+test("WBOL element API requires the developer role", async () => {
 	const request = new Request("http://localhost/wbol/not-an-element");
-	for (const role of ["root", "administrators", "users"]) {
+	for (const role of ["root", "administrator", "leaddeveloper", "user"]) {
 		const response = await handleWbolApi(request, { roles: [role] });
 		assert.equal(response.status, 403, `${role} must not grant development access`);
 	}
 
-	const developerResponse = await handleWbolApi(request, { roles: ["developers"] });
-	assert.equal(developerResponse.status, 404, "developers may access element routes");
+	const developerResponse = await handleWbolApi(request, { roles: ["developer"] });
+	assert.equal(developerResponse.status, 404, "developer may access element routes");
 });
 
-test("WBOL property and portal routes read and update their supported data", async () => {
+test("authentication filters root and developer roles using default-off security flags", async () => {
+	const previousEnvironment = {
+		USERS: process.env.USERS,
+		ALLOW_DEV: process.env.ALLOW_DEV,
+		ALLOW_ROOT: process.env.ALLOW_ROOT
+	};
+	const securityDir = await mkdtemp(join(tmpdir(), "webspinner-role-gates-"));
+	const password = "test-password";
+	try {
+		process.env.USERS = join(securityDir, "users.json");
+		delete process.env.ALLOW_DEV;
+		delete process.env.ALLOW_ROOT;
+		await STWSecurity.createUser("privileged", "Privileged", password, ["developer", "root", "user"], "");
+
+		const authenticate = async () => {
+			const session = { placeholders: new Map() };
+			assert.equal(await STWSecurity.authenticate(session, "privileged", password), true);
+			return session;
+		};
+		let session = await authenticate();
+		assert.deepEqual(session.roles, ["user"], "unset flags must disable privileged roles");
+		assert.equal(session.dev, false);
+
+		process.env.ALLOW_DEV = "true";
+		session = await authenticate();
+		assert.deepEqual(session.roles, ["developer", "user"]);
+		assert.equal(session.dev, true);
+
+		process.env.ALLOW_DEV = "false";
+		process.env.ALLOW_ROOT = "true";
+		session = await authenticate();
+		assert.deepEqual(session.roles, ["root", "user"]);
+		assert.equal(session.dev, false);
+
+		process.env.ALLOW_ROOT = "yes";
+		await assert.rejects(authenticate(), /ALLOW_ROOT must be "true" or "false"/);
+	} finally {
+		for (const [name, value] of Object.entries(previousEnvironment)) {
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+		await rm(securityDir, { recursive: true, force: true });
+	}
+});
+
+test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", async () => {
 	const portalId = `portal-${Date.now()}`;
 	const tabsId = `tabs-${Date.now()}`;
 	const portal = new STWPortal({
 		uuid: portalId,
 		langs: ["en", "fr", "de"],
 		connectors: { main: "json" },
-		visibility: { developers: true }
+		visibility: { developer: true }
 	});
 	const tabs = new STWTabs({
 		uuid: tabsId,
@@ -317,20 +364,22 @@ test("WBOL property and portal routes read and update their supported data", asy
 		name: { en: "Settings", fr: "Parametres" },
 		slug: { en: "settings", fr: "reglages" },
 		keywords: { en: "general", fr: "general-fr" },
+		visibility: { developer: true },
 		options: [{ name: { en: "General" }, ref: "general" }]
 	});
 	portal.children.push(tabs);
 	tabs.parent = portal;
 	STWIndex.set(tabsId, tabs);
-	const session = { roles: ["developers"], lang: "en", portal };
-	const call = (path, method = "GET", body) => handleWbolApi(
+	const session = { roles: ["developer"], lang: "en", portal };
+	const callAs = (requestSession, path, method = "GET", body) => handleWbolApi(
 		new Request(`http://localhost/wbol/${path}`, {
 			method,
 			headers: body === undefined ? {} : { "Content-Type": "application/json" },
 			body: body === undefined ? undefined : JSON.stringify(body)
 		}),
-		session
+		requestSession
 	);
+	const call = (path, method = "GET", body) => callAs(session, path, method, body);
 	const previousRolesPath = process.env.ROLES;
 	const previousUsersPath = process.env.USERS;
 	const securityDir = await mkdtemp(join(tmpdir(), "webspinner-wbol-api-"));
@@ -339,9 +388,22 @@ test("WBOL property and portal routes read and update their supported data", asy
 		process.env.ROLES = join(securityDir, "roles.json");
 		process.env.USERS = join(securityDir, "users.json");
 		let response = await call(`${tabsId}/visibility`);
-		assert.deepEqual(await response.json(), {});
-		response = await call(`${tabsId}/visibility`, "PATCH", { developers: true });
-		assert.deepEqual(await response.json(), { developers: true });
+		assert.deepEqual(await response.json(), { developer: true });
+		response = await call(`${tabsId}/visibility`, "PATCH", { developer: true });
+		assert.equal(response.status, 403, "developer users cannot change RBV");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${tabsId}/visibility`, "PATCH", { seo: true });
+		assert.deepEqual(await response.json(), { developer: true, seo: true });
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`);
+		assert.deepEqual(await response.json(), { developer: false, root: true });
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PATCH", { root: true });
+		assert.equal(response.status, 403, "LeadDeveloper cannot assign root visibility");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PATCH", { developer: true });
+		assert.equal(response.status, 403, "the portal cannot grant visibility to non-root roles");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PUT", { developer: false });
+		assert.deepEqual(await response.json(), { developer: false, root: true });
+		response = await call("");
+		assert.equal(response.status, 200);
+		assert.deepEqual((await response.json()).children.map((child) => child.uuid), [tabsId]);
 
 		response = await call(`${tabsId}?locale=fr`, "PATCH", {
 			name: "Parametres generaux",
@@ -386,21 +448,22 @@ test("WBOL property and portal routes read and update their supported data", asy
 		assert.deepEqual(updatedOptions[0].name, { en: "Details", fr: "Details francais", de: "Details deutsch" });
 
 		response = await call(`${portalId}/connectors`);
+		assert.equal(response.status, 403, "developer users cannot manage the root-only portal");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/connectors`);
 		assert.deepEqual(await response.json(), { main: "json" });
-		response = await call(`${portalId}/connectors`, "PUT", { main: "WBOLApi" });
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/connectors`, "PUT", { main: "WBOLApi" });
 		assert.deepEqual(await response.json(), { main: "WBOLApi" });
+		response = await callAs({ roles: ["administrator"] }, `${portalId}/connectors`);
+		assert.equal(response.status, 403);
 
 		response = await call(`${portalId}/roles`);
-		assert.equal(response.status, 200);
-		assert.ok((await response.json()).includes("developers"));
+		assert.equal(response.status, 403);
 		response = await call(`${portalId}/roles`, "POST", { role: "editors" });
-		assert.equal(response.status, 201);
-		assert.deepEqual(await response.json(), { role: "editors" });
-		response = await call(`${portalId}/roles`, "POST", { role: "developers" });
-		assert.equal(response.status, 409);
+		assert.equal(response.status, 403);
+		response = await call(`${portalId}/roles`, "POST", { role: "developer" });
+		assert.equal(response.status, 403);
 
-		tabs.visibility.delete("developers");
-		portal.visibility.set("developers", false);
+		tabs.visibility.delete("developer");
 		response = await call(`${tabsId}/options`);
 		assert.equal(response.status, 403, "a child inherits the portal's Developer-role denial");
 	} finally {
@@ -414,7 +477,170 @@ test("WBOL property and portal routes read and update their supported data", asy
 	}
 });
 
-test("connector administration uses the renamed connectors route and configuration", async () => {
+test("SEO users can edit only locale-sensitive metadata on SEO-visible elements", async () => {
+	const portalId = `seo-portal-${Date.now()}`;
+	const seoId = `seo-content-${Date.now()}`;
+	const hiddenId = `hidden-content-${Date.now()}`;
+	const portal = new STWPortal({
+		uuid: portalId,
+		langs: ["en", "fr", "de"],
+		visibility: { seo: true }
+	});
+	const content = new STWContent({
+		uuid: seoId,
+		subtype: "Text",
+		name: { en: "Original", fr: "Originale" },
+		slug: { en: "original", fr: "originale" },
+		keywords: { en: "old" },
+		description: { en: "Old description" },
+		visibility: { seo: true }
+	});
+	const hidden = new STWContent({
+		uuid: hiddenId,
+		subtype: "Text",
+		name: { en: "Hidden" }
+	});
+	portal.children.push(content, hidden);
+	content.parent = portal;
+	hidden.parent = portal;
+	STWIndex.set(seoId, content);
+	STWIndex.set(hiddenId, hidden);
+	const session = { roles: ["seo"], lang: "en", portal };
+	const call = (path, method = "GET", body) => handleWbolApi(
+		new Request(`http://localhost/wbol/${path}`, {
+			method,
+			headers: body === undefined ? {} : { "Content-Type": "application/json" },
+			body: body === undefined ? undefined : JSON.stringify(body)
+		}),
+		session
+	);
+	try {
+		const treeResponse = await call("");
+		assert.equal(treeResponse.status, 200);
+		const tree = await treeResponse.json();
+		assert.deepEqual(tree.children.map((child) => child.uuid), [seoId]);
+		assert.equal("visibility" in tree.children[0], false);
+		assert.equal("options" in tree.children[0], false);
+
+		let response = await call(seoId);
+		assert.equal(response.status, 200);
+		response = await call(seoId, "PATCH", {
+			name: { en: "Search optimized", fr: "Optimisee pour la recherche", de: "Suchoptimiert" },
+			slug: { en: "search-optimized", fr: "optimisee-recherche", de: "suchoptimiert" },
+			keywords: { en: "search, metadata" },
+			description: { en: "Updated description", fr: "Description mise a jour" }
+		});
+		assert.equal(response.status, 200);
+		const updated = await response.json();
+		assert.deepEqual(updated.name, {
+			en: "Search optimized",
+			fr: "Optimisee pour la recherche",
+			de: "Suchoptimiert"
+		});
+		assert.deepEqual(updated.slug, {
+			en: "searchoptimized",
+			fr: "optimiseerecherche",
+			de: "suchoptimiert"
+		});
+		assert.deepEqual(updated.keywords, { en: "search, metadata" });
+		assert.deepEqual(updated.description, {
+			en: "Updated description",
+			fr: "Description mise a jour"
+		});
+		assert.equal("visibility" in updated, false);
+
+		response = await call(seoId, "PATCH", { name: { en: "No unauthorized updates" }, position: 0 });
+		assert.equal(response.status, 403);
+		response = await call(seoId, "PATCH", { visibility: { developer: true } });
+		assert.equal(response.status, 403);
+		response = await call(hiddenId);
+		assert.equal(response.status, 403);
+		response = await call(`${seoId}/options`);
+		assert.equal(response.status, 403);
+		response = await call("", "POST", { parentId: portalId, element: { type: "Area" } });
+		assert.equal(response.status, 403);
+		response = await call(seoId, "DELETE");
+		assert.equal(response.status, 403);
+	} finally {
+		STWIndex.delete(seoId);
+		STWIndex.delete(hiddenId);
+		STWIndex.delete(portalId);
+	}
+});
+
+test("role assignments respect administrator, LeadDeveloper, and root boundaries", async () => {
+	const previousRolesPath = process.env.ROLES;
+	const previousUsersPath = process.env.USERS;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-role-assignment-"));
+	try {
+		process.env.ROLES = join(directory, "roles.json");
+		process.env.USERS = join(directory, "users.json");
+		await writeFile(process.env.USERS, "[]");
+
+		const listedRoles = await handleWbolApi(
+			new Request("http://localhost/wbol/roles"),
+			{ roles: ["root"] }
+		);
+		const roles = await listedRoles.json();
+		for (const role of ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"]) {
+			assert.ok(roles.includes(role), `mandatory role ${role} is listed`);
+		}
+		for (const role of ["administrators", "guests", "users", "developers", "leaddevelopers"]) {
+			assert.equal(roles.includes(role), false, `legacy role ${role} is no longer listed`);
+		}
+		assert.ok(roles.includes("seo"));
+		assert.equal(roles.includes("translators"), false);
+
+		const request = (path, method, body, roles) => handleWbolApi(
+			new Request(`http://localhost/wbol/${path}`, {
+				method,
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body)
+			}),
+			{ roles }
+		);
+		for (const role of ["root", "developer", "leaddeveloper", "seo"]) {
+			const response = await request("users", "POST", { user: `admin-${role}`, password: "pass", roles: [role] }, ["administrator"]);
+			assert.equal(response.status, 403, `administrator cannot assign ${role}`);
+		}
+
+		const created = await request("users", "POST", { user: "developer", password: "pass", roles: ["user"] }, ["administrator"]);
+		assert.equal(created.status, 201);
+		const assigned = await request("users/developer", "PATCH", { roles: ["developer", "leaddeveloper"] }, ["root"]);
+		assert.equal(assigned.status, 200);
+		assert.equal((await assigned.json()).roles, "developer,leaddeveloper");
+
+		const rootSeoAssignment = await request("users/developer", "PATCH", { roles: ["developer", "leaddeveloper", "seo"] }, ["root"]);
+		assert.equal(rootSeoAssignment.status, 200, "root can manage any role");
+
+		const leadAssignment = await request("users/developer/seo", "PATCH", { enabled: true }, ["leaddeveloper"]);
+		assert.deepEqual(await leadAssignment.json(), { user: "developer", role: "seo", enabled: true });
+		const administratorRemoval = await request("users/developer", "PATCH", { roles: ["user"] }, ["administrator"]);
+		assert.equal(administratorRemoval.status, 403, "administrator cannot revoke SEO assignments");
+		const leadDeveloperRevocation = await request("users/developer/developer", "PATCH", { enabled: false }, ["leaddeveloper"]);
+		assert.deepEqual(await leadDeveloperRevocation.json(), { user: "developer", role: "developer", enabled: false });
+		const leadDeveloperGrant = await request("users/developer/developer", "PATCH", { enabled: true }, ["leaddeveloper"]);
+		assert.deepEqual(await leadDeveloperGrant.json(), { user: "developer", role: "developer", enabled: true });
+		const leadRevocation = await request("users/developer/seo", "PATCH", { enabled: false }, ["leaddeveloper"]);
+		assert.deepEqual(await leadRevocation.json(), { user: "developer", role: "seo", enabled: false });
+		const leadGrant = await request("users/developer/seo", "PATCH", { enabled: true }, ["leaddeveloper"]);
+		assert.deepEqual(await leadGrant.json(), { user: "developer", role: "seo", enabled: true });
+		const administratorSeoRoute = await request("users/developer/seo", "PATCH", { enabled: true }, ["administrator"]);
+		assert.equal(administratorSeoRoute.status, 403);
+		const administratorDeveloperRoute = await request("users/developer/developer", "PATCH", { enabled: true }, ["administrator"]);
+		assert.equal(administratorDeveloperRoute.status, 403);
+		const rootSeoRoute = await request("users/developer/seo", "PATCH", { enabled: true }, ["root"]);
+		assert.equal(rootSeoRoute.status, 200);
+	} finally {
+		if (previousRolesPath === undefined) delete process.env.ROLES;
+		else process.env.ROLES = previousRolesPath;
+		if (previousUsersPath === undefined) delete process.env.USERS;
+		else process.env.USERS = previousUsersPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test("LeadDeveloper users can manage connector configuration", async () => {
 	const previousConnectorsPath = process.env.CONNECTORS;
 	const directory = await mkdtemp(join(tmpdir(), "webspinner-connectors-api-"));
 	const connectorsPath = join(directory, "connectors.json");
@@ -423,7 +649,7 @@ test("connector administration uses the renamed connectors route and configurati
 	]));
 	process.env.CONNECTORS = connectorsPath;
 	try {
-		const session = { roles: ["root", "developers"] };
+		const session = { roles: ["leaddeveloper"] };
 		const response = await handleWbolApi(new Request("http://localhost/wbol/connectors"), session);
 		assert.equal(response.status, 200);
 		assert.deepEqual(await response.json(), [{
@@ -432,7 +658,15 @@ test("connector administration uses the renamed connectors route and configurati
 			host: "https://api.example.test",
 			hasPassword: true
 		}]);
-		const legacyResponse = await handleWbolApi(new Request("http://localhost/wbol/datasources"), session);
+		const administratorResponse = await handleWbolApi(
+			new Request("http://localhost/wbol/connectors"),
+			{ roles: ["administrator"] }
+		);
+		assert.equal(administratorResponse.status, 403);
+		const legacyResponse = await handleWbolApi(
+			new Request("http://localhost/wbol/datasources"),
+			{ roles: ["leaddeveloper", "developer"] }
+		);
 		assert.equal(legacyResponse.status, 404);
 	} finally {
 		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
@@ -441,7 +675,7 @@ test("connector administration uses the renamed connectors route and configurati
 	}
 });
 
-test("admin connector reconnect resets and attempts every configured connector", async () => {
+test("LeadDeveloper connector reconnect resets and attempts every configured connector", async () => {
 	const previousConnectorsPath = process.env.CONNECTORS;
 	const originalConnectDatabase = STWConnectors.connectDatabase;
 	const directory = await mkdtemp(join(tmpdir(), "webspinner-connector-retry-"));
@@ -474,16 +708,22 @@ test("admin connector reconnect resets and attempts every configured connector",
 		const originalPeerConnection = STWConnectors.connectors.get("pgsample");
 		assert.equal(connectCalls.length, 2);
 
-		const adminSession = { roles: ["root"] };
-		const statusResponse = await handleWbolApi(new Request("http://localhost/wbol/connectors"), adminSession);
+		const rootSession = { roles: ["root"] };
+		const leadDeveloperSession = { roles: ["leaddeveloper"] };
+		const statusResponse = await handleWbolApi(new Request("http://localhost/wbol/connectors"), rootSession);
 		assert.equal(statusResponse.status, 200);
 		const [connector] = (await statusResponse.json()).filter(({ name }) => name === "mysqlsample");
 		assert.equal("password" in connector, false);
 		assert.equal("connectionStatus" in connector, false);
 
+		const administratorResponse = await handleWbolApi(
+			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
+			{ roles: ["administrator"] }
+		);
+		assert.equal(administratorResponse.status, 403);
 		const forbidden = await handleWbolApi(
 			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
-			{ roles: ["developers"] }
+			{ roles: ["developer"] }
 		);
 		assert.equal(forbidden.status, 403);
 
@@ -496,7 +736,7 @@ test("admin connector reconnect resets and attempts every configured connector",
 		failReconnect = true;
 		const failedReconnect = await handleWbolApi(
 			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
-			adminSession
+			leadDeveloperSession
 		);
 		assert.equal(failedReconnect.status, 503);
 		assert.deepEqual(await failedReconnect.json(), {
@@ -512,7 +752,7 @@ test("admin connector reconnect resets and attempts every configured connector",
 		failReconnect = false;
 		const successfulReconnect = await handleWbolApi(
 			new Request("http://localhost/wbol/connectors/reconnect", { method: "POST" }),
-			adminSession
+			leadDeveloperSession
 		);
 		assert.equal(successfulReconnect.status, 200);
 		assert.deepEqual(await successfulReconnect.json(), { reconnected: true });

@@ -30,39 +30,6 @@
 		<aside data-section id="rightSidebar" style="position: relative; display: flex; flex-direction: column;"></aside>
 	</div>
 	<footer data-section id="footer"></footer>
-
-	<style>
-		article:hover::after {
-			content: "ⓘ";
-			position: absolute;
-			right: 0;
-			color: CanvasText;
-			font-size: 2rem;
-			cursor: pointer;
-			z-index: 10;
-		}
-
-		article:hover article:hover::after {
-			display: none;
-		}
-	</style>
-	<script>
-		document.addEventListener("click", (e) => {
-			const article = e.target.closest("article");
-			if (!article) return;
-
-			e.stopImmediatePropagation();
-			const rect = article.getBoundingClientRect();
-
-			// Icon occupies roughly the rightmost 20px
-			const clickedIcon =
-				e.clientX > rect.right - 20;
-
-			if (clickedIcon) {
-				alert(`Clicked id: /stws/content?uuid=${article.id}`);
-			}
-		});
-	</script>
 </body>
 
 </html>

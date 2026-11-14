@@ -9,16 +9,17 @@ class STWActionRouter {
 		this.registerDefaultHandlers();
 	}
 	/**
-    * Register a custom action handler.
-    * @param action Full action name (e.g., "stwinsert")
-    * @param handler Async function that processes the action
-    */
+	 * Register a custom action handler.
+	 * @param action Full action name (e.g., "stwinsert")
+	 * @param handler Async function that processes the action
+	 */
 	register(action, handler) {
 		this.handlers.set(action, handler);
 	}
+
 	/**
-    * Execute an action based on form submission.
-    */
+	 * Execute an action based on form submission.
+	 */
 	async execute(ctx) {
 		const handler = this.handlers.get(ctx.action);
 		if (!handler) {
@@ -45,9 +46,10 @@ class STWActionRouter {
 			};
 		}
 	}
+
 	/**
-    * Register built-in STW action handlers.
-    */
+	 * Register built-in STW action handlers.
+	 */
 	registerDefaultHandlers() {
 		this.register("stwinsert", this.handleInsert.bind(this));
 		this.register("stwupdate", this.handleUpdate.bind(this));
@@ -59,24 +61,19 @@ class STWActionRouter {
 		this.register("stwlogoff", this.handleLogoff.bind(this));
 		this.register("stwpwdreset", this.handlePasswordReset.bind(this));
 	}
-	/**
-    * Handle insert action - add new record to connector.
-    */
+
 	async handleInsert(ctx) {
 		return await this.handleCrud(ctx, "insert");
 	}
-	/**
-    * Handle update action - modify existing record.
-    */
+
 	async handleUpdate(ctx) {
 		return await this.handleCrud(ctx, "update");
 	}
-	/**
-    * Handle delete action - remove record.
-    */
+
 	async handleDelete(ctx) {
 		return await this.handleCrud(ctx, "delete");
 	}
+
 	async handleCrud(ctx, operation) {
 		const { content, formData } = ctx;
 		const actionName = operation[0].toUpperCase() + operation.slice(1);
@@ -107,9 +104,8 @@ class STWActionRouter {
 			return fail(`${actionName}Failed`, error instanceof Error ? error.message : String(error), error);
 		}
 	}
-	/**
-    * Handle search action - build new query string from form inputs.
-    */
+
+	// build new query string from form inputs
 	async handleSearch(ctx) {
 		const { formData } = ctx;
 		const url = new URL(ctx.url || ctx.req.url);
@@ -124,9 +120,8 @@ class STWActionRouter {
 			redirect: url.href
 		};
 	}
-	/**
-    * Handle filter action - add/replace query params.
-    */
+
+	// add/replace query string params
 	async handleFilter(ctx) {
 		const { formData } = ctx;
 		const url = new URL(ctx.url || ctx.req.url);
@@ -144,9 +139,10 @@ class STWActionRouter {
 			redirect: url.href
 		};
 	}
+
 	/**
-    * Handle submit action - execute ServerScript or ShellScript.
-    */
+	 * Handle submit action - execute ServerScript or ShellScript.
+	 */
 	async handleSubmit(ctx) {
 		const { content, session, req, formData } = ctx;
 		const connector = ctx.args?.[0];
@@ -191,9 +187,7 @@ class STWActionRouter {
 			};
 		}
 	}
-	/**
-    * Handle authentication logon.
-    */
+
 	async handleLogon(ctx) {
 		const { formData, session } = ctx;
 		const username = actionValue(ctx.args?.[0], "username", formData, session);
@@ -218,25 +212,21 @@ class STWActionRouter {
 			data: { user: username }
 		};
 	}
-	/**
-    * Handle authentication logoff.
-    */
+
 	async handleLogoff(ctx) {
 		const { session } = ctx;
 		session.placeholders.delete("USER");
 		session.placeholders.delete("AUTHENTICATED");
 		session.user = "guest";
 		session.name = "guest";
-		session.roles = ["guests"];
+		session.roles = ["guest"];
 		session.dev = false;
 		return {
 			ok: true,
 			redirect: ctx.url || "/"
 		};
 	}
-	/**
-    * Handle password reset.
-    */
+
 	async handlePasswordReset(ctx) {
 		const { formData, session } = ctx;
 		const oldPassword = actionValue(ctx.args?.[0], "old", formData, session);
@@ -259,11 +249,13 @@ class STWActionRouter {
 		};
 	}
 }
+
 const actionRouter = new STWActionRouter();
 export {
 	STWActionRouter,
 	actionRouter
 };
+
 function getTableFromQuery(query) {
 	const match = /^\s*SELECT\b[\s\S]*?\bFROM\s+((?:`[^`]+`|[A-Za-z0-9_$]+)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z0-9_$]+))?)([\s\S]*)$/i.exec(query ?? "");
 	if (!match) {

@@ -37,6 +37,8 @@ class STWPortal extends STWElement {
 
 	constructor(portal) {
 		super(portal);
+		for (const role of this.visibility.keys()) this.visibility.set(role, role === "root");
+		this.visibility.set("root", true);
 		this.langs = portal.langs || ["en"];
 		this.connectors = new Map(Object.entries(portal.connectors || { name: "STW", value: "" }));
 		this.mainpage = portal.mainpage;

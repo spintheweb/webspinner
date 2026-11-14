@@ -36,6 +36,7 @@ services:
       # Security
       - USERS=./.data/users.json
       - ALLOW_DEV=false
+      - ALLOW_ROOT=false
       
       # Database Connection (if using external database)
       # - DB_HOST=mysql

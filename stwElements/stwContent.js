@@ -144,15 +144,13 @@ class STWContent extends STWElement {
 			if (HTML?.includes("data-stw-action-token") && !/<form\b/i.test(HTML)) {
 				HTML = `<form id="stwFA${this.uuid}"><input type="hidden" name="stwOrigin" value="${this.uuid}"></form>${HTML}`;
 			}
+			let dev = "";
+			if (session.dev && this.isVisible(session, "developer"))
+				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/password-recovery?uuid=${this.uuid}", options: { recurse: false } }))'></i></span>`;
 			if (!HTML) {
-				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
+				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${dev}${settings.get("nodata") || ""}</article>` : "";
 			} else {
-				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">
-${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}
-${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}
-${HTML}
-${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}
-</article>`;
+				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">${dev}\n${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n${HTML}\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
 			}
 		} catch (error) {
 			const safeStringify = (obj) => {

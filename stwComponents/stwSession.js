@@ -36,7 +36,7 @@ class STWSession {
 		this.remoteAddr = remoteAddr;
 		this.baseurl = envGet("HOST") || "";
 		this.user = "guest";
-		this.roles = ["guests"];
+		this.roles = ["guest"];
 		this.lang = "en";
 		this.langs = ["en"];
 		this.tz = "UTC";

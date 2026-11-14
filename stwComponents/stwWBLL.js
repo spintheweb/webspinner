@@ -345,7 +345,7 @@ class LabelSymbol extends BaseSymbol {
 		else
 			this.text = this.args[0] || (args == null ? mode === "header" ? runtime.Fields[runtime.FldIndex] : Field(runtime) : "");
 		if (runtime.RenderIn === "thead" && this.args[1] != null)
-			this.text += `<span class="stwOrderBy" data-orderby="${this.args[1] || runtime.Fields[runtime.FldIndex]}"><i class="fas fa-fw fa-angle-up"></i><i class="fas fa-fw fa-angle-down"></i></span>`;
+			this.text += `<span class="stwOrderBy" data-orderby="${this.args[1] || runtime.Fields[runtime.FldIndex]}"><i class="fa-solid fa-fw fa-angle-up"></i><i class="fa-solid fa-fw fa-angle-down"></i></span>`;
 		if (mode === "form") {
 			runtime.Wrappers.push("label");
 			this.attrs.set("for", `stwE${runtime.FormFields}`);

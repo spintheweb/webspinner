@@ -45,6 +45,10 @@ class STWText extends STWContent {
 	}
 
 	async render(_request, session, records) {
+		let dev = "";
+		if (session.dev && this.isVisible(session, "developer"))
+			dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/password-recovery?uuid=${this.uuid}", options: { recurse: false } }))'></i></span>`;
+
 		const layoutValue = this.layout?.get(session.lang);
 		let layoutText = typeof layoutValue === "string" ? layoutValue : layoutValue?.toString?.() ?? "";
 		if (!layoutText) {
@@ -56,7 +60,7 @@ class STWText extends STWContent {
 				return "";
 			}
 		} else
-			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
+			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${dev}${layoutText}</article>`;
 
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {

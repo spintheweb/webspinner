@@ -1,7 +1,8 @@
 /**
  * @fileoverview HTTP API for reading and modifying the in-memory WBOL webbase.
  *
- * Webbase element routes require the `developers` role:
+ * Webbase element routes require the `developer` role and Developer-role RBV,
+ * except SEO users may read and edit localized metadata on SEO-visible elements:
  *   - GET /wbol returns the portal tree; GET /wbol/:uuid returns one element.
  *   - GET /wbol?uuid=:uuid returns WBOL content metadata for a content element.
  *   - POST /wbol creates a child from `{ parentId, element }`.
@@ -9,21 +10,28 @@
  *     optional `position`. Localized string values update `?locale=` (default:
  *     the Developer's session language); localized maps merge by locale.
  *     DELETE /wbol/:uuid removes the element and its descendants.
- *   - GET /wbol/:uuid/visibility reads explicit RBV settings; PUT replaces them
- *     and PATCH merges them (`null` removes a role override).
+ *   - GET /wbol/:uuid/visibility reads explicit RBV settings; only
+ *     `leaddeveloper` may change them, and may not assign `root` or
+ *     `administrator`.
  *   - GET /wbol/:uuid/options reads content options; PUT replaces the option tree;
  *     PATCH updates an option name by index path in the selected locale.
  *   - GET/PUT /wbol/:portalUuid/connectors reads or replaces portal connectors
- *     values; GET/POST /wbol/:portalUuid/roles lists or creates roles.
+ *     values and requires `root` or `leaddeveloper`; GET/POST
+ *     /wbol/:portalUuid/roles lists or creates roles.
  *
- * Administrative routes under /wbol/users, /wbol/roles, and /wbol/connectors
- * require `root` or `administrators` and are checked separately from development
- * access. POST /wbol/connectors/reconnect reconnects all configured connectors.
+ * User and role administration under /wbol/users and /wbol/roles requires
+ * `root` or `administrator`. LeadDeveloper users may manage `developer` and `seo`
+ * assignments through /wbol/users/:user/developer and /wbol/users/:user/seo;
+ * `root` may manage any role. Connector configuration under /wbol/connectors
+ * requires `root` or `leaddeveloper`. These routes are checked separately
+ * from development access. POST /wbol/connectors/reconnect reconnects all
+ * configured connectors.
  * Request bodies are limited to 2 MiB.
  *
- * Element routes enforce effective Developer-role visibility. Property routes
- * expose visibility for every element and options for content types that define
- * them. Portal-scoped routes expose portal connectors and role creation.
+ * Developer routes enforce effective Developer-role visibility; SEO metadata
+ * routes enforce effective SEO-role visibility. LeadDeveloper users can manage RBV
+ * independently of Developer visibility. The portal grants RBV only to `root`;
+ * other roles are denied by default.
  *
  * @module stwWBOLAPI
  * @license GPL-3.0-or-later
@@ -46,37 +54,55 @@ async function handleWbolApi(request, session) {
 		const adminResponse = await handleWbolAdminApi(request, session, segments.slice(1));
 		if (adminResponse) return adminResponse;
 	}
-	if (!session.roles.includes("developers")) {
-		return jsonResponse({ error: "Forbidden" }, 403);
-	}
-	if (segments.length === 3) {
+	if (segments.length === 3 && segments[2] === "visibility") {
 		const element = STWIndex.get(segments[1]);
 		if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
-		if (!isDeveloperVisible(element)) return jsonResponse({ error: "Forbidden" }, 403);
-		if (segments[2] === "visibility") return handleVisibilityRoute(request, element);
+		return handleVisibilityRoute(request, element, session);
+	}
+	if (segments.length === 3 && segments[2] === "connectors") {
+		if (!session.roles.includes("root") && !session.roles.includes("leaddeveloper")) {
+			return jsonResponse({ error: "Forbidden" }, 403);
+		}
+		const element = STWIndex.get(segments[1]);
+		if (!(element instanceof STWPortal)) return jsonResponse({ error: "Portal not found" }, 404);
+		return handlePortalConnectorsRoute(request, element);
+	}
+	const hasDeveloperRole = session.roles.includes("developer");
+	const hasSeoRole = session.roles.includes("seo");
+	if (segments.length === 3) {
+		if (!hasDeveloperRole) return jsonResponse({ error: "Forbidden" }, 403);
+		const element = STWIndex.get(segments[1]);
+		if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
+		if (!(element.isVisible(session, "developer") & 1)) return jsonResponse({ error: "Forbidden" }, 403);
 		if (segments[2] === "options") return handleOptionsRoute(request, element, session);
-		if (segments[2] === "connectors" && element instanceof STWPortal) return handlePortalConnectorsRoute(request, element);
 		if (segments[2] === "roles" && element instanceof STWPortal) return handlePortalRolesRoute(request);
 		return jsonResponse({ error: "Not found" }, 404);
 	}
 	if (segments.length > 2) return jsonResponse({ error: "Not found" }, 404);
+	if (!hasDeveloperRole && !hasSeoRole) return jsonResponse({ error: "Forbidden" }, 403);
 	const queryId = segments.length === 1 ? url.searchParams.get("uuid") : null;
 	const id = segments[1] || queryId;
 	const method = request.method.toUpperCase();
 	try {
 		if (method === "GET") {
-			const element = id ? STWIndex.get(id) : STWPortal.instance;
+			const portal = session.portal instanceof STWPortal ? session.portal : STWPortal.instance;
+			const element = id ? STWIndex.get(id) : portal;
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
-			if (!isDeveloperVisible(element)) return jsonResponse({ error: "Forbidden" }, 403);
+			const developerVisible = hasDeveloperRole && Boolean(element.isVisible(session, "developer") & 1);
+			const seoVisible = hasSeoRole && Boolean(element.isVisible(session, "seo") & 1);
+			if (queryId && !developerVisible) return jsonResponse({ error: "Forbidden" }, 403);
+			if (id && !developerVisible && !seoVisible) return jsonResponse({ error: "Forbidden" }, 403);
 			if (queryId) {
 				const locale = resolveEditingLocale(url, session);
 				const content = getWbolContent(queryId, { ...session, lang: locale });
 				if (!content) return jsonResponse({ error: "Content not found" }, 404);
 				return jsonResponse({ ...content, locale });
 			}
-			return jsonResponse(filterDeveloperVisibleTree(element));
+			if (id) return jsonResponse(developerVisible ? serializeSTWElement(element) : serializeSeoElement(element));
+			return jsonResponse(filterAccessibleTree(element, session, true));
 		}
 		if (method === "POST" && !id) {
+			if (!hasDeveloperRole) return jsonResponse({ error: "Forbidden" }, 403);
 			const body = await readJson(request);
 			if (typeof body.parentId !== "string" || !isRecord(body.element)) {
 				return jsonResponse({ error: "Expected parentId and element object" }, 400);
@@ -85,7 +111,7 @@ async function handleWbolApi(request, session) {
 			if (!(parent instanceof STWElement) || parent instanceof STWContent) {
 				return jsonResponse({ error: "Parent element not found or cannot contain children" }, 400);
 			}
-			if (!isDeveloperVisible(parent)) return jsonResponse({ error: "Forbidden" }, 403);
+			if (!(parent.isVisible(session, "developer") & 1)) return jsonResponse({ error: "Forbidden" }, 403);
 			validateDefinitionTree(body.element);
 			const definitionIds = collectDefinitionIds(body.element);
 			if (new Set(definitionIds).size !== definitionIds.length || definitionIds.some((elementId) => STWIndex.has(elementId))) {
@@ -102,10 +128,20 @@ async function handleWbolApi(request, session) {
 		if (method === "PATCH" && id) {
 			const element = STWIndex.get(id);
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
-			if (!isDeveloperVisible(element)) return jsonResponse({ error: "Forbidden" }, 403);
+			const canDevelop = hasDeveloperRole && Boolean(element.isVisible(session, "developer") & 1);
+			const canEditSeo = hasSeoRole && Boolean(element.isVisible(session, "seo") & 1);
+			if (!canDevelop && !canEditSeo) return jsonResponse({ error: "Forbidden" }, 403);
 			const patch = await readJson(request);
 			if (!isRecord(patch)) return jsonResponse({ error: "Expected a JSON object" }, 400);
-			const locale = resolveEditingLocale(url, session);
+			const seoOnly = !canDevelop;
+			if (seoOnly && Object.keys(patch).some((field) => !["name", "slug", "keywords", "description"].includes(field))) {
+				return jsonResponse({ error: "SEO role may update only name, slug, keywords, and description" }, 403);
+			}
+			const hasLocalizedStrings = ["name", "slug", "keywords", "description"]
+				.some((field) => typeof patch[field] === "string");
+			const locale = seoOnly && !hasLocalizedStrings
+				? null
+				: resolveEditingLocale(url, session);
 			const localizedUpdates = prepareLocalizedUpdates(patch, locale, getSupportedLocales(session));
 			const parentId = patch.parentId;
 			const position = patch.position;
@@ -125,7 +161,7 @@ async function handleWbolApi(request, session) {
 				if (!(newParent instanceof STWElement) || newParent instanceof STWContent) {
 					return jsonResponse({ error: "Parent element not found or cannot contain children" }, 400);
 				}
-				if (!isDeveloperVisible(newParent)) return jsonResponse({ error: "Forbidden" }, 403);
+				if (!(newParent.isVisible(session, "developer") & 1)) return jsonResponse({ error: "Forbidden" }, 403);
 				if (newParent === element || isDescendantOf(newParent, element)) {
 					return jsonResponse({ error: "An element cannot be moved into itself or its descendants" }, 400);
 				}
@@ -146,12 +182,12 @@ async function handleWbolApi(request, session) {
 			element.update(session, updates);
 			applyLocalizedUpdates(element, localizedUpdates);
 			if (moveTo) moveElement(element, moveTo, movePosition);
-			return jsonResponse(serializeSTWElement(element));
+			return jsonResponse(seoOnly ? serializeSeoElement(element) : serializeSTWElement(element));
 		}
 		if (method === "DELETE" && id) {
 			const element = STWIndex.get(id);
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
-			if (!isDeveloperVisible(element)) return jsonResponse({ error: "Forbidden" }, 403);
+			if (!hasDeveloperRole || !(element.isVisible(session, "developer") & 1)) return jsonResponse({ error: "Forbidden" }, 403);
 			if (element instanceof STWPortal) return jsonResponse({ error: "Cannot delete the portal" }, 405);
 			const parent = element.parent;
 			const index = parent?.children.indexOf(element) ?? -1;
@@ -174,20 +210,34 @@ async function handleWbolApi(request, session) {
 	}
 }
 
-function isDeveloperVisible(element) {
-	for (let current = element; current; current = current.parent) {
-		const visibility = current.visibility.get("developers");
-		if (typeof visibility === "boolean") return visibility;
+function filterAccessibleTree(element, session, root = false) {
+	const developerVisible = session.roles.includes("developer") && Boolean(element.isVisible(session, "developer") & 1);
+	const seoVisible = session.roles.includes("seo") && Boolean(element.isVisible(session, "seo") & 1);
+	if (!root && !developerVisible && !seoVisible) return null;
+	let result;
+	if (developerVisible || root && session.roles.includes("developer")) {
+		result = serializeSTWElement(element);
+	} else if (seoVisible) {
+		result = serializeSeoElement(element);
+	} else {
+		result = { uuid: element.uuid, type: element.type, subtype: element.subtype || element.type };
 	}
-	return true;
+	result.children = element.children
+		.map((child) => filterAccessibleTree(child, session))
+		.filter(Boolean);
+	return result;
 }
 
-function filterDeveloperVisibleTree(element) {
-	const result = serializeSTWElement(element);
-	result.children = element.children
-		.filter(isDeveloperVisible)
-		.map(filterDeveloperVisibleTree);
-	return result;
+function serializeSeoElement(element) {
+	return {
+		uuid: element.uuid,
+		type: element.type,
+		subtype: element.subtype || element.type,
+		name: Object.fromEntries(element.name),
+		slug: Object.fromEntries(element.slug),
+		keywords: Object.fromEntries(element.keywords),
+		description: Object.fromEntries(element.description)
+	};
 }
 
 function resolveEditingLocale(url, session) {
@@ -245,10 +295,18 @@ function applyLocalizedUpdates(element, updates) {
 	}
 }
 
-async function handleVisibilityRoute(request, element) {
+async function handleVisibilityRoute(request, element, session) {
 	const method = request.method.toUpperCase();
-	if (method === "GET") return jsonResponse(Object.fromEntries(element.visibility));
+	const isLeadDeveloper = session.roles.includes("leaddeveloper");
+	if (method === "GET") {
+		if (!isLeadDeveloper &&
+			(!session.roles.includes("developer") || !(element.isVisible(session, "developer") & 1))) {
+			return jsonResponse({ error: "Forbidden" }, 403);
+		}
+		return jsonResponse(Object.fromEntries(element.visibility));
+	}
 	if (method !== "PUT" && method !== "PATCH") return methodNotAllowed("GET, PUT, PATCH");
+	if (!isLeadDeveloper) return jsonResponse({ error: "Forbidden" }, 403);
 	try {
 		const body = await readJson(request);
 		if (!isRecord(body)) throw new TypeError("Expected a role-to-visibility object");
@@ -256,8 +314,14 @@ async function handleVisibilityRoute(request, element) {
 			if (!role || visible !== null && typeof visible !== "boolean") {
 				throw new TypeError("Visibility values must be true, false, or null");
 			}
+			if (role === "root" || role === "administrator") {
+				throw new AdminApiError(403, `LeadDeveloper cannot assign the ${role} role`);
+			}
 			if (visible !== null && !await STWSecurity.isKnownRole(role)) {
 				throw new TypeError(`Unknown role: ${role}`);
+			}
+			if (element instanceof STWPortal && visible === true) {
+				throw new AdminApiError(403, "The portal can only grant visibility to the root role");
 			}
 		}
 		if (method === "PUT") element.visibility.clear();
@@ -265,6 +329,7 @@ async function handleVisibilityRoute(request, element) {
 			if (visible === null) element.visibility.delete(role);
 			else element.visibility.set(role, visible);
 		}
+		if (element instanceof STWPortal) element.visibility.set("root", true);
 		element.modified = Date.now();
 		return jsonResponse(Object.fromEntries(element.visibility));
 	} catch (error) {
@@ -474,7 +539,7 @@ function jsonResponse(body, status = 200, headers) {
 }
 function getWbolContent(uuid, session) {
 	const element = STWIndex.get(uuid);
-	if (!(element instanceof STWContent) || !isDeveloperVisible(element)) return null;
+	if (!(element instanceof STWContent) || !(element.isVisible(session, "developer") & 1)) return null;
 	return {
 		contents: serializeSTWElement(element),
 		name: element.localize(session, "name"),
@@ -489,7 +554,17 @@ const connectorTypes = new Set(["api", "mysql", "postgres", "mssql", "mongodb", 
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId, action] = segments;
 	if (!["users", "roles", "connectors"].includes(resource || "")) return null;
-	if (!session.roles.includes("root") && !session.roles.includes("administrators")) {
+	const isRoot = session.roles.includes("root");
+	const isAdmin = session.roles.includes("administrator");
+	const isLeadDeveloper = session.roles.includes("leaddeveloper");
+	const isLeadRoleRoute = resource === "users" && segments.length === 3 &&
+		["developer", "seo"].includes(action);
+	const authorized = resource === "connectors"
+		? isRoot || isLeadDeveloper
+		: isLeadRoleRoute
+			? isRoot || isLeadDeveloper
+			: isRoot || isAdmin;
+	if (!authorized) {
 		return jsonResponse({ error: "Forbidden" }, 403);
 	}
 	let id;
@@ -500,7 +575,11 @@ async function handleWbolAdminApi(request, session, segments) {
 	}
 	const method = request.method.toUpperCase();
 	try {
-		if (resource === "users") return await usersRoute(request, method, id);
+		if (resource === "users" && segments.length === 3 && ["developer", "seo"].includes(action)) {
+			return await userRoleRoute(request, method, id, action);
+		}
+		if (resource === "users" && action !== void 0) return jsonResponse({ error: "Not found" }, 404);
+		if (resource === "users") return await usersRoute(request, method, id, session);
 		if (resource === "roles") return await rolesRoute(request, method, id);
 		if (resource === "connectors" && rawId === "reconnect" && action === void 0) {
 			return await reconnectConnectorsRoute(method);
@@ -525,7 +604,7 @@ async function handleWbolAdminApi(request, session, segments) {
 		return jsonResponse({ error: "Internal server error" }, 500);
 	}
 }
-async function usersRoute(request, method, id) {
+async function usersRoute(request, method, id, session) {
 	if (method === "GET" && !id) return jsonResponse(await STWSecurity.listUsers());
 	if (method === "POST" && !id) {
 		const body = await readAdminJson(request);
@@ -536,7 +615,15 @@ async function usersRoute(request, method, id) {
 		const password = requireNonEmptyString(body.password, "password");
 		const name = optionalString(body.name, "name") ?? user;
 		const email = optionalString(body.email, "email") ?? "";
-		const roles = await validateRoles(body.roles ?? ["users"]);
+		const roles = await validateRoles(body.roles ?? ["user"]);
+		const isRoot = session.roles.includes("root");
+		const isLeadDeveloper = session.roles.includes("leaddeveloper");
+		if (!isRoot && roles.some((role) => ["root", "leaddeveloper"].includes(role))) {
+			throw new AdminApiError(403, "Only root can assign root or leaddeveloper");
+		}
+		if (!isRoot && !isLeadDeveloper && roles.some((role) => ["developer", "seo"].includes(role))) {
+			throw new AdminApiError(403, "Only LeadDeveloper or root can assign developer and SEO roles");
+		}
 		await STWSecurity.createUser(user, name, password, roles, email);
 		return jsonResponse({ user, name, roles: roles.join(","), email }, 201);
 	}
@@ -552,7 +639,10 @@ async function usersRoute(request, method, id) {
 		if ("name" in body) patch.name = requireString(body.name, "name");
 		if ("email" in body) patch.email = requireString(body.email, "email");
 		if ("password" in body) patch.password = requireNonEmptyString(body.password, "password");
-		if ("roles" in body) patch.roles = await validateRoles(body.roles);
+		if ("roles" in body) {
+			patch.roles = await validateRoles(body.roles);
+			await assertProtectedRoleChangesAllowed(id, patch.roles, session);
+		}
 		await assertAdminWillRemain(id, patch.roles);
 		await STWSecurity.updateUser(id, patch);
 		return jsonResponse((await STWSecurity.listUsers()).find((user) => user.user === id));
@@ -563,6 +653,22 @@ async function usersRoute(request, method, id) {
 		return secureResponse(null, { status: 204 });
 	}
 	return methodNotAllowed("GET, POST, PATCH, DELETE");
+}
+async function userRoleRoute(request, method, id, role) {
+	if (!id) return jsonResponse({ error: "User not found" }, 404);
+	const user = (await STWSecurity.listUsers()).find((entry) => entry.user === id);
+	if (!user) throw new AdminApiError(404, "User not found");
+	const roles = new Set(user.roles.split(",").map((role) => role.trim()).filter(Boolean));
+	if (method === "GET") return jsonResponse({ user: id, role, enabled: roles.has(role) });
+	if (method !== "PATCH") return methodNotAllowed("GET, PATCH");
+	const body = await readAdminJson(request);
+	if (!isRecord(body) || Object.keys(body).length !== 1 || typeof body.enabled !== "boolean") {
+		throw new AdminApiError(400, "Expected { enabled: boolean }");
+	}
+	if (body.enabled) roles.add(role);
+	else roles.delete(role);
+	await STWSecurity.updateUser(id, { roles: [...roles] });
+	return jsonResponse({ user: id, role, enabled: body.enabled });
 }
 async function rolesRoute(request, method, id) {
 	if (method === "GET" && !id) {
@@ -644,6 +750,7 @@ async function connectorsRoute(request, method, id) {
 	}
 	return methodNotAllowed("GET, POST, PATCH, DELETE");
 }
+
 async function reconnectConnectorsRoute(method) {
 	if (method !== "POST") return methodNotAllowed("POST");
 	try {
@@ -659,6 +766,7 @@ async function reconnectConnectorsRoute(method) {
 		}, 503);
 	}
 }
+
 async function validateRoles(value) {
 	if (!Array.isArray(value) || !value.every((role) => typeof role === "string" && role.length > 0)) {
 		throw new AdminApiError(400, "roles must be an array of role names");
@@ -669,12 +777,25 @@ async function validateRoles(value) {
 	}
 	return roles;
 }
+async function assertProtectedRoleChangesAllowed(userId, replacementRoles, session) {
+	if (session.roles.includes("root")) return;
+	const users = await STWSecurity.listUsers();
+	const user = users.find((entry) => entry.user === userId);
+	if (!user) throw new AdminApiError(404, "User not found");
+	const previousRoles = new Set(user.roles.split(",").map((role) => role.trim()));
+	const nextRoles = new Set(replacementRoles);
+	for (const role of ["root", "developer", "leaddeveloper", "seo"]) {
+		if (previousRoles.has(role) !== nextRoles.has(role)) {
+			throw new AdminApiError(403, `Only root or LeadDeveloper can change the ${role} role`);
+		}
+	}
+}
 async function assertAdminWillRemain(userId, replacementRoles) {
 	const users = await STWSecurity.listUsers();
 	const target = users.find((user) => user.user === userId);
 	if (!target) throw new AdminApiError(404, "User not found");
-	const isAdmin = (roles) => roles.split(",").some((role) => role === "root" || role === "administrators");
-	if (replacementRoles === void 0 || !isAdmin(target.roles) || replacementRoles.some((role) => role === "root" || role === "administrators")) return;
+	const isAdmin = (roles) => roles.split(",").some((role) => role === "root" || role === "administrator");
+	if (replacementRoles === void 0 || !isAdmin(target.roles) || replacementRoles.some((role) => role === "root" || role === "administrator")) return;
 	if (users.filter((user) => user.user !== userId && isAdmin(user.roles)).length === 0) {
 		throw new AdminApiError(409, "Cannot remove the last root or administrator account");
 	}

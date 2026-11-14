@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { isNotFoundError } from "./stwNode.js";
 import { STWElement } from "../stwElements/stwElement.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
-const mandatoryRoles = ["root", "administrators", "guests", "users", "developers", "translators", "seo"];
+const mandatoryRoles = ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"];
 const toHex = (buffer) => {
 	const view = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : new Uint8Array(buffer.buffer);
 	return [...view].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -18,6 +18,13 @@ const fromHex = (hex) => {
 	return bytes;
 };
 const pbkdf2Params = { name: "PBKDF2", iterations: 1e5, hash: "SHA-256" };
+function readBooleanSetting(name) {
+	const value = envGet(name, "false").trim().toLowerCase();
+	if (value !== "true" && value !== "false") {
+		throw new TypeError(`${name} must be "true" or "false"`);
+	}
+	return value === "true";
+}
 const STWSecurity = new class {
 	async listUsers() {
 		return (await this.readUsers()).map(({ user, name, roles, email }) => ({ user, name, roles, email }));
@@ -264,9 +271,11 @@ const STWSecurity = new class {
 		await writeFile(usersDB, JSON.stringify(users, null, 2));
 	}
 	async authenticate(session, user, password) {
+		const allowDev = readBooleanSetting("ALLOW_DEV");
+		const allowRoot = readBooleanSetting("ALLOW_ROOT");
 		if (user === "guest") {
 			session.user = "guest";
-			session.roles = ["guests"];
+			session.roles = ["guest"];
 			session.name = "guest";
 			session.dev = false;
 			return true;
@@ -293,14 +302,15 @@ const STWSecurity = new class {
 				if (toHex(derivedBits) === hashHex) {
 					session.user = person.user;
 					session.name = person.name || person.user;
-					session.roles = person.roles.split(",").map((role) => role.trim()).filter(Boolean);
-					session.dev = session.roles.includes("developers");
+					session.roles = person.roles.split(",").map((role) => role.trim()).filter(Boolean)
+						.filter((role) => (role !== "developer" || allowDev) && (role !== "root" || allowRoot));
+					session.dev = session.roles.includes("developer");
 					return true;
 				}
 			}
 		}
 		session.user = "guest";
-		session.roles = ["guests"];
+		session.roles = ["guest"];
 		session.name = "guest";
 		session.dev = false;
 		session.placeholders.delete("USER");

@@ -74,3 +74,16 @@ fieldset.stwGroup {
 .stwOrdered {
 	color: CanvasText;
 }
+
+article>.stwProperties {
+	display: none;
+	position: absolute;
+	inset-inline-end: 0;
+	padding: 0.25rem;
+	cursor: pointer;
+	z-index: 9999;
+}
+
+article:hover:not(:has(article:hover))>.stwProperties {
+	display: block;
+}

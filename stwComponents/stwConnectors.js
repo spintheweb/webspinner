@@ -705,7 +705,7 @@ async function fetchAPIData(session, content, connector) {
 	);
 }
 async function fetchWBOLApiData(session, content) {
-	if (!session.roles.includes("developers")) {
+	if (!session.roles.includes("developer")) {
 		return { affectedRows: 0, fields: ["error"], rows: [{ error: "Forbidden" }] };
 	}
 	const params = new URLSearchParams(WBPL(content.params, session.placeholders).replace(/^\?/, ""));

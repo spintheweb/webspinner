@@ -33,7 +33,7 @@ class STWElement {
 	children = [];
 	modified;
 	extra;
-	
+
 	constructor(element) {
 		this.uuid = element.uuid ? element.uuid : newId();
 		this.type = element.type || this.constructor.name.replace("STW", "");
@@ -68,9 +68,9 @@ class STWElement {
 		this.modified = Date.now();
 	}
 	/**
-    * @param session The session
-    * @returns Return a / separated reverse chain of slugs of this element up to the root element
-    */
+	 * @param session The session
+	 * @returns Return a / separated reverse chain of slugs of this element up to the root element
+	 */
 	pathname(session) {
 		if (this.parent)
 			return this.parent.pathname(session) + "/" + this.localize(session, "slug");
@@ -99,33 +99,39 @@ class STWElement {
 		};
 	}
 	/**
-    * Determines the Role Based Visibility of the element climbing up the webbase hierarchy if necessary.
-    * By default an element is not visible except for the portal's mainpage. Given the session roles,
-    * apply a logical OR of these roles in element visiblity, if no role applies move to
-    * the element parent.
-    *
-    * @param session The session
-    * @returns Return a number greater than 0 if element visible
-    */
-	isVisible(session, recurse = false) {
+	 * Determines the Role Based Visibility of the element climbing up the webbase hierarchy if necessary.
+	 * By default an element is not visible except for the portal's mainpage. Given the session roles,
+	 * apply a logical OR of these roles in element visiblity, if no role applies move to
+	 * the element parent.
+	 *
+	 * @param session The session
+	 * @param role A specific role to test
+	 * @returns Return a number greater than 0 if element visible
+	 */
+	isVisible(session, role = undefined, recurse = false) {
 		let ac;
 		if (session.portal.mainpage === this.uuid) {
 			ac = recurse ? 3 : 1;
 		}
-		for (let i = 0; ac != 1 && i < session.roles.length; ++i) {
-			if (this.visibility.has(session.roles[i])) {
-				ac |= this.visibility.get(session.roles[i]) ? 1 : 0;
+		if (role && this.visibility.has(role))
+			ac |= this.visibility.get(role) ? 1 : 0;
+		else
+			for (let i = 0; ac != 1 && i < session.roles.length; ++i) {
+				if (this.visibility.has(session.roles[i])) {
+					ac |= this.visibility.get(session.roles[i]) ? 1 : 0;
+				}
 			}
-		}
+			
 		if (typeof ac === "undefined") {
 			if (this.parent) {
-				ac = 2 | this.parent.isVisible(session, true);
+				ac = 2 | this.parent.isVisible(session, role, true);
 			} else if (["Portal", "Area", "Page"].indexOf(this.type) === -1) {
 				ac = 2;
 			}
 		}
 		return ac || 0;
 	}
+
 	// Export element as XML
 	export() {
 		let xml = `<${this.type} id="${this.uuid}" type="${this.type}" subtype="${this.type}" modified="${this.modified}">\n`;

@@ -88,7 +88,7 @@ function WBOLFragment(element) {
 				obj.visibility = {};
 				childElements(child).filter((role) => localName(role) === "role").forEach((role) => {
 					if (name === "webbase")
-						obj.visibility[role.getAttribute("id")] = void 0;
+						obj.visibility[role.getAttribute("id")] = role.getAttribute("id") === "root";
 					else if (role.getAttribute("visibility") === "true" || role.getAttribute("visibility") === "false")
 						obj.visibility[role.getAttribute("id")] = role.getAttribute("visibility") === "true";
 				});
@@ -106,6 +106,9 @@ function WBOLFragment(element) {
 	if (obj.type === "Webbase") {
 		obj.type = "Portal";
 		Object.keys(obj.slug).forEach((key) => obj.slug[key] = "");
+		obj.visibility ||= {};
+		for (const role of Object.keys(obj.visibility)) obj.visibility[role] = role === "root";
+		obj.visibility.root = true;
 	} else if (obj.type === "Webbaselet")
 		obj.type = "Area";
 	return obj;
