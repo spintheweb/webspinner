@@ -20,10 +20,11 @@
 				<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('vertical')]]></text>
+				<text xml:lang="en"><![CDATA[\s('vertical footer="User: @@stwloginname"')]]></text>
 			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
+				<role id="user" visibility="true" />
 			</visibility>
 			<options>
 				<option>

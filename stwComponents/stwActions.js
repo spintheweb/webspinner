@@ -1,24 +1,65 @@
+/**
+ * @fileoverview Routes signed form actions to CRUD, navigation, script, and
+ * session-authentication handlers.
+ *
+ * Form fields prefixed with `stw` are framework metadata and are never passed
+ * to connectors or copied into action placeholders. Other submitted fields are
+ * made available to action commands as both `@field` and `@@field`.
+ *
+ * @module stwActions
+ */
 import { STWConnectors } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";
 
+/**
+ * @typedef {object} ActionContext
+ * @property {string} action Requested action name.
+ * @property {FormData} formData Submitted form data.
+ * @property {object} session Current mutable session.
+ * @property {Request} req Originating HTTP request.
+ * @property {string} [url] Redirect URL supplied by the action request.
+ * @property {object} [content] Content that originated the action.
+ * @property {string[]} [args] Action arguments from the signed action token.
+ */
+
+/**
+ * @typedef {object} ActionResult
+ * @property {boolean} ok Whether the action completed successfully.
+ * @property {string} [redirect] Optional redirect target.
+ * @property {object|string} [data] Optional action result.
+ * @property {{name: string, message: string, stack?: string}} [error] Action failure.
+ */
+
+/**
+ * Dispatches named actions registered by the application.
+ */
 class STWActionRouter {
 	handlers;
 
+	/**
+	 * Creates a router and registers all built-in action handlers.
+	 */
 	constructor() {
 		this.handlers = new Map();
 		this.registerDefaultHandlers();
 	}
+
 	/**
-	 * Register a custom action handler.
-	 * @param action Full action name (e.g., "stwinsert")
-	 * @param handler Async function that processes the action
+	 * Registers or replaces a custom action handler.
+	 *
+	 * @param {string} action Full action name, such as `stwinsert`.
+	 * @param {(context: ActionContext) => Promise<ActionResult>} handler Handler implementation.
+	 * @returns {void}
 	 */
 	register(action, handler) {
 		this.handlers.set(action, handler);
 	}
 
 	/**
-	 * Execute an action based on form submission.
+	 * Executes a registered action and converts handler failures into a result.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Action outcome or a structured error.
 	 */
 	async execute(ctx) {
 		const handler = this.handlers.get(ctx.action);
@@ -48,7 +89,9 @@ class STWActionRouter {
 	}
 
 	/**
-	 * Register built-in STW action handlers.
+	 * Registers the built-in CRUD, navigation, script, and session handlers.
+	 *
+	 * @returns {void}
 	 */
 	registerDefaultHandlers() {
 		this.register("stwinsert", this.handleInsert.bind(this));
@@ -62,18 +105,44 @@ class STWActionRouter {
 		this.register("stwpwdreset", this.handlePasswordReset.bind(this));
 	}
 
+	/**
+	 * Inserts a submitted record through the configured content connector.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Insert result.
+	 */
 	async handleInsert(ctx) {
 		return await this.handleCrud(ctx, "insert");
 	}
 
+	/**
+	 * Updates a submitted record through the configured content connector.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Update result.
+	 */
 	async handleUpdate(ctx) {
 		return await this.handleCrud(ctx, "update");
 	}
 
+	/**
+	 * Deletes a submitted record through the configured content connector.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Delete result.
+	 */
 	async handleDelete(ctx) {
 		return await this.handleCrud(ctx, "delete");
 	}
 
+	/**
+	 * Executes an insert, update, or delete action. Connector arguments supplied
+	 * by the signed action token override the originating content configuration.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @param {"insert"|"update"|"delete"} operation Requested CRUD operation.
+	 * @returns {Promise<ActionResult>} CRUD result or connector error.
+	 */
 	async handleCrud(ctx, operation) {
 		const { content, formData } = ctx;
 		const actionName = operation[0].toUpperCase() + operation.slice(1);
@@ -105,7 +174,12 @@ class STWActionRouter {
 		}
 	}
 
-	// build new query string from form inputs
+	/**
+	 * Replaces the request query string with non-framework form fields.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Redirect to the constructed search URL.
+	 */
 	async handleSearch(ctx) {
 		const { formData } = ctx;
 		const url = new URL(ctx.url || ctx.req.url);
@@ -121,7 +195,13 @@ class STWActionRouter {
 		};
 	}
 
-	// add/replace query string params
+	/**
+	 * Merges non-framework form fields into the current query string. Blank
+	 * values remove their corresponding parameters.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Redirect to the filtered URL.
+	 */
 	async handleFilter(ctx) {
 		const { formData } = ctx;
 		const url = new URL(ctx.url || ctx.req.url);
@@ -141,7 +221,13 @@ class STWActionRouter {
 	}
 
 	/**
-	 * Handle submit action - execute ServerScript or ShellScript.
+	 * Executes a connector command or a sibling ServerScript/ShellScript.
+	 *
+	 * A connector argument executes immediately. Without one, the requested
+	 * action is resolved against scripts belonging to the originating page.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Script or connector result.
 	 */
 	async handleSubmit(ctx) {
 		const { content, session, req, formData } = ctx;
@@ -188,6 +274,12 @@ class STWActionRouter {
 		}
 	}
 
+	/**
+	 * Authenticates a user using form values or action arguments.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Authentication result.
+	 */
 	async handleLogon(ctx) {
 		const { formData, session } = ctx;
 		const username = actionValue(ctx.args?.[0], "username", formData, session);
@@ -204,8 +296,6 @@ class STWActionRouter {
 				error: { name: "InvalidCredentials", message: "Invalid username or password" }
 			};
 		}
-		session.placeholders.set("USER", username);
-		session.placeholders.set("AUTHENTICATED", "true");
 		return {
 			ok: true,
 			redirect: ctx.url || "/",
@@ -213,12 +303,20 @@ class STWActionRouter {
 		};
 	}
 
+	/**
+	 * Restores the session to its canonical guest identity.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Redirect after logoff.
+	 */
 	async handleLogoff(ctx) {
 		const { session } = ctx;
-		session.placeholders.delete("USER");
-		session.placeholders.delete("AUTHENTICATED");
+		session.placeholders.set("@@stwlogin", "guest");
+		session.placeholders.set("@@stwloginname", "Guest");
+		session.placeholders.set("@@stwloginid", "-3");
 		session.user = "guest";
-		session.name = "guest";
+		session.name = "Guest";
+		session.loginId = "-3";
 		session.roles = ["guest"];
 		session.dev = false;
 		return {
@@ -227,6 +325,12 @@ class STWActionRouter {
 		};
 	}
 
+	/**
+	 * Replaces the authenticated user's password after confirmation.
+	 *
+	 * @param {ActionContext} ctx Action request context.
+	 * @returns {Promise<ActionResult>} Password-change result.
+	 */
 	async handlePasswordReset(ctx) {
 		const { formData, session } = ctx;
 		const oldPassword = actionValue(ctx.args?.[0], "old", formData, session);
@@ -256,6 +360,13 @@ export {
 	actionRouter
 };
 
+/**
+ * Extracts the single table name from a SELECT query used for CUD operations.
+ *
+ * @param {string} query Connector query.
+ * @returns {string} Table name, optionally schema-qualified.
+ * @throws {TypeError} If the query is not a single-table SELECT.
+ */
 function getTableFromQuery(query) {
 	const match = /^\s*SELECT\b[\s\S]*?\bFROM\s+((?:`[^`]+`|[A-Za-z0-9_$]+)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z0-9_$]+))?)([\s\S]*)$/i.exec(query ?? "");
 	if (!match) {
@@ -270,14 +381,36 @@ function getTableFromQuery(query) {
 	}
 	return table;
 }
+
+/**
+ * Reads a key-field setting from the content's localized WBLL layout.
+ *
+ * @param {object} content Originating content.
+ * @param {object} session Current session.
+ * @returns {string|undefined} Configured key field.
+ */
 function getKeyField(content, session) {
 	const wbll = content?.layout?.get(session.lang)?.wbll || "";
 	const settings = /\\s\('([^']*)'\)/.exec(wbll)?.[1] || "";
 	return /\bkey="([^"]+)"/.exec(settings)?.[1];
 }
+
+/**
+ * Infers a key field from a simple equality predicate in a SELECT query.
+ *
+ * @param {string} query Connector query.
+ * @returns {string|undefined} Inferred key field.
+ */
 function getKeyFieldFromQuery(query) {
 	return /\bWHERE\s+(?:[A-Za-z0-9_$]+\s*\.\s*)?`?([A-Za-z0-9_$]+)`?\s*=/i.exec(query)?.[1];
 }
+
+/**
+ * Returns submitted data fields, excluding framework metadata.
+ *
+ * @param {FormData} formData Submitted form data.
+ * @returns {Record<string, string>} User-submitted field values.
+ */
 function submittedFields(formData) {
 	const fields = {};
 	for (const [name, value] of formData.entries()) {
@@ -285,6 +418,14 @@ function submittedFields(formData) {
 	}
 	return fields;
 }
+
+/**
+ * Produces a connector session with submitted fields exposed as WBPL values.
+ *
+ * @param {object} session Current session.
+ * @param {FormData} formData Submitted form data.
+ * @returns {object} Session copy containing action-specific placeholders.
+ */
 function actionSession(session, formData) {
 	const placeholders = new Map(session.placeholders);
 	for (const [name, value] of formData.entries()) {
@@ -295,6 +436,17 @@ function actionSession(session, formData) {
 	}
 	return { ...session, placeholders };
 }
+
+/**
+ * Resolves an action value from a literal argument, form field, or session
+ * placeholder, in that order.
+ *
+ * @param {string|undefined} argument Signed action argument.
+ * @param {string} fallbackName Form-field name used when no argument exists.
+ * @param {FormData} formData Submitted form data.
+ * @param {object} session Current session.
+ * @returns {string} Resolved action value.
+ */
 function actionValue(argument, fallbackName, formData, session) {
 	const value = argument || `@@${fallbackName}`;
 	const match = /^@@?(.+)$/.exec(value);
@@ -303,6 +455,13 @@ function actionValue(argument, fallbackName, formData, session) {
 	}
 	return value;
 }
+
+/**
+ * Maps a CRUD operation to its connector HTTP method.
+ *
+ * @param {"insert"|"update"|"delete"} operation CRUD operation.
+ * @returns {"PUT"|"PATCH"|"DELETE"} Connector HTTP method.
+ */
 function operationMethod(operation) {
 	return operation === "insert" ? "PUT" : operation === "update" ? "PATCH" : "DELETE";
 }

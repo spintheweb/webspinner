@@ -42,7 +42,7 @@ npm start
 
 The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `CERTFILE` and `KEYFILE` in the environment or `.env` file to configure the listener.
 
-Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions.
+Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles.
 
 ## Learn more
 Explore WBOL and the Webspinner architecture:

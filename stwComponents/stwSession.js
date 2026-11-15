@@ -19,6 +19,7 @@ class STWSession {
 	baseurl = ""; // Base URL of the application (used to generate absolute URLs)
 	user; // User name
 	name; // Full name
+	loginId; // Persistent user ID
 	roles; // Roles played by the user. IMPORTANT: Security revolves around this aspect!
 	lang; // Preferred user language (this language is used to render contents based on the accepted and available portal languages)
 	langs; // Accepted user languages (Accept-Language)
@@ -36,11 +37,14 @@ class STWSession {
 		this.remoteAddr = remoteAddr;
 		this.baseurl = envGet("HOST") || "";
 		this.user = "guest";
+		this.name = "Guest";
+		this.loginId = "-3";
 		this.roles = ["guest"];
 		this.lang = "en";
 		this.langs = ["en"];
 		this.tz = "UTC";
 		this.placeholders = new Map();
+		this.setLoginPlaceholders();
 		this.timestamp = Date.now();
 		this.dev = false;
 		this.portal = portal;
@@ -56,6 +60,17 @@ class STWSession {
     */
 	getPlaceholder(name) {
 		return this.placeholders.get(name) || "";
+	}
+
+	/**
+	 * Adds the always-defined WBPL placeholders for the current login identity.
+	 *
+	 * @returns {void}
+	 */
+	setLoginPlaceholders() {
+		this.placeholders.set("@@stwlogin", this.user);
+		this.placeholders.set("@@stwloginname", this.name);
+		this.placeholders.set("@@stwloginid", this.loginId.toString());
 	}
 
 	/**
@@ -75,6 +90,7 @@ class STWSession {
 			this.placeholders.set("@@query_string", url.search.slice(1));
 			for (const [key, value2] of obj.headers)
 				this.placeholders.set(`@@${key}`, value2);
+			this.setLoginPlaceholders();
 		} else if (typeof obj === "string")
 			this.placeholders.set(`@@${obj}`, value);
 		else

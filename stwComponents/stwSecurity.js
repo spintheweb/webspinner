@@ -17,13 +17,54 @@
  */
 import { envGet } from "./stwConfig.js";
 import { dirname } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { isNotFoundError } from "./stwNode.js";
 import { STWElement } from "../stwElements/stwElement.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 
 const mandatoryRoles = ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"];
+const roleImplications = new Map([
+	["root", ["user"]],
+	["administrator", ["user"]],
+	["developer", ["user"]],
+	["seo", ["user"]],
+	["leaddeveloper", ["developer", "seo"]]
+]);
+const developmentRoles = new Set(["developer", "leaddeveloper", "seo"]);
+const guestLogin = { user: "guest", name: "Guest", id: "-3" };
+
+/**
+ * Resolves all roles implied by direct role assignments.
+ *
+ * @param {string[]} roles Directly assigned roles.
+ * @returns {string[]} Effective roles.
+ */
+function resolveRoles(roles) {
+	const effectiveRoles = new Set(roles.filter(Boolean));
+	if (effectiveRoles.size === 0) effectiveRoles.add("guest");
+
+	for (const role of effectiveRoles) {
+		for (const impliedRole of roleImplications.get(role) ?? []) effectiveRoles.add(impliedRole);
+	}
+
+	if (effectiveRoles.size > 1) effectiveRoles.delete("guest");
+	return [...effectiveRoles];
+}
+
+/**
+ * Sets WBPL placeholders describing the session's current login identity.
+ *
+ * @param {{placeholders: Map<string, string>}} session Current session.
+ * @param {{user: string, name: string, id: string|number}} login Login identity.
+ * @returns {void}
+ */
+function setLoginPlaceholders(session, login) {
+	session.loginId = login.id;
+	session.placeholders.set("@@stwlogin", login.user);
+	session.placeholders.set("@@stwloginname", login.name);
+	session.placeholders.set("@@stwloginid", login.id.toString());
+}
 
 /**
  * Encodes an ArrayBuffer or typed-array view as lowercase hexadecimal.
@@ -397,58 +438,6 @@ const STWSecurity = new class {
 		);
 		return `${toHex(salt.buffer)}:${toHex(derivedBits)}`;
 	}
-	async addUser(user, name, password, roles, email) {
-		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users = JSON.parse(readFileSync(usersDB, "utf8")) || [];
-		if (users.find((p) => p.user === user)) {
-			throw new Error("User already exists");
-		}
-		const salt = crypto.getRandomValues(new Uint8Array(16));
-		const keyMaterial = await crypto.subtle.importKey(
-			"raw",
-			new TextEncoder().encode(password),
-			{ name: "PBKDF2" },
-			false,
-			["deriveBits"]
-		);
-		const derivedBits = await crypto.subtle.deriveBits(
-			{ ...pbkdf2Params, salt: salt.buffer },
-			keyMaterial,
-			256
-		);
-		const hashedPassword = `${toHex(salt.buffer)}:${toHex(derivedBits)}`;
-		users.push({ user, name, password: hashedPassword, roles, email });
-		writeFileSync(usersDB, JSON.stringify(users, null, 2));
-	}
-	removeUser() {
-	}
-	async addRoles(user, rolesToAdd) {
-		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users = JSON.parse(await readFile(usersDB, "utf8"));
-		const person = users.find((p) => p.user === user);
-		if (!person) {
-			throw new Error("User not found");
-		}
-		const existingRoles = new Set(person.roles ? person.roles.split(",") : []);
-		const newRoles = rolesToAdd.split(",");
-		newRoles.forEach((role) => existingRoles.add(role.trim()));
-		person.roles = Array.from(existingRoles).join(",");
-		await writeFile(usersDB, JSON.stringify(users, null, 2));
-	}
-	async removeRoles(user, rolesToRemove) {
-		const usersDB = envGet("USERS") || "./.data/users.json";
-		const users = JSON.parse(await readFile(usersDB, "utf8"));
-		const person = users.find((p) => p.user === user);
-		if (!person || !person.roles) {
-			return;
-		}
-		const existingRoles = new Set(person.roles.split(","));
-		const toRemove = rolesToRemove.split(",");
-		toRemove.forEach((role) => existingRoles.delete(role.trim()));
-		person.roles = Array.from(existingRoles).join(",");
-		await writeFile(usersDB, JSON.stringify(users, null, 2));
-	}
-
 	/**
 	 * Authenticates a user and updates the supplied session. The `guest` user is
 	 * always accepted without a password. Failed authentication resets the
@@ -466,8 +455,9 @@ const STWSecurity = new class {
 		if (user === "guest") {
 			session.user = "guest";
 			session.roles = ["guest"];
-			session.name = "guest";
+			session.name = guestLogin.name;
 			session.dev = false;
+			setLoginPlaceholders(session, guestLogin);
 			return true;
 		}
 		const usersDB = envGet("USERS") || "./.data/users.json";
@@ -492,36 +482,27 @@ const STWSecurity = new class {
 				if (toHex(derivedBits) === hashHex) {
 					session.user = person.user;
 					session.name = person.name || person.user;
-					session.roles = person.roles.split(",").map((role) => role.trim()).filter(Boolean)
-						.filter((role) => (role !== "developer" || allowDev) && (role !== "root" || allowRoot));
+					session.roles = resolveRoles(person.roles?.split(",").map((role) => role.trim()) ?? [])
+						.filter((role) => allowDev || !developmentRoles.has(role))
+						.filter((role) => allowRoot || role !== "root");
 					session.dev = session.roles.includes("developer");
+					setLoginPlaceholders(session, {
+						user: person.user,
+						name: person.name || person.user,
+						id: person.id ?? ""
+					});
 					return true;
 				}
 			}
 		}
 		session.user = "guest";
 		session.roles = ["guest"];
-		session.name = "guest";
+		session.name = guestLogin.name;
 		session.dev = false;
-		session.placeholders.delete("USER");
-		session.placeholders.delete("AUTHENTICATED");
+		setLoginPlaceholders(session, guestLogin);
 		return false;
 	}
 
-	/**
-	 * Tests whether a session holds a role.
-	 *
-	 * @param {{roles: string[]}} session Session to test.
-	 * @param {string} role Role name.
-	 * @returns {boolean} Whether the role is assigned to the session.
-	 */
-	hasRole(session, role) {
-		return session.roles.includes(role);
-	}
-	lostPassword() {
-	}
-	changePassword(_session, _user, _oldPassword, _newPassword, _force = false) {
-	}
 }();
 
 export {

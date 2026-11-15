@@ -18,6 +18,7 @@ import { STWActionRouter } from "../stwComponents/stwActions.js";
 import { handleHttp } from "../stwComponents/stwHttpHandler.js";
 import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { STWSecurity } from "../stwComponents/stwSecurity.js";
+import { STWSession } from "../stwComponents/stwSession.js";
 
 test("cookie helpers parse and set session cookies", () => {
 	const cookies = getCookies(new Headers({ cookie: "sessionId=a%20b; theme=dark" }));
@@ -26,6 +27,29 @@ test("cookie helpers parse and set session cookies", () => {
 	const headers = new Headers();
 	setCookie(headers, { name: "sessionId", value: "a b", httpOnly: true, secure: true, sameSite: "Lax" });
 	assert.equal(headers.get("set-cookie"), "sessionId=a%20b; Path=/; HttpOnly; Secure; SameSite=Lax");
+});
+
+test("session preserves login WBPL placeholders when request placeholders are reset", () => {
+	const session = new STWSession("session", {}, null);
+	assert.deepEqual(Object.fromEntries(session.placeholders), {
+		"@@stwlogin": "guest",
+		"@@stwloginname": "Guest",
+		"@@stwloginid": "-3"
+	});
+
+	session.user = "alice";
+	session.name = "Alice";
+	session.loginId = "123";
+	session.setPlaceholders(new Request("http://localhost/?page=home"));
+
+	assert.equal(session.placeholders.get("@page"), "home");
+	assert.deepEqual(Object.fromEntries(
+		["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
+	), {
+		"@@stwlogin": "alice",
+		"@@stwloginname": "Alice",
+		"@@stwloginid": "123"
+	});
 });
 
 test("static file serving returns content and blocks paths outside public", async () => {
@@ -189,7 +213,11 @@ test("POST action requests execute and return a GET redirect", async () => {
 		user: "alice",
 		name: "Alice",
 		dev: true,
-		placeholders: new Map([["USER", "alice"], ["AUTHENTICATED", "true"]]),
+		placeholders: new Map([
+			["@@stwlogin", "alice"],
+			["@@stwloginname", "Alice"],
+			["@@stwloginid", "123"]
+		]),
 		sockets: new Map()
 	};
 	try {
@@ -211,7 +239,13 @@ test("POST action requests execute and return a GET redirect", async () => {
 		assert.equal(response.headers.get("location"), "http://localhost/");
 		assert.equal(session.user, "guest");
 		assert.equal(session.roles[0], "guest");
-		assert.equal(session.placeholders.has("AUTHENTICATED"), false);
+		assert.deepEqual(Object.fromEntries(
+			["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
+		), {
+			"@@stwlogin": "guest",
+			"@@stwloginname": "Guest",
+			"@@stwloginid": "-3"
+		});
 	} finally {
 		STWIndex.delete(id);
 	}
@@ -310,6 +344,24 @@ test("hashPassword creates a salted PBKDF2 password verifier", async () => {
 	assert.match(verifier, /^[0-9a-f]{32}:[0-9a-f]{64}$/);
 });
 
+test("changePassword verifies the current password and persists the replacement", async () => {
+	const previousUsersPath = process.env.USERS;
+	const securityDir = await mkdtemp(join(tmpdir(), "webspinner-change-password-"));
+	try {
+		process.env.USERS = join(securityDir, "users.json");
+		await STWSecurity.createUser("alice", "Alice", "old-password", ["user"], "");
+		await STWSecurity.changePassword("alice", "old-password", "new-password");
+
+		const session = { placeholders: new Map() };
+		assert.equal(await STWSecurity.authenticate(session, "alice", "old-password"), false);
+		assert.equal(await STWSecurity.authenticate(session, "alice", "new-password"), true);
+	} finally {
+		if (previousUsersPath === undefined) delete process.env.USERS;
+		else process.env.USERS = previousUsersPath;
+		await rm(securityDir, { recursive: true, force: true });
+	}
+});
+
 test("default users replace placeholder passwords with valid verifiers", async () => {
 	const usersPath = new URL("../.data/users.json", import.meta.url);
 	const users = JSON.parse(await readFile(usersPath, "utf8"));
@@ -326,7 +378,7 @@ test("default users replace placeholder passwords with valid verifiers", async (
 	assert.ok(users.every((user) => user.password !== "salt:hash"));
 });
 
-test("authentication filters root and developer roles using default-off security flags", async () => {
+test("authentication resolves role inheritance and filters privileged roles using default-off security flags", async () => {
 	const previousEnvironment = {
 		USERS: process.env.USERS,
 		ALLOW_DEV: process.env.ALLOW_DEV,
@@ -338,11 +390,15 @@ test("authentication filters root and developer roles using default-off security
 		process.env.USERS = join(securityDir, "users.json");
 		delete process.env.ALLOW_DEV;
 		delete process.env.ALLOW_ROOT;
-		await STWSecurity.createUser("privileged", "Privileged", password, ["developer", "root", "user"], "");
+		await STWSecurity.createUser("privileged", "Privileged", password, ["root"], "");
+		await STWSecurity.createUser("lead", "Lead", password, ["leaddeveloper"], "");
+		const users = JSON.parse(await readFile(process.env.USERS, "utf8"));
+		users.find((user) => user.user === "lead").id = 123;
+		await writeFile(process.env.USERS, JSON.stringify(users));
 
-		const authenticate = async () => {
+		const authenticate = async (user = "privileged") => {
 			const session = { placeholders: new Map() };
-			assert.equal(await STWSecurity.authenticate(session, "privileged", password), true);
+			assert.equal(await STWSecurity.authenticate(session, user, password), true);
 			return session;
 		};
 		let session = await authenticate();
@@ -351,14 +407,48 @@ test("authentication filters root and developer roles using default-off security
 
 		process.env.ALLOW_DEV = "true";
 		session = await authenticate();
-		assert.deepEqual(session.roles, ["developer", "user"]);
-		assert.equal(session.dev, true);
+		assert.deepEqual(session.roles, ["user"], "root must not grant development access");
+		assert.equal(session.dev, false);
 
 		process.env.ALLOW_DEV = "false";
 		process.env.ALLOW_ROOT = "true";
 		session = await authenticate();
 		assert.deepEqual(session.roles, ["root", "user"]);
 		assert.equal(session.dev, false);
+
+		process.env.ALLOW_ROOT = "false";
+		session = await authenticate("lead");
+		assert.deepEqual(session.roles, ["user"], "development roles must be disabled together");
+		assert.equal(session.dev, false);
+
+		process.env.ALLOW_DEV = "true";
+		session = await authenticate("lead");
+		assert.deepEqual(session.roles, ["leaddeveloper", "developer", "seo", "user"]);
+		assert.equal(session.dev, true);
+		assert.deepEqual(Object.fromEntries(
+			["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
+		), {
+			"@@stwlogin": "lead",
+			"@@stwloginname": "Lead",
+			"@@stwloginid": "123"
+		});
+
+		const guestSession = { placeholders: new Map() };
+		assert.equal(await STWSecurity.authenticate(guestSession, "guest", ""), true);
+		assert.deepEqual(Object.fromEntries(guestSession.placeholders), {
+			"@@stwlogin": "guest",
+			"@@stwloginname": "Guest",
+			"@@stwloginid": "-3"
+		});
+
+		assert.equal(await STWSecurity.authenticate(session, "lead", "wrong-password"), false);
+		assert.deepEqual(Object.fromEntries(
+			["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
+		), {
+			"@@stwlogin": "guest",
+			"@@stwloginname": "Guest",
+			"@@stwloginid": "-3"
+		});
 
 		process.env.ALLOW_ROOT = "yes";
 		await assert.rejects(authenticate(), /ALLOW_ROOT must be "true" or "false"/);
