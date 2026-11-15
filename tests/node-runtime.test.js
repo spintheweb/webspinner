@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.js";
@@ -302,6 +302,28 @@ test("WBOL element API requires the developer role", async () => {
 
 	const developerResponse = await handleWbolApi(request, { roles: ["developer"] });
 	assert.equal(developerResponse.status, 404, "developer may access element routes");
+});
+
+test("hashPassword creates a salted PBKDF2 password verifier", async () => {
+	const verifier = await STWSecurity.hashPassword("password");
+
+	assert.match(verifier, /^[0-9a-f]{32}:[0-9a-f]{64}$/);
+});
+
+test("default users replace placeholder passwords with valid verifiers", async () => {
+	const usersPath = new URL("../.data/users.json", import.meta.url);
+	const users = JSON.parse(await readFile(usersPath, "utf8"));
+	let updated = false;
+
+	for (const user of users) {
+		if (user.password === "salt:hash") {
+			user.password = await STWSecurity.hashPassword("password");
+			updated = true;
+		}
+	}
+
+	if (updated) await writeFile(usersPath, JSON.stringify(users, null, 2));
+	assert.ok(users.every((user) => user.password !== "salt:hash"));
 });
 
 test("authentication filters root and developer roles using default-off security flags", async () => {

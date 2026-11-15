@@ -193,7 +193,6 @@ class RootSymbol {
 			this.runtime.HTML += this.toString();
 	}
 }
-
 class BaseSymbol extends RootSymbol {
 	constructor(args, tagName = "", runtime) {
 		super(void 0, tagName, runtime);
@@ -234,14 +233,12 @@ class BaseSymbol extends RootSymbol {
 		}
 	}
 }
-
 class TextSymbol extends BaseSymbol {
 	constructor(args, tagName = "", runtime) {
 		super(args, tagName, runtime);
 		this.text = args || Field(runtime);
 	}
 }
-
 class AnchorSymbol extends BaseSymbol {
 	url;
 	constructor(url, tagName = "a", runtime) {
@@ -440,6 +437,7 @@ class ButtonSymbol extends FormSymbol {
 		if (this.currentUrl) this.attrs.set("data-stw-current-url", "true");
 		this.attrs.set("data-stw-action-token", token);
 		this.attrs.set("formaction", this.urlValue());
+
 		if (action & (FLAGS.stwsearch | FLAGS.stwfilter)) {
 			this.text = action & FLAGS.stwsearch ? "Search" : "Filter";
 			this.attrs.delete("name");
@@ -456,6 +454,12 @@ class ButtonSymbol extends FormSymbol {
 		} else if (action & FLAGS.stwreset) {
 			this.text = "Reset";
 			this.attrs.set("type", "reset");
+		} else if (action & FLAGS.stwlogon) {
+			this.text = "Log on";
+			this.attrs.set("formmethod", "POST");
+		} else if (action & FLAGS.stwlogoff) {
+			this.text = "Log off";
+			this.attrs.set("formmethod", "POST");
 		} else {
 			this.text = "Submit";
 			this.attrs.set("formmethod", "POST");

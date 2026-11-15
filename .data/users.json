@@ -1,28 +1,35 @@
 [
-    {
-        "user": "guest",
-        "name": "Guest",
-        "roles": "guest"
-    },
-    {
-        "user": "root",
-        "name": "Root",
-        "password": "root",
-        "roles": "root",
-        "email": "security@spintheweb.org"
-    },
-    {
-        "user": "admin",
-        "name": "Administrator",
-        "password": "admin",
-        "roles": "administrator",
-        "email": "info@spintheweb.org"
-    },
-    {
-        "user": "user",
-        "name": "John Doe",
-        "password": "johndoe",
-        "roles": "user,leaddeveloper",
-        "email": "user@spintheweb.org"
-    }
+  {
+    "user": "guest",
+    "name": "Guest",
+    "roles": "guest"
+  },
+  {
+    "user": "root",
+    "name": "Root",
+    "password": "e5f680536aabdd541d23fb29ad923aa3:cb94b22af84b740acbc1a404ba73a28f459da7ed4839e6e6561dfaf1040f6506",
+    "roles": "root",
+    "email": "security@spintheweb.org"
+  },
+  {
+    "user": "admin",
+    "name": "Administrator",
+    "password": "73960ca0c5751dbb15ab486171556b0d:0fa4dbb9bd36dd1f2a3c4c2605da3a7bda2b7fb628b07d88ea78c79101150e6e",
+    "roles": "administrator",
+    "email": "info@spintheweb.org"
+  },
+  {
+    "user": "user",
+    "name": "John Doe",
+    "password": "6261dc91b006d4eb7364a066a069c1f5:c9de63afb43c131a692ffc4757b00417953ccdbde2dc9838d2b501db24476a1f",
+    "roles": "user",
+    "email": "user@spintheweb.org"
+  },
+  {
+    "user": "leaddeveloper",
+    "name": "John Smith",
+    "password": "5cd19fd1bad016c5ff9debc3cf49d74c:259cb8d4f3a528fa27116c5b8e9354355ba54f48f929c7774f603851f101bd9e",
+    "roles": "user,leaddeveloper",
+    "email": "info@spintheweb.org"
+  }
 ]

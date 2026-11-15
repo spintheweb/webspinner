@@ -129,9 +129,12 @@ class STWContent extends STWElement {
 				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type} @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
-		let settings, HTML, records;
+		let settings, HTML, records, dev = "";
 		const layout = this.getLayout(session);
 		try {
+			if (session.dev && this.isVisible(session, "developer"))
+				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/password-recovery?uuid=${this.uuid}", options: { recurse: false } }))'></i></span>`;
+
 			records = await STWConnectors.command(session, this);
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
 			const placeholders = new Map(session.placeholders);
@@ -144,9 +147,6 @@ class STWContent extends STWElement {
 			if (HTML?.includes("data-stw-action-token") && !/<form\b/i.test(HTML)) {
 				HTML = `<form id="stwFA${this.uuid}"><input type="hidden" name="stwOrigin" value="${this.uuid}"></form>${HTML}`;
 			}
-			let dev = "";
-			if (session.dev && this.isVisible(session, "developer"))
-				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/password-recovery?uuid=${this.uuid}", options: { recurse: false } }))'></i></span>`;
 			if (!HTML) {
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${dev}${settings.get("nodata") || ""}</article>` : "";
 			} else {
@@ -161,11 +161,7 @@ class STWContent extends STWElement {
 				}
 				return JSON.stringify(filtered, null, 2);
 			};
-			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">
-		<h1><i class="fa-light fa-bug"></i> Error</h1>
-		<header>${error.message}</header>
-		<pre>${safeStringify(this)}</pre>
-    </article>`;
+			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error</h1>\n<header>${error.message}</header>\n<pre>${safeStringify(this)}</pre>\n</article>`;
 		}
 		const data = {
 			method: "PUT",

@@ -48,9 +48,10 @@
 			</name>
 			<query connector="json"><![CDATA[{"usr":"john","pwd":"smith"}]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';;@usr')\a('placeholder="username"')t(' ')w(';@pwd')\a('placeholder="password"')t(' ')b(';stwlogon')t('Logon')t(' ')b(';stwreset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';usr')\a('placeholder="username"')t(' ')w('pwd')\a('placeholder="password"')t(' ')b(';stwlogon;@@usr;@@pwd')t('Logon')t(' ')b(';stwreset')t('Reset')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
 			</layout>
 			<visibility>
+				<role id="guest" visibility="true" />
 				<role id="user" visibility="false" />
 			</visibility>
 		</content>

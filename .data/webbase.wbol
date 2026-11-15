@@ -202,10 +202,7 @@
 						<text xml:lang="en" slug="logoff"><![CDATA[Logoff]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[t('
-								<form action="/stw/logoff" method="post">
-								<button type="submit">Logoff</button>
-								</form>')]]></text>
+						<text xml:lang="en"><![CDATA[b(';stwlogoff')]]></text>
 					</layout>
 					<visibility>
 						<role id="guest" visibility="false"></role>
