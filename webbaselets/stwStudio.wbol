@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerGVamxGi8kA"
-	mainpage="c6TC0s1xSa5NgDIgMyCbIhL" langs="en">
+	mainpage="c6TC0s1xSa5NgDIgMyCbIhL" langs="en" version="1.0">
 	<name>
 		<text xml:lang="en" slug="stws"><![CDATA[STW Studio]]></text>
 	</name>
@@ -79,13 +79,13 @@
 				<text xml:lang="en"><![CDATA[\s('header="&emsp;WEBBASE"')]]></text>
 			</layout>
 			<options>
-				<option target="c6TC0s1xSa5NgDIgMyCbIhL">
+				<option ref="c6TC0s1xSa5NgDIgMyCbIhL">
 					<text xml:lang="en"><![CDATA[Structure <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>]]></text>
 				</option>
-				<option target="c6SyclmGzAM2uOpnred9ceG">
+				<option ref="c6SyclmGzAM2uOpnred9ceG">
 					<text xml:lang="en"><![CDATA[Connector <span style="float:right"><i class="fa-thin fa-plus" aria-label="New connector"></i></span>]]></text>
 				</option>
-				<option target="c6SyclmGzAM2uOK0hCP7VyK">
+				<option ref="c6SyclmGzAM2uOK0hCP7VyK">
 					<text xml:lang="en"><![CDATA[Roles <span style="float:right"><i class="fa-thin fa-plus" aria-label="New role"></i></span>]]></text>
 				</option>
 			</options>
@@ -122,16 +122,16 @@
 						<text xml:lang="en"><![CDATA[\s('mode="vertical"')]]></text>
 					</layout>
 					<options>
-						<option target="c6TC0s1xSa7g1ciRv64FQ22" parameters="id=3">
+						<option ref="c6TC0s1xSa7g1ciRv64FQ22" parameters="id=3">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sitemap" aria-label="Webbase"></i>]]></text>
 						</option>
-						<option target="c64HscPpcM9pByUEWIVTocq">
+						<option ref="c64HscPpcM9pByUEWIVTocq">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-search" aria-label="Search"></i>]]></text>
 						</option>
-						<option target="c6TC0s1xSa5SWiCO4QcQf7T">
+						<option ref="c6TC0s1xSa5SWiCO4QcQf7T">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-copy" aria-label="Explorer"></i>]]></text>
 						</option>
-						<option target="c6TC0s1xSa5SWiCO4UTvujX">
+						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-gear" aria-label="Settings"></i>]]></text>
 						</option>
 					</options>

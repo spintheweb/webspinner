@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerBB8QbSCr9y"
-	mainpage="p2QRzp9e4jh4XK8EEMPXEMH" langs="en">
+	mainpage="p2QRzp9e4jh4XK8EEMPXEMH" langs="en" version="1.0">
 	<name>
 		<text xml:lang="en" slug="stwc"><![CDATA[STW Commons]]></text>
 	</name>
