@@ -175,7 +175,7 @@ class STWContent extends STWElement {
 			return settings.has("collapsible") ? ` class="stwExpanded" onclick="stwToggleCollapse(event)"` : "";
 		}
 		function closable(section) {
-			return section.startsWith("stwShow") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
+			return section.startsWith("stwOpen") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
 		}
 	}
 

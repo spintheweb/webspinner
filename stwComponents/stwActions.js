@@ -28,6 +28,8 @@ import { STWSecurity } from "./stwSecurity.js";
  * @property {string} [redirect] Optional redirect target.
  * @property {object|string} [data] Optional action result.
  * @property {{name: string, message: string, stack?: string}} [error] Action failure.
+ * @property {boolean} [rotateSession] Whether to replace the current session after the action succeeds.
+ * @property {boolean} [preserveIdentity] Whether the verified identity moves to the replacement session.
  */
 
 /**
@@ -299,7 +301,9 @@ class STWActionRouter {
 		return {
 			ok: true,
 			redirect: ctx.url || "/",
-			data: { user: username }
+			data: { user: username },
+			rotateSession: true,
+			preserveIdentity: true
 		};
 	}
 
@@ -321,7 +325,8 @@ class STWActionRouter {
 		session.dev = false;
 		return {
 			ok: true,
-			redirect: ctx.url || "/"
+			redirect: ctx.url || "/",
+			rotateSession: true
 		};
 	}
 

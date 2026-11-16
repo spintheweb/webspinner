@@ -4,7 +4,7 @@
  * Webbase element routes require the `developer` role and Developer-role RBV,
  * except SEO users may read and edit localized metadata on SEO-visible elements:
  *   - GET /wbol returns the portal tree; GET /wbol/:uuid returns one element.
- *   - GET /wbol?uuid=:uuid returns WBOL content metadata for a content element.
+ *   - GET /wbol/:uuid returns one locale-specific element representation.
  *   - POST /wbol creates a child from `{ parentId, element }`.
  *   - PATCH /wbol/:uuid updates an element and can move it with `parentId` and
  *     optional `position`. Localized string values update `?locale=` (default:
@@ -80,25 +80,26 @@ async function handleWbolApi(request, session) {
 	}
 	if (segments.length > 2) return jsonResponse({ error: "Not found" }, 404);
 	if (!hasDeveloperRole && !hasSeoRole) return jsonResponse({ error: "Forbidden" }, 403);
-	const queryId = segments.length === 1 ? url.searchParams.get("uuid") : null;
-	const id = segments[1] || queryId;
+	const id = segments[1];
 	const method = request.method.toUpperCase();
 	try {
 		if (method === "GET") {
+			if (!id && url.searchParams.has("uuid")) {
+				return jsonResponse({ error: "Use /wbol/:uuid to read an element" }, 400);
+			}
 			const portal = session.portal instanceof STWPortal ? session.portal : STWPortal.instance;
 			const element = id ? STWIndex.get(id) : portal;
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
 			const developerVisible = hasDeveloperRole && Boolean(element.isVisible(session, "developer") & 1);
 			const seoVisible = hasSeoRole && Boolean(element.isVisible(session, "seo") & 1);
-			if (queryId && !developerVisible) return jsonResponse({ error: "Forbidden" }, 403);
 			if (id && !developerVisible && !seoVisible) return jsonResponse({ error: "Forbidden" }, 403);
-			if (queryId) {
+			if (id) {
 				const locale = resolveEditingLocale(url, session);
-				const content = getWbolContent(queryId, { ...session, lang: locale });
-				if (!content) return jsonResponse({ error: "Content not found" }, 404);
-				return jsonResponse({ ...content, locale });
+				const localizedSession = { ...session, lang: locale };
+				return jsonResponse(developerVisible
+					? serializeLocalizedElement(element, localizedSession)
+					: serializeSeoElement(element, localizedSession));
 			}
-			if (id) return jsonResponse(developerVisible ? serializeSTWElement(element) : serializeSeoElement(element));
 			return jsonResponse(filterAccessibleTree(element, session, true));
 		}
 		if (method === "POST" && !id) {
@@ -182,7 +183,8 @@ async function handleWbolApi(request, session) {
 			element.update(session, updates);
 			applyLocalizedUpdates(element, localizedUpdates);
 			if (moveTo) moveElement(element, moveTo, movePosition);
-			return jsonResponse(seoOnly ? serializeSeoElement(element) : serializeSTWElement(element));
+			const localizedSession = { ...session, lang: locale };
+			return jsonResponse(seoOnly ? serializeSeoElement(element, localizedSession) : serializeLocalizedElement(element, localizedSession));
 		}
 		if (method === "DELETE" && id) {
 			const element = STWIndex.get(id);
@@ -218,7 +220,7 @@ function filterAccessibleTree(element, session, root = false) {
 	if (developerVisible || root && session.roles.includes("developer")) {
 		result = serializeSTWElement(element);
 	} else if (seoVisible) {
-		result = serializeSeoElement(element);
+		result = serializeSeoElement(element, session);
 	} else {
 		result = { uuid: element.uuid, type: element.type, subtype: element.subtype || element.type };
 	}
@@ -228,16 +230,35 @@ function filterAccessibleTree(element, session, root = false) {
 	return result;
 }
 
-function serializeSeoElement(element) {
+function serializeSeoElement(element, session) {
 	return {
 		uuid: element.uuid,
 		type: element.type,
 		subtype: element.subtype || element.type,
-		name: Object.fromEntries(element.name),
-		slug: Object.fromEntries(element.slug),
-		keywords: Object.fromEntries(element.keywords),
-		description: Object.fromEntries(element.description)
+		name: localizedValue(element, "name", session),
+		slug: localizedValue(element, "slug", session),
+		keywords: localizedValue(element, "keywords", session),
+		description: localizedValue(element, "description", session)
 	};
+}
+
+function serializeLocalizedElement(element, session) {
+	const result = serializeSTWElement(element);
+	for (const field of ["name", "slug", "keywords", "description"]) {
+		result[field] = localizedValue(element, field, session);
+	}
+	if (element instanceof STWContent) {
+		result.type = element.type;
+		result.subtype = element.subtype || element.type;
+		result.layout = element.layout?.get(session.lang)?.wbll || "";
+	}
+	return result;
+}
+
+function localizedValue(element, field, session) {
+	const values = element[field];
+	if (!(values instanceof Map)) return "";
+	return values.get(session.lang) || values.values().next().value || "";
 }
 
 function resolveEditingLocale(url, session) {
@@ -537,19 +558,6 @@ function jsonResponse(body, status = 200, headers) {
 		headers: { "Content-Type": "application/json; charset=utf-8", ...Object.fromEntries(new Headers(headers)) }
 	});
 }
-function getWbolContent(uuid, session) {
-	const element = STWIndex.get(uuid);
-	if (!(element instanceof STWContent) || !(element.isVisible(session, "developer") & 1)) return null;
-	return {
-		contents: serializeSTWElement(element),
-		name: element.localize(session, "name"),
-		slug: element.localize(session, "slug"),
-		section: element.section,
-		sequence: element.sequence,
-		connector: element.connector
-	};
-}
-
 const connectorTypes = new Set(["api", "mysql", "postgres", "mssql", "mongodb", "shell"]);
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId, action] = segments;
@@ -885,6 +893,5 @@ class AdminApiError extends Error {
 	}
 }
 export {
-	getWbolContent,
 	handleWbolApi
 };

@@ -204,9 +204,9 @@ function stwStartWebsocket() {
 				}
 			}
 
-			if (data.section === "stwShowModal" || data.section === "stwShow") {
+			if (data.section === "stwOpenModal" || data.section === "stwOpen") {
 				document.body.insertAdjacentHTML("afterbegin", `<dialog onclose="this.remove()">${data.body}</dialog>`);
-				if (data.section === "stwShowModal") {
+				if (data.section === "stwOpenModal") {
 					document.querySelector("dialog")?.showModal();
 				} else {
 					document.querySelector("dialog")?.show();

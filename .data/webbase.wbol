@@ -382,7 +382,7 @@ END {
 			</visibility>
 			<children>
 				<content uuid="c9Dqk4Vn3pLx7BsWm2Yt6FzR8" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="tabs"
-					section="stwShowModal">
+					section="stwOpenModal">
 					<name>
 						<text xml:lang="en" slug="page-editor"><![CDATA[Edit Page]]></text>
 					</name>
@@ -393,9 +393,6 @@ END {
 						<option ref="c4kZgjaGvc8sXy1tOC9xFT4">
 							<text xml:lang="en"><![CDATA[Page]]></text>
 						</option>
-						<option ref="c14CwuoPVf2N9c2u244fhe1">
-							<text xml:lang="en"><![CDATA[Visibility]]></text>
-						</option>
 					</options>
 				</content>
 				<content uuid="c4kZgjaGvc8sXy1tOC9xFT4" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="form"
@@ -403,19 +400,9 @@ END {
 					<name>
 						<text xml:lang="en" slug="page-details"><![CDATA[Page details]]></text>
 					</name>
-					<query connector="WBOLApi" parameters="uuid=@uuid"><![CDATA[{"uuid":contents.uuid,"name":name,"slug":slug,"template":contents.template,"keywords":contents.keywords.en,"description":contents.description.en}]]></query>
+					<query connector="wbol"><![CDATA[/@uuid]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Page details" key="uuid"')h('uuid')l('Name')e\rl('Slug')e\rl('Template')e\rl('Keywords')m\rl('Description')m\rb('/wbol/@@uuid;stwupdate')t('Save')]]></text>
-					</layout>
-				</content>
-				<content uuid="c14CwuoPVf2N9c2u244fhe1" origin="a9Dqk4Vn3pLx7BsWm2Yt6FzR8" type="table"
-					section="dialog" sequence="2">
-					<name>
-						<text xml:lang="en" slug="page-visibility"><![CDATA[Page visibility]]></text>
-					</name>
-					<query connector="WBOLApi" parameters="uuid=@uuid"><![CDATA[$keys(contents.visibility)@$role.{"uuid":contents.uuid,"role":$role,"visibility":$lookup(contents.visibility,$role)}]]></query>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Role visibility" key="role"')h('uuid')l('Role')f\rl('Visible')d(';;2;true;True;false;False')b('/wbol/@@uuid/visibility;stwupdate')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Page details"')h('uuid;@@uuid')l('Name')e(';name;@@name')\rl('Slug')e(';slug;@@slug')\rl('Template')e(';template;@@template')\rl('Keywords')m(';keywords;@@keywords')\rl('Description')m(';description;@@description')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 			</children>

@@ -29,7 +29,7 @@ test("cookie helpers parse and set session cookies", () => {
 	assert.equal(headers.get("set-cookie"), "sessionId=a%20b; Path=/; HttpOnly; Secure; SameSite=Lax");
 });
 
-test("session preserves login WBPL placeholders when request placeholders are reset", () => {
+test("session preserves identity WBPL placeholders when request placeholders are reset", () => {
 	const session = new STWSession("session", {}, null);
 	assert.deepEqual(Object.fromEntries(session.placeholders), {
 		"@@stwlogin": "guest",
@@ -70,7 +70,7 @@ test("runCommand captures output and exit status", async () => {
 
 test("WBLL buttons carry signed server action metadata and method semantics", async () => {
 	const placeholders = new Map([["@@fId", "42"]]);
-	const session = { placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
+	const session = { sessionId: "layout-session", placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
 	const layout = new STWLayout("b('/customer;stwupdate;erp;select * from tCustomers where fId=@@fId')p('fId;@@fId')t('Save')");
 	const { HTML } = await layout.render([], placeholders, session, "", "customer-content");
 	assert.match(HTML, /name="stwAction" value="stwupdate"/);
@@ -80,7 +80,7 @@ test("WBLL buttons carry signed server action metadata and method semantics", as
 	assert.match(HTML, />Save<\/button>/);
 	const token = /data-stw-action-token="([^"]+)"/.exec(HTML)?.[1];
 	assert.ok(token);
-	assert.deepEqual(verifyAction(token), {
+	assert.deepEqual(verifyAction(token, session.sessionId), {
 		action: "stwupdate",
 		args: ["erp", "select * from tCustomers where fId=@@fId"],
 		currentUrl: false,
@@ -95,7 +95,8 @@ test("WBLL buttons carry signed server action metadata and method semantics", as
 	assert.match(searchHTML, /data-stw-current-url="true"/);
 	assert.match(searchHTML, />Search<\/button>/);
 	const [encoded, signature] = token.split(".");
-	assert.equal(verifyAction(`${encoded}.${signature[0] === "A" ? "B" : "A"}${signature.slice(1)}`), null);
+	assert.equal(verifyAction(`${encoded}.${signature[0] === "A" ? "B" : "A"}${signature.slice(1)}`, session.sessionId), null);
+	assert.equal(verifyAction(token, "another-session"), null);
 
 	for (const action of ["stwfilter", "stwinsert", "stwdelete", "stwsubmit"]) {
 		const actionLayout = new STWLayout(`b('/;${action}')`);
@@ -107,7 +108,7 @@ test("WBLL buttons carry signed server action metadata and method semantics", as
 
 test("table actions use shared table forms and reveal row or insert controls on edit", async () => {
 	const placeholders = new Map([["@@name", "Ada"]]);
-	const session = { placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
+	const session = { sessionId: "table-session", placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
 	const rowLayout = new STWLayout("l('Name')e b('/;stwupdate')b('/;stwdelete')");
 	const rowHTML = (await rowLayout.render(["name"], placeholders, session, "tbody", "table-id")).HTML;
 	assert.match(rowHTML, /form="stwFEtable-id"/);
@@ -163,6 +164,37 @@ test("search and filter actions redirect with the expected query-string behavior
 	assert.equal(filter.redirect, "https://example.test/search?existing=yes&page=3");
 });
 
+test("the built-in wbol connector reads and updates WBOL content in-process", async () => {
+	const portalId = `wbol-connector-portal-${Date.now()}`;
+	const contentId = `wbol-connector-content-${Date.now()}`;
+	const portal = new STWPortal({
+		uuid: portalId,
+		langs: ["en"],
+		visibility: { developer: true }
+	});
+	const content = new STWContent({
+		uuid: contentId,
+		subtype: "Text",
+		name: { en: "Original" },
+		slug: { en: "original" },
+		visibility: { developer: true }
+	});
+	portal.children.push(content);
+	content.parent = portal;
+	STWIndex.set(contentId, content);
+	const session = { roles: ["developer"], lang: "en", portal, placeholders: new Map() };
+	try {
+		const read = await STWConnectors.execute(session, { connector: "wbol", query: `/${contentId}`, params: "" });
+		assert.equal(read.rows[0].name, "Original");
+
+		const update = await STWConnectors.executeAction(session, "wbol", `/${contentId}`, "PATCH", { name: "Updated" });
+		assert.equal(update.rows[0].name, "Updated");
+		assert.equal(content.localize(session, "name"), "Updated");
+	} finally {
+		STWIndex.delete(contentId);
+	}
+});
+
 test("GET action requests execute on the server and redirect with 303", async () => {
 	const id = `action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, slug: { en: "action" } });
@@ -170,6 +202,7 @@ test("GET action requests execute on the server and redirect with 303", async ()
 	STWIndex.set(id, content);
 	const portal = STWPortal.instance;
 	const session = {
+		sessionId: "search-session",
 		portal,
 		roles: ["user"],
 		lang: "en",
@@ -191,7 +224,7 @@ test("GET action requests execute on the server and redirect with 303", async ()
 		const response = await handleHttp(
 			new Request(`http://localhost/action?${parameters}`),
 			session,
-			"session"
+			session.sessionId
 		);
 		assert.equal(response.status, 303);
 		assert.equal(response.headers.get("location"), "http://localhost/action?term=widgets");
@@ -207,6 +240,7 @@ test("POST action requests execute and return a GET redirect", async () => {
 	STWIndex.set(id, content);
 	const portal = STWPortal.instance;
 	const session = {
+		sessionId: "logout-session",
 		portal,
 		roles: ["user"],
 		lang: "en",
@@ -233,10 +267,15 @@ test("POST action requests execute and return a GET redirect", async () => {
 		const response = await handleHttp(
 			new Request("http://localhost/logout", { method: "POST", body: formData }),
 			session,
-			"session"
+			session.sessionId,
+			(current, preserveIdentity) => {
+				assert.equal(Boolean(preserveIdentity), false);
+				return { sessionId: `${current.sessionId}-rotated` };
+			}
 		);
 		assert.equal(response.status, 303);
 		assert.equal(response.headers.get("location"), "http://localhost/");
+		assert.match(response.headers.get("set-cookie") ?? "", /sessionId=logout-session-rotated/);
 		assert.equal(session.user, "guest");
 		assert.equal(session.roles[0], "guest");
 		assert.deepEqual(Object.fromEntries(
@@ -251,12 +290,13 @@ test("POST action requests execute and return a GET redirect", async () => {
 	}
 });
 
-test("actions require RBV visibility with or without a signed token", async () => {
+test("actions require signed tokens and RBV visibility", async () => {
 	const id = `hidden-action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, subtype: "Text", slug: { en: "hidden-action" } });
 	content.visibility.set("user", true);
 	STWIndex.set(id, content);
 	const session = {
+		sessionId: "hidden-session",
 		portal: STWPortal.instance,
 		roles: ["guest"],
 		lang: "en",
@@ -271,7 +311,7 @@ test("actions require RBV visibility with or without a signed token", async () =
 		args: [],
 		origin: id,
 		redirect: "http://localhost/"
-	});
+	}, session.sessionId);
 	try {
 		for (const signed of [true, false]) {
 			const formData = new FormData();
@@ -281,9 +321,9 @@ test("actions require RBV visibility with or without a signed token", async () =
 			const response = await handleHttp(
 				new Request("http://localhost/hidden-action", { method: "POST", body: formData }),
 				session,
-				"session"
+				session.sessionId
 			);
-			assert.equal(response.status, 403);
+			assert.equal(response.status, signed ? 403 : 400);
 			assert.equal(session.user, "alice");
 		}
 	} finally {
@@ -342,6 +382,37 @@ test("hashPassword creates a salted PBKDF2 password verifier", async () => {
 	const verifier = await STWSecurity.hashPassword("password");
 
 	assert.match(verifier, /^[0-9a-f]{32}:[0-9a-f]{64}$/);
+});
+
+test("successful logon requests a session rotation while preserving the verified identity", async () => {
+	const previousUsersPath = process.env.USERS;
+	const securityDir = await mkdtemp(join(tmpdir(), "webspinner-logon-rotation-"));
+	try {
+		process.env.USERS = join(securityDir, "users.json");
+		await STWSecurity.createUser("alice", "Alice", "password", ["user"], "");
+		const session = { placeholders: new Map() };
+		const formData = new FormData();
+		formData.set("username", "alice");
+		formData.set("password", "password");
+
+		const result = await new STWActionRouter().execute({
+			action: "stwlogon",
+			args: [],
+			formData,
+			session,
+			url: "http://localhost/"
+		});
+
+		assert.equal(result.ok, true);
+		assert.equal(result.rotateSession, true);
+		assert.equal(result.preserveIdentity, true);
+		assert.equal(session.user, "alice");
+		assert.deepEqual(session.roles, ["user"]);
+	} finally {
+		if (previousUsersPath === undefined) delete process.env.USERS;
+		else process.env.USERS = previousUsersPath;
+		await rm(securityDir, { recursive: true, force: true });
+	}
 });
 
 test("changePassword verifies the current password and persists the replacement", async () => {
@@ -476,6 +547,7 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		name: { en: "Settings", fr: "Parametres" },
 		slug: { en: "settings", fr: "reglages" },
 		keywords: { en: "general", fr: "general-fr" },
+		layout: { en: "l('English')", fr: "l('Francais')" },
 		visibility: { developer: true },
 		options: [{ name: { en: "General" }, ref: "general" }]
 	});
@@ -524,25 +596,36 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		});
 		assert.equal(response.status, 200);
 		let updatedElement = await response.json();
-		assert.deepEqual(updatedElement.name, { en: "Settings", fr: "Parametres generaux" });
-		assert.deepEqual(updatedElement.slug, { en: "settings", fr: "preferences" });
-		assert.deepEqual(updatedElement.keywords, { en: "general", fr: "configuration" });
+		assert.equal(updatedElement.name, "Parametres generaux");
+		assert.equal(updatedElement.slug, "preferences");
+		assert.equal(updatedElement.keywords, "configuration");
+		assert.deepEqual(Object.fromEntries(tabs.name), { en: "Settings", fr: "Parametres generaux" });
+		assert.deepEqual(Object.fromEntries(tabs.slug), { en: "settings", fr: "preferences" });
+		assert.deepEqual(Object.fromEntries(tabs.keywords), { en: "general", fr: "configuration" });
 		response = await call(`${tabsId}?locale=de`, "PATCH", { name: "Einstellungen" });
 		assert.equal(response.status, 200);
 		updatedElement = await response.json();
-		assert.deepEqual(updatedElement.name, { en: "Settings", fr: "Parametres generaux", de: "Einstellungen" });
+		assert.equal(updatedElement.name, "Einstellungen");
+		assert.deepEqual(Object.fromEntries(tabs.name), { en: "Settings", fr: "Parametres generaux", de: "Einstellungen" });
 		response = await call(`${tabsId}?locale=it`, "PATCH", { name: "Impostazioni" });
 		assert.equal(response.status, 400);
 		response = await call(tabsId, "PATCH", { name: "Default locale update" });
 		updatedElement = await response.json();
-		assert.deepEqual(updatedElement.name, {
+		assert.equal(updatedElement.name, "Default locale update");
+		assert.deepEqual(Object.fromEntries(tabs.name), {
 			en: "Default locale update",
 			fr: "Parametres generaux",
 			de: "Einstellungen"
 		});
 
-		response = await call(`?uuid=${tabsId}&locale=fr`);
-		assert.equal((await response.json()).name, "Parametres generaux");
+		response = await call(`${tabsId}?locale=fr`);
+		const localizedElement = await response.json();
+		assert.equal(localizedElement.name, "Parametres generaux");
+		assert.equal(localizedElement.slug, "preferences");
+		assert.equal(localizedElement.type, "Tabs");
+		assert.equal(localizedElement.layout, "l('Francais')");
+		response = await call(`?uuid=${tabsId}`);
+		assert.equal(response.status, 400);
 
 		response = await call(`${tabsId}/options`);
 		assert.deepEqual((await response.json()).map((option) => option.ref), ["general"]);
@@ -563,8 +646,8 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		assert.equal(response.status, 403, "developer users cannot manage the root-only portal");
 		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/connectors`);
 		assert.deepEqual(await response.json(), { main: "json" });
-		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/connectors`, "PUT", { main: "WBOLApi" });
-		assert.deepEqual(await response.json(), { main: "WBOLApi" });
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/connectors`, "PUT", { main: "objects" });
+		assert.deepEqual(await response.json(), { main: "objects" });
 		response = await callAs({ roles: ["administrator"] }, `${portalId}/connectors`);
 		assert.equal(response.status, 403);
 
@@ -644,22 +727,16 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 		});
 		assert.equal(response.status, 200);
 		const updated = await response.json();
-		assert.deepEqual(updated.name, {
-			en: "Search optimized",
-			fr: "Optimisee pour la recherche",
-			de: "Suchoptimiert"
-		});
-		assert.deepEqual(updated.slug, {
-			en: "searchoptimized",
-			fr: "optimiseerecherche",
-			de: "suchoptimiert"
-		});
-		assert.deepEqual(updated.keywords, { en: "search, metadata" });
-		assert.deepEqual(updated.description, {
-			en: "Updated description",
-			fr: "Description mise a jour"
-		});
+		assert.equal(updated.name, "Search optimized");
+		assert.equal(updated.slug, "searchoptimized");
+		assert.equal(updated.keywords, "search, metadata");
+		assert.equal(updated.description, "Updated description");
 		assert.equal("visibility" in updated, false);
+		response = await call(`${seoId}?locale=fr`);
+		const frenchElement = await response.json();
+		assert.equal(frenchElement.name, "Optimisee pour la recherche");
+		assert.equal(frenchElement.slug, "optimiseerecherche");
+		assert.equal(frenchElement.description, "Description mise a jour");
 
 		response = await call(seoId, "PATCH", { name: { en: "No unauthorized updates" }, position: 0 });
 		assert.equal(response.status, 403);

@@ -8,7 +8,7 @@ import { actionRouter } from "./stwActions.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
 import { verifyAction } from "./stwActionToken.js";
 
-async function handleHttp(request, session, sessionId) {
+async function handleHttp(request, session, sessionId, rotateSession) {
 	const pathname = new URL(request.url).pathname;
 	if (pathname === "/wbol" || pathname.startsWith("/wbol/")) {
 		return await handleWbolApi(request, session);
@@ -89,8 +89,8 @@ async function handleHttp(request, session, sessionId) {
 			if (formData.has("stwAction")) {
 				const actionValue = formData.get("stwAction").toString();
 				const token = formData.get("stwActionToken")?.toString();
-				const payload = verifyAction(token);
-				if (token && (!payload || payload.action !== actionValue || !Array.isArray(payload.args))) {
+				const payload = verifyAction(token, sessionId);
+				if (!payload || payload.action !== actionValue || !Array.isArray(payload.args)) {
 					return secureResponse("Invalid action token", { status: 400 });
 				}
 				if (payload && actionMethod(payload.action) !== request.method) {
@@ -127,12 +127,28 @@ async function handleHttp(request, session, sessionId) {
 				if (result.data) {
 					session.placeholders.set("RESULT", JSON.stringify(result.data));
 				}
+				let replacementSession;
+				if (result.rotateSession) {
+					if (typeof rotateSession !== "function") throw new TypeError("Session rotation is unavailable");
+					replacementSession = rotateSession(session, result.preserveIdentity);
+				}
 				if (result.redirect || payload) {
 					const destination = new URL(result.redirect || redirect.href, request.url);
 					if (destination.origin !== new URL(request.url).origin) {
 						return secureResponse("Redirect must remain on this site", { status: 400 });
 					}
-					return Response.redirect(destination.href, 303);
+					const headers = new Headers({ Location: destination.href });
+					if (replacementSession) {
+						const isSecure = new URL(request.url).protocol === "https:";
+						setCookie(headers, {
+							name: "sessionId",
+							value: replacementSession.sessionId,
+							httpOnly: true,
+							secure: isSecure,
+							sameSite: "Lax"
+						});
+					}
+					return new Response(null, { status: 303, headers });
 				}
 			}
 			return secureResponse(null, { status: 204 });

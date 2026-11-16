@@ -66,10 +66,11 @@ The compose file builds using `deployment/Dockerfile` and accepts a `NODE_VERSIO
 For a non-containerized install:
 
 ```bash
-sudo bash deployment/server.sh
+bash deployment/build-server.sh
+sudo bash deployment/release/server.sh
 ```
 
-`build-server.sh` is a maintainer tool that produces a self-extracting installer into the `release/` directory.
+`build-server.sh` produces a self-extracting installer in the `release/` directory.
 
 ## Maintainers: build (and optionally push) the Docker image
 
@@ -105,7 +106,7 @@ Output: `deployment/release/webspinner-stack-<version>.zip` (+ `.sha256`)
 
 Bundle contents:
 - `deployment/Dockerfile`, `docker-compose.yml`
-- `deployment/server.sh` (and built installer if generated)
+- `deployment/release/server.sh` (generated installer)
 - `deployment/build-docker.sh` (and wrapper `deployment/docker.sh`)
 
 ## Repository links

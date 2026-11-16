@@ -9,7 +9,7 @@ import sql from "mssql";
 import { BSON, MongoClient, ObjectId } from "mongodb";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
-import { getWbolContent } from "./stwWBOLApi.js";
+
 class STWConnectors {
 	static connectors = new Map();
 	static #initializationPromise = null;
@@ -228,6 +228,9 @@ class STWConnectors {
 	}
 	static async executeAction(session, connector, command, method, fields = {}) {
 		if (!connector) throw new TypeError("Connector name is required");
+		if (connector === "wbol") {
+			return await executeWbolConnector(session, command, method, fields);
+		}
 		await this.initialize();
 		const configuration = this.connectors.get(connector);
 		if (isDatabaseConnection(configuration)) {
@@ -321,7 +324,7 @@ class STWConnectors {
 		}
 		let records = { affectedRows: 0, fields: [], rows: [{}] };
 		try {
-			if (content.connector === "WBOLApi") return await fetchWBOLApiData(session, content);
+			if (content.connector === "wbol") return await executeWbolConnector(session, content.query, "GET");
 			await this.initialize();
 			const configuration = STWConnectors.connectors.get(content.connector) || {};
 			if (content.connector === "json") {
@@ -704,18 +707,32 @@ async function fetchAPIData(session, content, connector) {
 		})
 	);
 }
-async function fetchWBOLApiData(session, content) {
-	if (!session.roles.includes("developer")) {
-		return { affectedRows: 0, fields: ["error"], rows: [{ error: "Forbidden" }] };
+async function executeWbolConnector(session, command, method, fields = {}) {
+	const resource = WBPL(command, session.placeholders);
+	if (typeof resource !== "string" || !resource.startsWith("/") || resource.startsWith("//")) {
+		throw new TypeError("WBOL connector resources must start with a single slash");
 	}
-	const params = new URLSearchParams(WBPL(content.params, session.placeholders).replace(/^\?/, ""));
-	const data = getWbolContent(params.get("uuid"), session);
-	if (!data) return { affectedRows: 0, fields: ["error"], rows: [{ error: "Content not found" }] };
-	const result = await jsonata(WBPL(content.query, session.placeholders)).evaluate(data);
-	const rows = Array.isArray(result) ? result : [result];
+	const request = new Request(`http://wbol.internal/wbol${resource}`, {
+		method,
+		headers: { "Content-Type": "application/json" },
+		...(method === "GET" ? {} : { body: JSON.stringify(fields) })
+	});
+	const { handleWbolApi } = await import("./stwWBOLApi.js");
+	const response = await handleWbolApi(request, session);
+	const text = await response.text();
+	let data;
+	try {
+		data = text ? JSON.parse(text) : {};
+	} catch {
+		throw new TypeError("WBOL API returned invalid JSON");
+	}
+	if (!response.ok) {
+		throw new Error(typeof data?.error === "string" ? data.error : `WBOL API request failed with status ${response.status}`);
+	}
+	const rows = Array.isArray(data) ? data : [data];
 	return {
 		affectedRows: rows.length,
-		fields: rows.length && rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+		fields: rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
 		rows
 	};
 }

@@ -429,7 +429,7 @@ class ButtonSymbol extends FormSymbol {
 			redirect: this.urlValue(),
 			origin: runtime.ContentId,
 			params: []
-		});
+		}, runtime.Session.sessionId);
 		this.attrs.set("name", "stwAction");
 		this.attrs.set("value", actionName);
 		this.attrs.set("data-stw-origin", runtime.ContentId);
@@ -516,7 +516,7 @@ class ButtonSymbol extends FormSymbol {
 		const payload = JSON.parse(Buffer.from(this.attrs.get("data-stw-action-token").split(".")[0], "base64url").toString("utf8"));
 		payload.params = [...this.params.entries()];
 		this.attrs.set("data-stw-params", JSON.stringify(payload.params));
-		this.attrs.set("data-stw-action-token", signAction(payload));
+		this.attrs.set("data-stw-action-token", signAction(payload, this.runtime.Session.sessionId));
 	}
 	urlValue() {
 		return this.relativeUrl ? `${this.url.pathname}${this.url.search}${this.url.hash}` : this.url.toString();

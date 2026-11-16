@@ -11,7 +11,7 @@
 			</name>
 			<children>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="stwShow">
+					section="stwOpen">
 					<name>
 						<text xml:lang="en" slug="edit-site"><![CDATA[Edit Site]]></text>
 					</name>
@@ -21,7 +21,7 @@
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="stwShow">
+					section="stwOpen">
 					<name>
 						<text xml:lang="en" slug="edit-area"><![CDATA[Edit Area]]></text>
 					</name>
@@ -31,7 +31,7 @@
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="stwShow">
+					section="stwOpen">
 					<name>
 						<text xml:lang="en" slug="edit-page"><![CDATA[Edit Page]]></text>
 					</name>
@@ -41,7 +41,7 @@
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="stwShow">
+					section="stwOpen">
 					<name>
 						<text xml:lang="en" slug="edit-content"><![CDATA[Edit content]]></text>
 					</name>
@@ -91,7 +91,7 @@
 			</options>
 		</content>
 		<content uuid="c64HscPpcM9pByUEWIVTocq" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwShowModal" class="stwFormCompact">
+			section="stwOpenModal" class="stwFormCompact">
 			<name>
 				<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 			</name>
@@ -100,7 +100,7 @@
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwShowModal" class="stwFormCompact">
+			section="stwOpenModal" class="stwFormCompact">
 			<name>
 				<text xml:lang="en" slug="settings"><![CDATA[Settings]]></text>
 			</name>

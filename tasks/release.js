@@ -13,7 +13,7 @@
  *   - optionally builds and pushes Docker images tagged as latest, vX.Y.Z, and sanitized semver
  *   - optionally creates or updates a git tag and pushes it
  *   - optionally creates or updates a GitHub release with release notes and attached assets
- *   - cleans up the generated release folder unless --keep-artifacts / --no-cleanup is used
+ *   - cleans up the generated release folder unless --keep-artifacts is used
  *
  * Usage:
  *   node tasks/release.js [options]
@@ -35,7 +35,6 @@
  *   --no-bump            Do not auto-bump the patch version
  *   --dry-run            Print the commands that would run without executing them
  *   --keep-artifacts     Keep the generated files in deployment/release instead of deleting them
- *   --no-cleanup         Alias for --keep-artifacts
  *
  * Examples:
  *   node tasks/release.js --version v0.3.6 --dry-run
@@ -55,7 +54,7 @@ function getArg(name, def) { const i = args.findIndex(a => a === `--${name}`); r
 function getFlag(name) { return args.includes(`--${name}`); }
 const cwd = process.cwd();
 const dryRun = getFlag("dry-run");
-const keepArtifacts = getFlag("keep-artifacts") || getFlag("no-cleanup");
+const keepArtifacts = getFlag("keep-artifacts");
 const outDir = join(cwd, "deployment", "release");
 await mkdir(outDir, { recursive: true });
 
@@ -192,16 +191,10 @@ async function buildServerInstaller() {
 		console.warn(`Server installer generation failed: ${res.err}`);
 		return null;
 	}
-	// Locate artifact: prefer deployment/release/server.sh, else deployment/server.sh
+	// Locate the generated installer.
 	const preferred = join(outDir, "server.sh");
 	if (await exists(preferred))
 		return preferred;
-	const legacy = join(cwd, "deployment", "server.sh");
-	if (await exists(legacy)) {
-		const dst = join(outDir, "server.sh");
-		await copyFile(legacy, dst);
-		return dst;
-	}
 	console.warn("Server installer not found after build.");
 	return null;
 }

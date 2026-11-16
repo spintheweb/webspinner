@@ -29,7 +29,7 @@ class STWForm extends STWContent {
 		}
 		if (body === "")
 			return "";
-		return `<form${this.section === "stwShowModal" ? ` method="dialog"` : ""}>${body}<input type="hidden" name="stwOrigin" value="${this.uuid}"></form>`;
+		return `<form${this.section === "stwOpenModal" ? ` method="dialog"` : ""}>${body}<input type="hidden" name="stwOrigin" value="${this.uuid}"></form>`;
 	}
 }
 

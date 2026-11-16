@@ -115,7 +115,7 @@ async function dispatchHttp(incoming, outgoing) {
 	const sessionId = getCookies(request.headers).sessionId || newId();
 	const session = getSession(request, incoming, sessionId);
 	session.setPlaceholders(request);
-	const response = await handleHttp(request, session, sessionId);
+	const response = await handleHttp(request, session, sessionId, rotateSession);
 	outgoing.writeHead(response.status, response.statusText, responseHeaders(response));
 	if (request.method === "HEAD" || !response.body) {
 		outgoing.end();
@@ -140,6 +140,33 @@ function getSession(request, incoming, sessionId = getCookies(request.headers).s
 		stwSessions.set(sessionId, session);
 	}
 	return session;
+}
+
+function rotateSession(session, preserveIdentity = false) {
+	const replacement = new STWSession(newId(), session.remoteAddr, session.portal);
+	replacement.baseurl = session.baseurl;
+	replacement.lang = session.lang;
+	replacement.langs = [...session.langs];
+	replacement.tz = session.tz;
+	if (preserveIdentity) {
+		replacement.user = session.user;
+		replacement.name = session.name;
+		replacement.loginId = session.loginId;
+		replacement.roles = [...session.roles];
+		replacement.dev = session.dev;
+		replacement.setLoginPlaceholders();
+	}
+
+	stwSessions.delete(session.sessionId);
+	for (const socket of session.sockets.values()) {
+		try {
+			socket.close(1000, "Session rotated");
+		} catch {
+		}
+	}
+	session.sockets.clear();
+	stwSessions.set(replacement.sessionId, replacement);
+	return replacement;
 }
 
 async function toRequest(incoming) {
