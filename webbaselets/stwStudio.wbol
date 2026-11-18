@@ -90,6 +90,25 @@
 				</option>
 			</options>
 		</content>
+		<content uuid="c7K3dAiAsstAccrd0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion">
+			<name>
+				<text xml:lang="en" slug="assistant"><![CDATA[AI Assistant]]></text>
+			</name>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('header="&emsp;AI ASSISTANT"')]]></text>
+			</layout>
+			<options>
+				<option ref="c7K3dAiAsstAsk000000002">
+					<text xml:lang="en"><![CDATA[Ask]]></text>
+				</option>
+				<option ref="c7K3dAiAsstHist00000003">
+					<text xml:lang="en"><![CDATA[Conversation]]></text>
+				</option>
+				<option ref="c7K3dAiAsstProp00000004">
+					<text xml:lang="en"><![CDATA[Proposed changes]]></text>
+				</option>
+			</options>
+		</content>
 		<content uuid="c64HscPpcM9pByUEWIVTocq" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
 			section="stwOpenModal" class="stwFormCompact">
 			<name>
@@ -131,6 +150,9 @@
 						<option ref="c6TC0s1xSa5SWiCO4QcQf7T">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-copy" aria-label="Explorer"></i>]]></text>
 						</option>
+						<option ref="c7K3dAiAsstAccrd0000001">
+							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sparkles" aria-label="AI Assistant"></i>]]></text>
+						</option>
 						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-gear" aria-label="Settings"></i>]]></text>
 						</option>
@@ -152,6 +174,33 @@
 					<query connector="bash"><![CDATA[ls -l ./public]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[]]></text>
+					</layout>
+				</content>
+				<content uuid="c7K3dAiAsstAsk000000002" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwFormCompact">
+					<name>
+						<text xml:lang="en" slug="assistant-ask"><![CDATA[Ask]]></text>
+					</name>
+					<query connector="assistant" parameters="/state"><![CDATA[$]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('header="Local model: the element and chat are sent to the local assistant."')l('Element UUID')e(';uuid;@@uuid')\rl('Share this context with the local model')e('checkbox;consent;yes')\rl('Message')m(';message')\rb('.;stwsubmit;assistant;/chat')t('Send')b('.;stwsubmit;assistant;/apply')t('Apply proposal')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7K3dAiAsstHist00000003" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
+					<name>
+						<text xml:lang="en" slug="assistant-chat"><![CDATA[Conversation]]></text>
+					</name>
+					<query connector="assistant" parameters="/history"><![CDATA[$]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('nodata="No messages yet"')l('From')fl('Message')f]]></text>
+					</layout>
+				</content>
+				<content uuid="c7K3dAiAsstProp00000004" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
+					<name>
+						<text xml:lang="en" slug="assistant-proposal"><![CDATA[Proposed changes]]></text>
+					</name>
+					<query connector="assistant" parameters="/proposal"><![CDATA[$]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('nodata="No pending proposal"')l('Field')fl('Current')fl('Proposed')f]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form" section="main">

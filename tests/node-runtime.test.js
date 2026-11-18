@@ -35,7 +35,7 @@ import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { STWSecurity } from "../stwComponents/stwSecurity.js";
 import { STWSession } from "../stwComponents/stwSession.js";
 import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
-import { handleAssistant } from "../stwComponents/stwAssistant.js";
+import { executeAssistant } from "../stwComponents/stwAssistant.js";
 import { validateChanges } from "../stwComponents/stwAssistantPersistence.js";
 
 test("validating a portal proposal does not replace the live portal in the index", () => {
@@ -59,11 +59,6 @@ test("assistant reviews and persistently applies authorized changes with conflic
 <layout><text xml:lang="en">Old layout</text><text xml:lang="it">Vecchio layout</text></layout>
 <visibility><role id="developer" visibility="true"/></visibility>
 </content></children></webbase>`;
-	const request = (path, body, origin = "http://localhost") => new Request(`http://localhost/studio-assistant/${path}`, {
-		method: "POST",
-		headers: { "content-type": "application/json", origin },
-		body: JSON.stringify(body)
-	});
 	const dir = await mkdtemp(join(tmpdir(), "stw-assistant-"));
 	const file = join(dir, "webbase.wbol");
 	const oldEnv = { ...process.env };
@@ -84,19 +79,21 @@ test("assistant reviews and persistently applies authorized changes with conflic
 			assert.equal(body.element.children, undefined);
 			return Response.json({ answer: "Suggested edit", changes: { name: "New", layout: "New layout", query: '{"value":"new"}' } });
 		};
-		const chat = { consent: true, uuid: "ctest", messages: [{ role: "user", content: "Change it" }] };
-		assert.equal((await handleAssistant(request("chat", chat), { ...session, roles: ["guest"] }, mock)).status, 403);
-		assert.equal((await handleAssistant(request("chat", chat, "http://elsewhere"), session, mock)).status, 403);
-		const preview = await (await handleAssistant(request("context", { uuid: "ctest" }), session)).json();
-		assert.equal(preview.context.name, "Old");
-		assert.equal(preview.context.locale, "en");
-		const response = await handleAssistant(request("chat", chat), session, mock);
-		assert.equal(response.status, 200);
-		const result = await response.json();
-		assert.ok(result.proposalId);
+		const chat = { consent: "yes", uuid: "ctest", message: "Change it" };
+		const run = (user, resource, method, fields) => executeAssistant(user, resource, method, fields, mock);
+		await assert.rejects(run({ ...session, roles: ["guest"] }, "/chat", "POST", chat), /Developer access required/);
+		await assert.rejects(run(session, "/chat", "POST", { ...chat, consent: "" }), /Confirm local context sharing/);
+		await run(session, "/chat", "POST", chat);
+		assert.deepEqual(await run(session, "/history", "GET"), [
+			{ role: "You", message: "Change it" }, { role: "Assistant", message: "Suggested edit" }
+		]);
+		assert.deepEqual((await run(session, "/state", "GET"))[0], { uuid: "ctest" });
+		const proposal = await run(session, "/proposal", "GET");
+		assert.deepEqual(proposal.map((row) => row.field).sort(), ["layout", "name", "query"]);
+		assert.equal(proposal.find((row) => row.field === "name").current, "Old");
 		assert.equal(await readFile(file, "utf8"), source);
-		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), { ...session, roles: ["guest"] })).status, 403);
-		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), session)).status, 200);
+		await assert.rejects(run({ ...session, roles: ["guest"] }, "/apply", "POST"), /Developer access required/);
+		await run(session, "/apply", "POST");
 		const loaded = WBOL(await readFile(file, "utf8")).children[0];
 		assert.equal(loaded.name.en, "New");
 		assert.equal(loaded.name.it, "Vecchio");
@@ -104,15 +101,14 @@ test("assistant reviews and persistently applies authorized changes with conflic
 		assert.equal(loaded.layout.it, "Vecchio layout");
 		assert.equal(loaded.query, '{"value":"new"}');
 		assert.equal(STWIndex.get("ctest").name.get("en"), "New");
-		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), session)).status, 409);
+		assert.deepEqual(await run(session, "/proposal", "GET"), []);
+		await assert.rejects(run(session, "/apply", "POST"), /Proposal expired or not found/);
 
-		const nextResponse = await handleAssistant(request("chat", chat), session, mock);
-		assert.equal(nextResponse.status, 200);
-		const next = await nextResponse.json();
+		await run(session, "/chat", "POST", chat);
 		await writeFile(file, (await readFile(file, "utf8")) + "\n");
-		const conflict = await handleAssistant(request("apply", { id: next.proposalId }), session);
-		assert.equal(conflict.status, 409);
-		assert.match((await conflict.json()).error, /changed/);
+		await assert.rejects(run(session, "/apply", "POST"), /changed/);
+		const viaConnector = await STWConnectors.executeAction(session, "assistant", "/history", "GET");
+		assert.equal(viaConnector.rows.length, 5);
 	} finally {
 		STWIndex.delete("ctest");
 		STWIndex.delete("wtest");
@@ -166,7 +162,10 @@ test("WebSocket language negotiation synchronizes the session language placehold
 	const previousLanguages = portal.langs;
 	const session = new STWSession("language-session", {}, portal);
 	const handlers = new Map();
-	const socket = { on: (event, handler) => handlers.set(event, handler) };
+	const socket = {
+		on: (event, handler) => handlers.set(event, handler),
+		send: () => {}
+	};
 	try {
 		portal.langs = ["en", "it"];
 		handleWebSocket(new Request("http://localhost/?tab=language"), socket, session, new Map());
@@ -181,6 +180,32 @@ test("WebSocket language negotiation synchronizes the session language placehold
 		assert.equal(session.placeholders.get("@@stwlanguage"), "it");
 	} finally {
 		portal.langs = previousLanguages;
+	}
+});
+
+test("WebSocket reports studio access only for development roles", async () => {
+	for (const [roles, expected] of [
+		[["leaddeveloper"], true],
+		[["developer"], true],
+		[["seo"], true],
+		[["guest"], false],
+		[["user"], false]
+	]) {
+		const session = new STWSession(`studio-${roles[0]}`, {}, STWPortal.instance);
+		session.roles = roles;
+		const handlers = new Map();
+		const messages = [];
+		const socket = {
+			on: (event, handler) => handlers.set(event, handler),
+			send: (message) => messages.push(JSON.parse(message))
+		};
+		handleWebSocket(new Request("http://localhost/?tab=studio"), socket, session, new Map());
+		await handlers.get("message")(Buffer.from(JSON.stringify({
+			method: "HEAD",
+			resource: "/nonexistent",
+			options: { lang: "en", langs: ["en"], tz: "UTC" }
+		})));
+		assert.deepEqual(messages, [{ method: "AUTH", canStudio: expected }]);
 	}
 });
 

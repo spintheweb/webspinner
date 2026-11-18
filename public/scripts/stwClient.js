@@ -12,6 +12,7 @@
  */
 
 let stwWS;
+let stwCanStudio = false;
 
 document.addEventListener("submit", async (event) => {
 	const button = event.submitter;
@@ -81,9 +82,6 @@ document.addEventListener("submit", async (event) => {
 
 window.addEventListener("load", () => {
 	stwStartWebsocket();
-	if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
-		_enableStudio();
-	}
 });
 
 function _newId(uuid) {
@@ -121,10 +119,9 @@ function _enableStudio() {
 	while (document.body.firstChild) stash.appendChild(document.body.firstChild);
 	document.body.insertAdjacentHTML(
 		"afterbegin",
-		`<div id="stwStudio"><header id="stwMenubar"><button type="button" id="stwAssistantToggle" aria-controls="stwAssistant" aria-expanded="false">AI Assistant</button></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwPortal"></div><aside id="stwAssistant" hidden aria-label="AI Assistant"></aside></div><footer id="stwStatusbar"></footer></div>`,
+		`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwPortal"></div></div><footer id="stwStatusbar"></footer></div>`,
 	);
 	while (stash.firstChild) document.getElementById("stwPortal").appendChild(stash.firstChild);
-	_stwInitAssistant();
 	if (!document.cookie.includes("stwStudio=")) document.cookie = "stwStudio=1; path=/; max-age=31536000";
 
 	// If WS is open, load studio interface; else defer to onopen
@@ -134,129 +131,6 @@ function _enableStudio() {
 		// flag for onopen
 		window._stwStudioPending = true;
 	}
-}
-
-function _stwInitAssistant() {
-	const panel = document.getElementById("stwAssistant");
-	const toggle = document.getElementById("stwAssistantToggle");
-	void _stwLoadStyle("/styles/stwAssistant.css");
-	panel.innerHTML = `<header><strong>AI Assistant</strong><button type="button" data-close aria-label="Close assistant">&times;</button></header>
-		<p>Local model. The selected element and chat are sent to the local assistant.</p>
-		<label>Element UUID (optional)<input data-uuid autocomplete="off"></label>
-		<button type="button" data-preview>Preview selected context</button><pre data-context hidden></pre>
-		<label><input data-consent type="checkbox"> Share this context with the local model</label>
-		<div data-messages aria-live="polite"></div>
-		<form><label>Message<textarea data-prompt required maxlength="12000"></textarea></label><button type="submit">Send</button></form>
-		<div data-proposal hidden><h3>Proposed changes</h3><p>Review carefully. Saved queries and layouts may execute when the portal renders.</p><pre data-diff></pre><button type="button" data-apply>Apply and save</button></div>
-		<p data-status role="status"></p>`;
-	const status = panel.querySelector("[data-status]");
-	const uuid = panel.querySelector("[data-uuid]");
-	const prompt = panel.querySelector("[data-prompt]");
-	const messages = panel.querySelector("[data-messages]");
-	const proposal = panel.querySelector("[data-proposal]");
-	const context = panel.querySelector("[data-context]");
-	const apply = panel.querySelector("[data-apply]");
-	const form = panel.querySelector("form");
-	const history = [];
-	let previousUuid = "";
-	let proposalId = null;
-	function show(open) {
-		panel.hidden = !open;
-		toggle.setAttribute("aria-expanded", String(open));
-		if (open) prompt.focus();
-	}
-	toggle.addEventListener("click", () => show(panel.hidden));
-	panel.querySelector("[data-close]").addEventListener("click", () => show(false));
-	panel.addEventListener("input", (event) => {
-		if (event.target === uuid) {
-			proposal.hidden = true;
-			proposalId = null;
-			context.hidden = true;
-		}
-	});
-	panel.querySelector("[data-preview]").addEventListener("click", async () => {
-		try {
-			const response = await fetch("/studio-assistant/context", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ uuid: uuid.value.trim() })
-			});
-			const result = await response.json();
-			if (!response.ok) throw new Error(result.error || `Preview failed (${response.status})`);
-			context.textContent = JSON.stringify(result.context, null, 2);
-			context.hidden = false;
-			status.textContent = "";
-		} catch (error) {
-			status.textContent = error.message;
-		}
-	});
-	form.addEventListener("submit", async (event) => {
-		event.preventDefault();
-		if (!panel.querySelector("[data-consent]").checked) {
-			status.textContent = "Confirm local context sharing first.";
-			return;
-		}
-		const selected = uuid.value.trim();
-		if (selected !== previousUuid) {
-			history.length = 0;
-			messages.replaceChildren();
-			previousUuid = selected;
-		}
-		const message = prompt.value.trim();
-		if (!message) return;
-		const userMessage = { role: "user", content: message };
-		const pending = [...history, userMessage].slice(-19);
-		proposal.hidden = true;
-		proposalId = null;
-		form.querySelector("button").disabled = true;
-		status.textContent = "Waiting for the local model…";
-		try {
-			const response = await fetch("/studio-assistant/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ consent: true, uuid: selected, messages: pending })
-			});
-			const result = await response.json();
-			if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
-			history.push(userMessage, { role: "assistant", content: result.answer });
-			for (const entry of [userMessage, history.at(-1)]) {
-				const item = document.createElement("p");
-				item.textContent = `${entry.role === "user" ? "You" : "Assistant"}: ${entry.content}`;
-				messages.appendChild(item);
-			}
-			prompt.value = "";
-			if (Object.keys(result.changes).length) {
-				panel.querySelector("[data-diff]").textContent = Object.entries(result.changes)
-					.map(([field, value]) => `${field}\nCurrent: ${JSON.stringify(result.context?.[field] ?? "")}\nProposed: ${JSON.stringify(value)}`).join("\n\n");
-				proposal.hidden = false;
-				proposalId = result.proposalId;
-				apply.disabled = !proposalId;
-			}
-			status.textContent = result.sourceError ? `Cannot save this element: ${result.sourceError}` : "";
-		} catch (error) {
-			status.textContent = error.message;
-		} finally {
-			form.querySelector("button").disabled = false;
-		}
-	});
-	apply.addEventListener("click", async () => {
-		apply.disabled = true;
-		try {
-			const response = await fetch("/studio-assistant/apply", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ id: proposalId })
-			});
-			const result = await response.json();
-			if (!response.ok) throw new Error(result.error || `Apply failed (${response.status})`);
-			proposal.hidden = true;
-			proposalId = null;
-			status.textContent = `${result.message} Reload the portal to refresh the preview.`;
-		} catch (error) {
-			status.textContent = error.message;
-			apply.disabled = false;
-		}
-	});
 }
 
 function _disableStudio() {
@@ -270,7 +144,7 @@ function _disableStudio() {
 
 // Toggle studio mode with Alt+F12
 window.addEventListener("keydown", (event) => {
-	if (event.altKey && event.key == "F12") {
+	if (stwCanStudio && event.altKey && event.key == "F12") {
 		event.preventDefault();
 		if (document.getElementById("stwStudio")) {
 			_disableStudio();
@@ -300,18 +174,29 @@ function stwStartWebsocket() {
 			search: window.location.search
 		}));
 
-		// If studio is active or pending, load its interface
-		if (document.getElementById("stwStudio") || window._stwStudioPending || _hasStudioCookie()) {
-			window._stwStudioPending = false;
-			stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
-		}
-
 		document.querySelectorAll("[lang]").forEach((element) => element.setAttribute("lang", "en-US"));
 	};
 
 	stwWS.onmessage = async (event) => {
 		// event.data = { method: "GET" | "PUT" | "PATCH" | "DELETE", id: string, section: string, sequence: number, body: string }
 		const data = JSON.parse(event.data);
+
+		if (data.method === "AUTH") {
+			stwCanStudio = data.canStudio === true;
+			if (!stwCanStudio) {
+				_disableStudio();
+				return;
+			}
+			if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
+				_enableStudio();
+				return;
+			}
+			if (document.getElementById("stwStudio") || window._stwStudioPending) {
+				window._stwStudioPending = false;
+				stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
+			}
+			return;
+		}
 
 		if (data.method === "PATCH") {
 			stwWS.send(JSON.stringify({ method: "PATCH", resource: data.id, options: { placeholder: data.placeholder }, search: window.location.search }));
@@ -399,11 +284,6 @@ function stwToggleCollapse(event) {
 document.addEventListener("click", function (e) {
 	const article = e.target.closest("article[id]");
 	if (document.getElementById("stwStudio") && article && e.altKey) {
-		const input = document.querySelector("#stwAssistant [data-uuid]");
-		if (input && document.getElementById("stwPortal").contains(article)) {
-			input.value = article.id;
-			input.dispatchEvent(new Event("input", { bubbles: true }));
-		}
 		e.stopPropagation();
 		e.preventDefault();
 		stwWS.send(

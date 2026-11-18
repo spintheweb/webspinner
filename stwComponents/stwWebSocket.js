@@ -54,6 +54,10 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			session.langs = data.options.langs || ["en"];
 			session.setLanguage(STWPortal.instance.langs.includes(data.options.lang) ? data.options.lang : session.langs.find((lang) => STWPortal.instance.langs.includes(lang.substring(0, 2)))?.substring(0, 2) || "en");
 			session.tz = data.options.tz || "UTC";
+			socket.send(JSON.stringify({
+				method: "AUTH",
+				canStudio: session.roles.some((role) => ["leaddeveloper", "developer", "seo"].includes(role))
+			}));
 			resourcesToProcess = STWPortal.instance.find(session, data.resource)?.contents(session) || [];
 		}
 		if (resourcesToProcess.length === 0) return;

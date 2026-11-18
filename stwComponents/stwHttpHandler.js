@@ -18,14 +18,10 @@ import { secureResponse } from "./stwResponse.js";
 import { envGet } from "./stwConfig.js";
 import { actionRouter } from "./stwActions.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
-import { handleAssistant } from "./stwAssistant.js";
 import { verifyAction } from "./stwActionToken.js";
 
 async function handleHttp(request, session, sessionId, rotateSession) {
 	const pathname = new URL(request.url).pathname;
-	if (pathname === "/studio-assistant" || pathname.startsWith("/studio-assistant/")) {
-		return await handleAssistant(request, session);
-	}
 	if (pathname === "/wbol" || pathname.startsWith("/wbol/")) {
 		return await handleWbolApi(request, session);
 	}

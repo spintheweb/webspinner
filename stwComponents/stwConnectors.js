@@ -239,7 +239,7 @@ class STWConnectors {
 		return configuration?.type ?? this.connectorConfigs.get(connector)?.type ?? null;
 	}
 	static async supportsCrud(connector) {
-		if (connector === "wbol") return false;
+		if (connector === "wbol" || connector === "assistant") return false;
 		const type = await this.getType(connector);
 		return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
 	}
@@ -247,6 +247,9 @@ class STWConnectors {
 		if (!connector) throw new TypeError("Connector name is required");
 		if (connector === "wbol") {
 			return await executeWbolConnector(session, command, method, fields);
+		}
+		if (connector === "assistant") {
+			return await executeAssistantConnector(session, command, method, fields);
 		}
 		await this.initialize();
 		const configuration = this.connectors.get(connector);
@@ -343,6 +346,9 @@ class STWConnectors {
 		try {
 			if (content.connector === "wbol") {
 				return await executeWbolConnector(session, content.params, "GET", {}, content.query);
+			}
+			if (content.connector === "assistant") {
+				return await executeAssistantConnector(session, content.params, "GET", {}, content.query);
 			}
 			if (content.connector === "json") {
 				const json = JSON.parse(content.query);
@@ -768,6 +774,21 @@ async function executeWbolConnector(session, command, method, fields = {}, query
 	if (query !== undefined) {
 		data = await jsonata(WBPL(query, session.placeholders)).evaluate(data);
 	}
+	const rows = data === undefined ? [] : Array.isArray(data) ? data : [data];
+	return {
+		affectedRows: rows.length,
+		fields: rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+		rows
+	};
+}
+async function executeAssistantConnector(session, command, method, fields = {}, query) {
+	const resource = WBPL(command, session.placeholders);
+	if (typeof resource !== "string" || !resource.startsWith("/") || resource.startsWith("//")) {
+		throw new TypeError("Assistant connector resources must start with a single slash");
+	}
+	const { executeAssistant } = await import("./stwAssistant.js");
+	let data = await executeAssistant(session, resource, method, fields);
+	if (query !== undefined) data = await jsonata(WBPL(query, session.placeholders)).evaluate(data);
 	const rows = data === undefined ? [] : Array.isArray(data) ? data : [data];
 	return {
 		affectedRows: rows.length,

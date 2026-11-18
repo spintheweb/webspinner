@@ -49,11 +49,14 @@ Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable 
 The optional Spin the Web Assistant runs separately on the same host and uses a
 local Ollama model. Set a shared random `STW_ASSISTANT_TOKEN` of at least 32
 characters in both services; `STW_ASSISTANT_PORT` defaults to 11435. Enable
-developer access and open Studio to use the AI Assistant panel. Select an
-element by UUID, or Alt-click a rendered content. Preview the selected context
-and confirm local context sharing before asking a question or requesting an edit.
+developer access and open Studio to use the AI Assistant tab in the sidebar. The
+assistant UI is ordinary Studio content (see `webbaselets/stwStudio.wbol`) backed by the
+reserved in-process `assistant` connector, so the token never reaches the browser.
+Enter an element UUID, confirm local context sharing, and send a question or edit request.
+The conversation is stored in the session and shown by the Conversation content.
+Review the Proposed changes content before selecting **Apply proposal**.
 
-Review the proposed fields before selecting **Apply and save**. The first
+The first
 version edits one existing element's name or slug, a page's keywords or
 description, or a content's query or localized layout. It writes only a uniquely identified element in the
 configured local Webbase, Common or Studio WBOL sources; remote, downloaded
