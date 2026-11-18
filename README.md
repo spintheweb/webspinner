@@ -44,6 +44,26 @@ The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `
 
 Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles.
 
+## Local Studio assistant
+
+The optional Spin the Web Assistant runs separately on the same host and uses a
+local Ollama model. Set a shared random `STW_ASSISTANT_TOKEN` of at least 32
+characters in both services; `STW_ASSISTANT_PORT` defaults to 11435. Enable
+developer access and open Studio to use the AI Assistant panel. Select an
+element by UUID, or Alt-click a rendered content. Preview the selected context
+and confirm local context sharing before asking a question or requesting an edit.
+
+Review the proposed fields before selecting **Apply and save**. The first
+version edits one existing element's name or slug, a page's keywords or
+description, or a content's query or localized layout. It writes only a uniquely identified element in the
+configured local Webbase, Common or Studio WBOL sources; remote, downloaded
+and ambiguous sources cannot be saved. If the running element or source changed since the
+proposal, request a new proposal. Queries are never executed by the assistant,
+but a saved query or layout can execute when the portal renders. Generated WBOL,
+layouts and queries require careful developer review. Saving checks WBOL
+round-tripping and uses Webspinner's layout parser; it does not perform full
+XSD validation. This version does not create, delete or move elements.
+
 ## Learn more
 Explore WBOL and the Webspinner architecture:
 

@@ -35,6 +35,94 @@ import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { STWSecurity } from "../stwComponents/stwSecurity.js";
 import { STWSession } from "../stwComponents/stwSession.js";
 import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
+import { handleAssistant } from "../stwComponents/stwAssistant.js";
+import { validateChanges } from "../stwComponents/stwAssistantPersistence.js";
+
+test("validating a portal proposal does not replace the live portal in the index", () => {
+	const portal = new STWPortal({ uuid: "w-assistant-validation", name: { en: "Old" }, slug: { en: "" } });
+	try {
+		validateChanges(portal, "en", { name: "New" });
+		assert.equal(STWIndex.get(portal.uuid), portal);
+		assert.equal(portal.name.get("en"), "Old");
+	} finally {
+		STWIndex.delete(portal.uuid);
+	}
+});
+
+test("assistant reviews and persistently applies authorized changes with conflict detection", async () => {
+	const source = `<?xml version="1.0"?>
+<webbase xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="wtest" langs="en it">
+<name><text xml:lang="en" slug="">Portal</text></name>
+<children><content uuid="ctest" type="Text">
+<name><text xml:lang="en" slug="old">Old</text><text xml:lang="it" slug="vecchio">Vecchio</text></name>
+<query connector="json">{"value":"old"}</query>
+<layout><text xml:lang="en">Old layout</text><text xml:lang="it">Vecchio layout</text></layout>
+<visibility><role id="developer" visibility="true"/></visibility>
+</content></children></webbase>`;
+	const request = (path, body, origin = "http://localhost") => new Request(`http://localhost/studio-assistant/${path}`, {
+		method: "POST",
+		headers: { "content-type": "application/json", origin },
+		body: JSON.stringify(body)
+	});
+	const dir = await mkdtemp(join(tmpdir(), "stw-assistant-"));
+	const file = join(dir, "webbase.wbol");
+	const oldEnv = { ...process.env };
+	try {
+		await writeFile(file, source);
+		process.env.WEBBASE = file;
+		process.env.COMMON_WEBBASE = join(dir, "missing-common.wbol");
+		process.env.STUDIO_WEBBASE = join(dir, "missing-studio.wbol");
+		process.env.STW_ASSISTANT_TOKEN = "x".repeat(32);
+		process.env.PORTAL_URL = "";
+		const portal = new STWPortal(WBOL(source));
+		const session = { roles: ["developer"], portal, lang: "en", states: new Map() };
+		const mock = async (url, options) => {
+			assert.equal(url, "http://127.0.0.1:11435/chat");
+			const body = JSON.parse(options.body);
+			assert.equal(body.element.uuid, "ctest");
+			assert.ok(["Old", "New"].includes(body.element.name));
+			assert.equal(body.element.children, undefined);
+			return Response.json({ answer: "Suggested edit", changes: { name: "New", layout: "New layout", query: '{"value":"new"}' } });
+		};
+		const chat = { consent: true, uuid: "ctest", messages: [{ role: "user", content: "Change it" }] };
+		assert.equal((await handleAssistant(request("chat", chat), { ...session, roles: ["guest"] }, mock)).status, 403);
+		assert.equal((await handleAssistant(request("chat", chat, "http://elsewhere"), session, mock)).status, 403);
+		const preview = await (await handleAssistant(request("context", { uuid: "ctest" }), session)).json();
+		assert.equal(preview.context.name, "Old");
+		assert.equal(preview.context.locale, "en");
+		const response = await handleAssistant(request("chat", chat), session, mock);
+		assert.equal(response.status, 200);
+		const result = await response.json();
+		assert.ok(result.proposalId);
+		assert.equal(await readFile(file, "utf8"), source);
+		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), { ...session, roles: ["guest"] })).status, 403);
+		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), session)).status, 200);
+		const loaded = WBOL(await readFile(file, "utf8")).children[0];
+		assert.equal(loaded.name.en, "New");
+		assert.equal(loaded.name.it, "Vecchio");
+		assert.equal(loaded.layout.en, "New layout");
+		assert.equal(loaded.layout.it, "Vecchio layout");
+		assert.equal(loaded.query, '{"value":"new"}');
+		assert.equal(STWIndex.get("ctest").name.get("en"), "New");
+		assert.equal((await handleAssistant(request("apply", { id: result.proposalId }), session)).status, 409);
+
+		const nextResponse = await handleAssistant(request("chat", chat), session, mock);
+		assert.equal(nextResponse.status, 200);
+		const next = await nextResponse.json();
+		await writeFile(file, (await readFile(file, "utf8")) + "\n");
+		const conflict = await handleAssistant(request("apply", { id: next.proposalId }), session);
+		assert.equal(conflict.status, 409);
+		assert.match((await conflict.json()).error, /changed/);
+	} finally {
+		STWIndex.delete("ctest");
+		STWIndex.delete("wtest");
+		for (const key of ["WEBBASE", "COMMON_WEBBASE", "STUDIO_WEBBASE", "STW_ASSISTANT_TOKEN", "PORTAL_URL"]) {
+			if (oldEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = oldEnv[key];
+		}
+		await rm(dir, { recursive: true, force: true });
+	}
+});
 
 test("cookie helpers parse and set session cookies", () => {
 	const cookies = getCookies(new Headers({ cookie: "sessionId=a%20b; theme=dark" }));

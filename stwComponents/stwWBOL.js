@@ -14,8 +14,10 @@
  */
 import { readFileSync } from "node:fs";
 import { DOMParser } from "@xmldom/xmldom";
+
 function WBOL(source) {
 	if (!source.trimStart().startsWith("<")) source = readFileSync(source, "utf8");
+
 	const document = new DOMParser({
 		errorHandler: {
 			warning: () => {
@@ -28,8 +30,11 @@ function WBOL(source) {
 			}
 		}
 	}).parseFromString(source, "application/xml");
+	
 	const root = document.documentElement;
+
 	if (!root) throw new Error("WBOL: document has no root element");
+	
 	switch (localName(root)) {
 		case "webbase":
 			return WBOLFragment(root);
@@ -39,6 +44,7 @@ function WBOL(source) {
 			throw new Error(`WBOL: unsupported root element ${localName(root)}`);
 	}
 }
+
 function WBOLFragment(element) {
 	let obj = {};
 	const name = localName(element);
@@ -54,10 +60,12 @@ function WBOLFragment(element) {
 		else
 			obj[attr] = attribute.value;
 	}
+
 	if (name === "content") {
 		obj.subtype = obj.type.charAt(0).toUpperCase() + obj.type.slice(1);
 		obj.type = "Content";
 	}
+
 	childElements(element).forEach((child) => {
 		switch (localName(child)) {
 			case "name":
@@ -104,6 +112,7 @@ function WBOLFragment(element) {
 				throw new Error(`WBOL: unsupported element ${localName(child)}`);
 		}
 	});
+
 	if (obj.type === "Webbase") {
 		obj.type = "Portal";
 		Object.keys(obj.slug).forEach((key) => obj.slug[key] = "");
@@ -112,10 +121,13 @@ function WBOLFragment(element) {
 		obj.visibility.root = true;
 	} else if (obj.type === "Webbaselet")
 		obj.type = "Area";
+	
 	return obj;
 }
+
 function parseOptions(wbol) {
 	const obj = [];
+
 	if (!wbol) return obj;
 	childElements(wbol).filter((option) => localName(option) === "option").forEach((option) => {
 		obj.push({
@@ -127,9 +139,11 @@ function parseOptions(wbol) {
 	});
 	return obj;
 }
+
 function innerText(wbol) {
 	return wbol.textContent ?? "";
 }
+
 function parseName(wbol) {
 	const obj = { name: {}, slug: {} };
 	childElements(wbol).filter((child) => localName(child) === "text").forEach((name) => {
@@ -139,6 +153,7 @@ function parseName(wbol) {
 	});
 	return obj;
 }
+
 function parseText(wbol) {
 	const obj = {};
 	childElements(wbol).filter((child) => localName(child) === "text").forEach(
@@ -146,6 +161,7 @@ function parseText(wbol) {
 	);
 	return obj;
 }
+
 function childElements(element) {
 	const children = [];
 	for (let child = element.firstChild; child; child = child.nextSibling) {
@@ -153,9 +169,11 @@ function childElements(element) {
 	}
 	return children;
 }
+
 function localName(element) {
 	return element.localName || element.tagName.split(":").at(-1);
 }
+
 export {
 	WBOL
 };

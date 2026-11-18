@@ -1,0 +1,42 @@
+#stwStudio > div {
+	grid-template-columns: auto 5px minmax(0, 1fr) auto;
+}
+
+#stwAssistant[hidden], #stwAssistant [hidden] {
+	display: none;
+}
+
+#stwAssistant {
+	width: min(28rem, 45vw);
+	min-width: 16rem;
+	resize: horizontal;
+	overflow: auto;
+	padding: 0.75rem;
+	border-left: thin solid var(--border);
+	background: var(--bg-faint);
+}
+
+#stwAssistant header {
+	display: flex;
+	justify-content: space-between;
+}
+
+#stwAssistant label {
+	display: block;
+	margin: 0.5rem 0;
+}
+
+#stwAssistant input:not([type="checkbox"]), #stwAssistant textarea {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+}
+
+#stwAssistant textarea {
+	min-height: 5rem;
+}
+
+#stwAssistant [data-messages], #stwAssistant [data-diff], #stwAssistant [data-context] {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
