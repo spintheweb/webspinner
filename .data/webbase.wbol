@@ -76,7 +76,7 @@
 			</options>
 		</content>
 		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD" type="shortcut"
-			section="leftSidebar" sequence="0">
+			section="leftPanel" sequence="0">
 			<name>
 				<text xml:lang="en" slug="log-on"><![CDATA[Log on]]></text>
 			</name>
@@ -85,7 +85,7 @@
 			</visibility>
 		</content>
 		<content uuid="c7be7AxZ04EpUSHsMrsVMPD" ref="c3gJOg8rVapMR0eiVIizt6c" type="shortcut"
-			section="leftSidebar" sequence="0">
+			section="leftPanel" sequence="0">
 			<name>
 				<text xml:lang="en" slug="log-off"><![CDATA[Log off]]></text>
 			</name>
@@ -99,7 +99,7 @@
 				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftSidebar" : "rightSidebar"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
+				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')j('function toggleSidebar(event){const sidebar=document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftPanel" : "rightPanel"); sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";}')]]></text>
 			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
@@ -269,7 +269,7 @@
 					</visibility>
 				</content>
 				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="rightSidebar" sequence="1">
+					section="rightPanel" sequence="1">
 					<name>
 						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
 					</name>
@@ -285,7 +285,7 @@
 					</visibility>
 				</content>
 				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
-					section="leftSidebar" sequence="1">
+					section="leftPanel" sequence="1">
 					<name>
 						<text xml:lang="en" slug="calendar"><![CDATA[Calendar]]></text>
 					</name>
