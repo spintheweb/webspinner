@@ -33,6 +33,8 @@ function escapeAttribute(value) {
 	return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+class ChoiceQueryError extends Error {}
+
 class STWLayout {
 	wbll;
 	justSettings;
@@ -154,6 +156,7 @@ class STWLayout {
 
 			return { settings: runtime.Settings, HTML: runtime.HTML };
 		} catch (_err) {
+			if (_err instanceof ChoiceQueryError) throw _err;
 			const index = runtime.Index;
 			throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
 		}
@@ -353,8 +356,11 @@ class LabelSymbol extends BaseSymbol {
 	}
 }
 class FormSymbol extends BaseSymbol {
-	constructor(args, tagName = "input", runtime) {
+	constructor(args, tagName = "input", runtime, resolveArgs = false) {
 		super(args, tagName, runtime);
+
+		if (resolveArgs) 
+			this.args = this.args.map((arg) => WBPL(arg, runtime.Placeholders));
 		if (!this.attrs.has("type") && this.args[0])
 			this.attrs.set("type", this.args[0]);
 		if (!this.attrs.has("id"))
@@ -385,7 +391,7 @@ class FormSymbol extends BaseSymbol {
 }
 class TextAreaSymbol extends FormSymbol {
 	constructor(args, tagName = "textarea", runtime) {
-		super(args, tagName, runtime);
+		super(args, tagName, runtime, true);
 		this.text = String(this.attrs.get("value") ?? "");
 		this.attrs.delete("type");
 		this.attrs.delete("value");
@@ -397,8 +403,8 @@ class TextAreaSymbol extends FormSymbol {
 		} else if (this.args[0])
 			this.attrs.set("class", this.args[0]);
 		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
-		const fragment = `<${this.tagName}${htmlAttrs}>${this.text || ""}</${this.tagName}>`;
-		return fragment;
+		const text = this.tagName === "textarea" ? escapeAttribute(this.text) : this.text;
+		return `<${this.tagName}${htmlAttrs}>${text || ""}</${this.tagName}>`;
 	}
 }
 class ButtonSymbol extends FormSymbol {
@@ -533,7 +539,26 @@ class ChoiceSymbol extends FormSymbol {
 		if (mode !== -1) {
 			const tagName = this.attrs.get("type");
 			this.attrs.delete("type");
-			let htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${value || ""}"`).join("");
+			let htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value ?? "")}"`).join("");
+			if (this.options && (tagName === "checkbox" || tagName === "radio")) {
+				const groups = new Map();
+				for (const option of this.options) {
+					const group = option.group ?? "";
+					groups.set(group, [...groups.get(group) ?? [], option]);
+				}
+				const selected = String(this.attrs.get("value") ?? "").split(",");
+				const updateValue = tagName === "checkbox" ? `this.querySelector('input[type="hidden"]').value=[...this.querySelectorAll(":checked")].map(el => el.value).join(',')` : `this.querySelectorAll('input[type="radio"]').forEach(el => el.checked=el==event.target);this.querySelector('input[type="hidden"]').value=event.target.value`;
+				let fragment = `<div class="stwChoices" onchange="${escapeAttribute(updateValue)}"><input type="hidden"${htmlAttrs}>`;
+				for (const [group, options] of groups) {
+					fragment += `<fieldset>${group ? `<legend>${escapeAttribute(group)}</legend>` : ""}`;
+					for (const option of options) {
+						const checked = tagName === "checkbox" ? selected.includes(option.value) : option.value === selected.join(",");
+						fragment += `<label><input type="${tagName}" value="${escapeAttribute(option.value)}"${checked ? " checked" : ""}${this.attrs.has("disabled") || option.label.charAt(0) === "!" ? " disabled" : ""}> ${escapeAttribute(option.label)}</label>`;
+					}
+					fragment += "</fieldset>";
+				}
+				return fragment + "</div>";
+			}
 			if (mode === 3 && (tagName === "checkbox" || tagName === "radio")) {
 				const options = this.choiceItems(this.args, mode);
 				const groups = new Map();
@@ -573,7 +598,8 @@ class ChoiceSymbol extends FormSymbol {
 					this.attrs.delete("data-blank");
 				}
 				const options = this.choiceItems(this.args, mode);
-				const renderOption = ({ value, label }) => `<option value="${value}"${value === (this.attrs.get("value") ?? "") ? " selected" : ""}${label.charAt(0) === "!" ? " disabled" : ""}>${label}</option>`;
+				const selected = String(this.attrs.get("value") ?? "");
+				const renderOption = ({ value, label }) => `<option value="${escapeAttribute(value)}"${(this.attrs.has("multiple") ? selected.split(",").includes(value) : value === selected) ? " selected" : ""}${label.charAt(0) === "!" ? " disabled" : ""}>${escapeAttribute(label)}</option>`;
 				if (mode === 3) {
 					const groups = new Map();
 					for (const option of options) {
@@ -581,7 +607,7 @@ class ChoiceSymbol extends FormSymbol {
 						groups.set(group, [...groups.get(group) ?? [], option]);
 					}
 					for (const [group, groupedOptions] of groups)
-						fragment += group ? `<optgroup label="${group}">${groupedOptions.map(renderOption).join("")}</optgroup>` : groupedOptions.map(renderOption).join("");
+						fragment += group ? `<optgroup label="${escapeAttribute(group)}">${groupedOptions.map(renderOption).join("")}</optgroup>` : groupedOptions.map(renderOption).join("");
 				} else {
 					fragment += options.map(renderOption).join("");
 				}
@@ -618,6 +644,39 @@ class ChoiceSymbol extends FormSymbol {
 			});
 		}
 		return items;
+	}
+}
+class ConnectorChoiceSymbol extends ChoiceSymbol {
+	constructor(args, tagName, runtime) {
+		super(`;${WBPL(args, runtime.Placeholders) ?? ";;"}`, tagName, runtime);
+		const source = /^([^;]*);([^;]*);([^;]+);([\s\S]*)$/.exec(args ?? "");
+		const connector = source ? WBPL(source[3], runtime.Placeholders) : "";
+		if (source && connector && !["1", "2", "3"].includes(connector)) {
+			this.source = { connector, query: source[4] };
+		}
+	}
+	async $() {
+		if (this.source) {
+			try {
+				const { STWConnectors } = await import("./stwConnectors.js");
+				const session = { ...this.runtime.Session, placeholders: this.runtime.Placeholders };
+				const records = await STWConnectors.query(session, this.source.connector, this.source.query, { throwOnError: true });
+				if (records.fields.length > 3 || (!records.fields.length && records.rows.length)) {
+					throw new TypeError("Choice queries must return one to three columns");
+				}
+				this.args[3] = String(records.fields.length || 1);
+				this.options = records.rows.map((row) => {
+					const [value, label, group] = records.fields.map((field) => String(row[field] ?? ""));
+					return { value, label: label ?? value, group };
+				});
+			} catch (error) {
+				throw new ChoiceQueryError(`Choice query failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+			}
+		}
+		return super.$();
+	}
+	choiceItems(args, arity) {
+		return this.options ?? super.choiceItems(args, arity);
 	}
 }
 class EmbedSymbol extends BaseSymbol {
@@ -709,28 +768,24 @@ function b(args, index, runtime) {
 }
 function c(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "checkbox", runtime);
 	symbol.attrs.set("type", "checkbox");
 	return symbol;
 }
 function d(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "select", runtime);
 	symbol.attrs.set("data-blank", true);
 	return symbol;
 }
 function D(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "select", runtime);
 	return symbol;
 }
 function e(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new FormSymbol(args, void 0, runtime);
+	const symbol = new FormSymbol(args, void 0, runtime, true);
 	return symbol;
 }
 function f(format, index, runtime) {
@@ -745,8 +800,7 @@ function f(format, index, runtime) {
 }
 function h(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new FormSymbol(`;${args}`, void 0, runtime);
+	const symbol = new FormSymbol(`;${args}`, void 0, runtime, true);
 	symbol.attrs.set("type", "hidden");
 	return symbol;
 }
@@ -793,7 +847,6 @@ function L(args, index, runtime) {
 }
 function m(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
 	const symbol = new TextAreaSymbol(`${args ?? ";"}`, void 0, runtime);
 	return symbol;
 }
@@ -817,23 +870,20 @@ function O(args, index, runtime) {
 }
 function r(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, void 0, runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "checkbox", runtime);
 	symbol.attrs.set("type", "radio");
 	return symbol;
 }
 function s(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "select", runtime);
 	symbol.attrs.set("multiple", true);
 	symbol.attrs.set("data-blank", true);
 	return symbol;
 }
 function S(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	const symbol = new ChoiceSymbol(`;${args ?? ";;"}`, "select", runtime);
+	const symbol = new ConnectorChoiceSymbol(args, "select", runtime);
 	symbol.attrs.set("multiple", true);
 	return symbol;
 }

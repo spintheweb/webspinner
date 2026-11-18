@@ -122,18 +122,18 @@ class STWContent extends STWElement {
 			return secureResponse(null, { status: 204 });
 		if (ref) {
 			debugLog(
-				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)}  ${this.type} @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
+				`${(new Date()).toISOString()}: ${ref.uuid === this.uuid ? " \u25CF" : "\u2502\u2514"} ${this.pathname(session)}  ${this.type}@${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		} else {
 			debugLog(
-				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type} @ ${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
+				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type}@${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
 		let settings, HTML, records, dev = "";
 		const layout = this.getLayout(session);
 		try {
 			if (session.dev && this.isVisible(session, "developer"))
-				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/password-recovery?uuid=${this.uuid}", options: { recurse: false } }))'></i></span>`;
+				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i></span>`;
 
 			records = await STWConnectors.command(session, this);
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
@@ -184,16 +184,20 @@ class STWContent extends STWElement {
 	}
 
 	update(session, data) {
+		const layout = typeof data.layout === "string"
+			? ["Text", "ClientScript", "Shortcut"].includes(this.type) ? data.layout : new STWLayout(data.layout)
+			: undefined;
 		super.update(session, data);
-		this.cssClass = data.cssClass || this.cssClass;
-		this.section = data.section || this.section;
-		this.sequence = data.sequence || this.sequence;
-		this.connector = data.connector || this.connector;
-		this.query = data.command || this.query;
-		this.params = data.params || this.params;
-		this.contentType = data.contentType || this.contentType;
-		if (data.layout) {
-			this.layout.set(session.lang, new STWLayout(data.layout));
+		this.cssClass = data.cssClass ?? this.cssClass;
+		this.section = data.section ?? this.section;
+		this.sequence = data.sequence ?? this.sequence;
+		this.connector = data.connector ?? this.connector;
+		this.query = data.query ?? data.command ?? this.query;
+		this.params = data.params ?? this.params;
+		this.contentType = data.contentType ?? this.contentType;
+		if (layout !== undefined) {
+			this.layout ??= new Map();
+			this.layout.set(session.lang, layout);
 		}
 	}
 }

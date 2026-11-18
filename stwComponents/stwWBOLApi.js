@@ -3,8 +3,8 @@
  *
  * Webbase element routes require the `developer` role and Developer-role RBV,
  * except SEO users may read and edit localized metadata on SEO-visible elements:
- *   - GET /wbol returns the portal tree; GET /wbol/:uuid returns one element.
- *   - GET /wbol/:uuid returns one locale-specific element representation.
+ *   - GET /wbol returns the portal tree; GET /wbol/:uuid returns one locale-specific element.
+ *   - GET /wbol/content-types lists registered content subtypes for developers.
  *   - POST /wbol creates a child from `{ parentId, element }`.
  *   - PATCH /wbol/:uuid updates an element and can move it with `parentId` and
  *     optional `position`. Localized string values update `?locale=` (default:
@@ -50,6 +50,15 @@ const MAX_BODY_SIZE = 2 * 1024 * 1024;
 async function handleWbolApi(request, session) {
 	const url = new URL(request.url);
 	const segments = url.pathname.split("/").filter(Boolean);
+	if (segments.length === 2 && segments[1] === "content-types") {
+		if (!session.roles.includes("developer")) return jsonResponse({ error: "Forbidden" }, 403);
+		if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, { Allow: "GET" });
+		const types = Object.entries(STWFactory)
+			.filter(([, constructor]) => constructor.prototype instanceof STWContent)
+			.map(([value]) => ({ value }))
+			.sort((a, b) => a.value.localeCompare(b.value));
+		return jsonResponse(types);
+	}
 	if (segments.length > 1) {
 		const adminResponse = await handleWbolAdminApi(request, session, segments.slice(1));
 		if (adminResponse) return adminResponse;
@@ -127,7 +136,7 @@ async function handleWbolApi(request, session) {
 			return jsonResponse(serializeSTWElement(element), 201);
 		}
 		if (method === "PATCH" && id) {
-			const element = STWIndex.get(id);
+			let element = STWIndex.get(id);
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
 			const canDevelop = hasDeveloperRole && Boolean(element.isVisible(session, "developer") & 1);
 			const canEditSeo = hasSeoRole && Boolean(element.isVisible(session, "seo") & 1);
@@ -150,8 +159,30 @@ async function handleWbolApi(request, session) {
 			delete updates.parentId;
 			delete updates.position;
 			for (const field of ["name", "slug", "keywords", "description"]) delete updates[field];
-			for (const field of ["uuid", "type", "subtype", "children", "parent", "modified"]) {
+			for (const field of ["uuid", "subtype", "children", "parent", "modified"]) {
 				if (field in updates) return jsonResponse({ error: `${field} cannot be changed through PATCH` }, 400);
+			}
+			let replacement;
+			if ("type" in updates) {
+				if (!(element instanceof STWContent) || typeof updates.type !== "string") {
+					return jsonResponse({ error: "type can only be changed on content" }, 400);
+				}
+				if (updates.type !== element.type) {
+					const constructor = STWFactory[updates.type];
+					if (!constructor || !(constructor.prototype instanceof STWContent)) {
+						return jsonResponse({ error: `Unknown content type: ${updates.type}` }, 400);
+					}
+					if (!element.parent?.children.includes(element)) {
+						return jsonResponse({ error: "Element is detached from the webbase" }, 409);
+					}
+					const definition = serializeSTWElement(element);
+					if (typeof updates.layout === "string") {
+						definition.layout = { ...definition.layout, [locale]: updates.layout };
+					}
+					replacement = new constructor({ ...definition, subtype: updates.type, class: element.cssClass });
+					replacement.parent = element.parent;
+				}
+				delete updates.type;
 			}
 			let moveTo;
 			let movePosition;
@@ -180,10 +211,16 @@ async function handleWbolApi(request, session) {
 				moveTo = element.parent;
 				movePosition = position;
 			}
-			element.update(session, updates);
+			const localizedSession = { ...session, lang: locale };
+			(replacement || element).update(localizedSession, updates);
+			if (replacement) {
+				const parent = element.parent;
+				parent.children[parent.children.indexOf(element)] = replacement;
+				STWIndex.set(id, replacement);
+				element = replacement;
+			}
 			applyLocalizedUpdates(element, localizedUpdates);
 			if (moveTo) moveElement(element, moveTo, movePosition);
-			const localizedSession = { ...session, lang: locale };
 			return jsonResponse(seoOnly ? serializeSeoElement(element, localizedSession) : serializeLocalizedElement(element, localizedSession));
 		}
 		if (method === "DELETE" && id) {
@@ -250,7 +287,8 @@ function serializeLocalizedElement(element, session) {
 	if (element instanceof STWContent) {
 		result.type = element.type;
 		result.subtype = element.subtype || element.type;
-		result.layout = element.layout?.get(session.lang)?.wbll || "";
+		const layout = element.layout?.get(session.lang);
+		result.layout = typeof layout === "string" ? layout : layout?.wbll || "";
 	}
 	return result;
 }

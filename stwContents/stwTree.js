@@ -11,34 +11,47 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
-import { WBPL } from "../stwComponents/stwWBPL.js";
 
 class STWTree extends STWContent {
 	constructor(content) {
 		super(content);
 	}
 
-	async render(request, session, records) {
-		let layout = this.getLayout(session);
+	async render(_request, session, records) {
 		if (!records.fields?.length || !records.rows?.length)
-			return layout.settings.get("nodata") || "";
+			return "";
 
-		const fields = records.fields?.map((f) => f.name) || Object.keys(records.rows?.[0] || {});
-		layout = this.getLayout(session, "f".repeat(fields.length));
-		if (!this.isHierarchicalData(records.rows) && !fields.includes(layout.settings.get("key") || "path"))
+		const fields = records.fields;
+		const layout = this.getLayout(session, "f".repeat(fields.length));
+		const initialPlaceholders = new Map(session.placeholders);
+		initialPlaceholders.set("@@stwOrigin", this.uuid);
+		for (const [key, value] of Object.entries(records.rows[0]))
+			if (value === null || typeof value !== "object")
+				initialPlaceholders.set(`@@${key}`, String(value ?? ""));
+		const { settings } = await layout.render(fields, initialPlaceholders, session, "", this.uuid);
+		const pathField = String(settings.get("key") || "path");
+		if (!this.isHierarchicalData(records.rows) && !fields.includes(pathField))
 			throw new Error("In order to construct a tree from flat data, 'key' must be set to a valid field name containing path information&mdash;the path separator must be /.");
-		const treeData = this.isHierarchicalData(records.rows) ? records.rows[0] : this.buildTreeFromPaths(records.rows, String(layout.settings.get("key")));
-		const renderNode = (node, depth = 0) => {
+		const treeData = this.isHierarchicalData(records.rows) ? records.rows[0] : this.buildTreeFromPaths(records.rows, pathField);
+		const renderNode = async (node, depth = 0) => {
 			const placeholders = new Map(session.placeholders);
-			Object.entries(node).forEach(([key, value]) => placeholders.set(`@@${key}`, String(value)));
+			placeholders.set("@@stwOrigin", this.uuid);
+			for (const [key, value] of Object.entries(node))
+				if (value === null || typeof value !== "object")
+					placeholders.set(`@@${key}`, String(value ?? ""));
 			const hasChildren = node.children?.length > 0;
 			const toggle = `<span style="display:inline-block;width:${depth}rem"></span>${hasChildren ? `<i class="fa-light fa-angle-down"></i> ` : ""}`;
-			const children = hasChildren ? `<ul>${node.children.map((child) => renderNode(child, depth + 1)).join("")}</ul>` : "";
-			return `<li ${WBPL(layout.groupAttributes, placeholders)}><div ${WBPL(layout.blockAttributes, placeholders)}>${toggle} ${layout?.render(request, session, fields, placeholders)}</div>${children}</li>`;
+			const html = (await layout.render(fields, placeholders, session, "", this.uuid)).HTML;
+			let children = "";
+			if (hasChildren) {
+				for (const child of node.children) children += await renderNode(child, depth + 1);
+				children = `<ul>${children}</ul>`;
+			}
+			return `<li><div>${toggle} ${html}</div>${children}</li>`;
 		};
 		let body = "";
 		if (treeData)
-			body = `<ul>${renderNode(treeData)}</ul>
+			body = `<ul>${await renderNode(treeData)}</ul>
 <script name="STWTree" onload="fnSTWTree('${this.uuid}')">
  function fnSTWTree(id) {
 	self.document.getElementById(id).addEventListener("click", event => {
@@ -58,7 +71,6 @@ class STWTree extends STWContent {
 	});
  }
 <\/script>`;
-		await Promise.resolve();
 		return body;
 	}
 

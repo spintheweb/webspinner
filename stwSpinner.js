@@ -145,7 +145,7 @@ function getSession(request, incoming, sessionId = getCookies(request.headers).s
 function rotateSession(session, preserveIdentity = false) {
 	const replacement = new STWSession(newId(), session.remoteAddr, session.portal);
 	replacement.baseurl = session.baseurl;
-	replacement.lang = session.lang;
+	replacement.setLanguage(session.lang);
 	replacement.langs = [...session.langs];
 	replacement.tz = session.tz;
 	if (preserveIdentity) {

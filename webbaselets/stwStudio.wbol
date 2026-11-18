@@ -168,4 +168,8 @@
 			</children>
 		</page>
 	</children>
+	<visibility>
+		<role id="leaddeveloper" visibility="true" />
+		<role id="developer" visibility="true" />
+	</visibility>
 </webbaselet>

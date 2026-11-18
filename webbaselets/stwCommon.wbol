@@ -36,10 +36,14 @@
 			<name>
 				<text xml:lang="en" slug="edit-content"><![CDATA[Edit Content]]></text>
 			</name>
-			<query connector="wbol"><![CDATA[/@uuid]]></query>
+			<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')h('uuid;@@uuid')l('Name')e(';name;@@name')\rl('Slug')e(';slug;@@slug')\rl('Type')D('type;@@type;1;Text;Table;Tree;List;Form;Calendar;Graph;Map;Plot')\rl('Section')e(';section;@@section')l('Sequence')e(';sequence;@@sequence')\a('type="number"')\rl('CSS class')e(';cssClass;@@cssClass')\rl('Connector')e(';connector;@@connector')\rl('Query')m(';query;@@query')\rl('Parameters')e(';params;@@params')\rl('Layout')m(';layout;@@layout')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')h('uuid;@@uuid')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\nl('Type')D('type;@@type;wbol;/content-types')\nl('Section')e(';section;@@section')l('Sequence')e(';sequence;@@sequence')\a('type="number"')\nl('CSS class')e(';cssClass;@@cssClass')\nl('Connector')e(';connector;@@connector')\nl('Query')m(';query;@@query')\nl('Parameters')e(';params;@@params')\nl('Layout')m(';layout;@@layout')\nb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 			</layout>
+			<visibility>
+				<role id="leaddeveloper" visibility="true" />
+				<role id="developer" visibility="true" />
+			</visibility>
 		</content>
 		<content uuid="c5TokLIuAijfTRXR4HqwejR" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
 			section="stwOpenModal" class="stwForm">
@@ -51,18 +55,29 @@
 				<text xml:lang="en"><![CDATA[\s('caption="Password Recovery"')l('Email')e(';email')\rb(';stwpwdreset')t('Send Reset Link')]]></text>
 			</layout>
 		</content>
-		<content uuid="c2hvVEcjC57XCDxmovj54PD" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-			section="main" class="stwForm">
+		<content uuid="c2hvVEcjC57XCDxmovj54PD" origin="a6T6S55WbZjerBB8QbSCr9y" type="form">
 			<name>
 				<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
 			</name>
 			<query connector="json"><![CDATA[{"usr":"john","pwd":"password"}]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption="Logon"')e(';usr')\a('placeholder="username"')t(' ')w('pwd')\a('placeholder="password"')t(' ')b(';stwlogon;@@usr;@@pwd')t('Logon')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
+				<text xml:lang="en"><![CDATA[\s('caption="Log on"')e(';usr')\a('placeholder="username"')t(' ')w('pwd')\a('placeholder="password"')t(' ')b(';stwlogon;@@usr;@@pwd')t('Logon')\rt('Forgot password? ')a('/stwc/password-recovery')t('click here')]]></text>
 			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
-				<role id="user" visibility="false" />
+				<role id="user" />
+			</visibility>
+		</content>
+		<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form">
+			<name>
+				<text xml:lang="en" slug="log-off"><![CDATA[Log off]]></text>
+			</name>
+			<layout>
+				<text xml:lang="en"><![CDATA[b(';stwlogoff')]]></text>
+			</layout>
+			<visibility>
+				<role id="guest"></role>
+				<role id="user" visibility="true" />
 			</visibility>
 		</content>
 	</children>

@@ -166,8 +166,11 @@ class STWConnectors {
 		if (initializationError) throw initializationError;
 		return { reconnected: true };
 	}
-	static async query(session, connector, query) {
-		return await this.execute(session, { connector, query, params: "" });
+	static async query(session, connector, query, options) {
+		const content = connector === "wbol"
+			? { connector, query: "$", params: query }
+			: { connector, query, params: "" };
+		return await this.execute(session, content, options);
 	}
 	static async command(session, content) {
 		return await this.execute(session, content);
@@ -223,6 +226,7 @@ class STWConnectors {
 		return configuration?.type ?? this.connectorConfigs.get(connector)?.type ?? null;
 	}
 	static async supportsCrud(connector) {
+		if (connector === "wbol") return false;
 		const type = await this.getType(connector);
 		return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
 	}
@@ -318,23 +322,27 @@ class STWConnectors {
 			(query, values) => this.executeBoundCommand(content.connector, query, values)
 		);
 	}
-	static async execute(session, content) {
+	static async execute(session, content, { throwOnError = false } = {}) {
 		if (!content.connector) {
 			return { affectedRows: 0, fields: [], rows: [{}] };
 		}
 		let records = { affectedRows: 0, fields: [], rows: [{}] };
 		try {
-			if (content.connector === "wbol") return await executeWbolConnector(session, content.query, "GET");
-			await this.initialize();
-			const configuration = STWConnectors.connectors.get(content.connector) || {};
+			if (content.connector === "wbol") {
+				return await executeWbolConnector(session, content.params, "GET", {}, content.query);
+			}
 			if (content.connector === "json") {
 				const json = JSON.parse(content.query);
-				records = {
-					affectedRows: 1,
-					fields: json && typeof json === "object" && !Array.isArray(json) ? Object.keys(json) : [],
-					rows: Array.isArray(json) ? json : [json]
+				const rows = Array.isArray(json) ? json : [json];
+				return {
+					affectedRows: rows.length,
+					fields: rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],
+					rows
 				};
-			} else if ("type" in configuration && configuration.type === "api") {
+			}
+			await this.initialize();
+			const configuration = STWConnectors.connectors.get(content.connector) || {};
+			if ("type" in configuration && configuration.type === "api") {
 				records = await fetchAPIData(session, content, configuration);
 			} else if ("type" in configuration && configuration.type === "shell") {
 				const shellConnector = configuration;
@@ -342,6 +350,7 @@ class STWConnectors {
 				const cmdString = WBPL(content.query, session.placeholders).trim();
 				let args = [];
 				if (/\bsudo\b/i.test(cmdString)) {
+					if (throwOnError) throw new TypeError("Forbidden token 'sudo' in shell command");
 					records = {
 						affectedRows: 1,
 						fields: ["error"],
@@ -358,6 +367,9 @@ class STWConnectors {
 				}
 				try {
 					const output = await runCommand(shellName, args);
+					if (throwOnError && output.code !== 0) {
+						throw new Error(output.stderr.trim() || `Shell command exited with code ${output.code}`);
+					}
 					const stdout = output.stdout.trim();
 					const stderr = output.stderr.trim();
 					let rows = [], fields = [];
@@ -390,6 +402,7 @@ class STWConnectors {
 					}
 					records = { affectedRows: rows.length, fields, rows };
 				} catch (e) {
+					if (throwOnError) throw e;
 					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
 					records = { affectedRows: 0, fields: [], rows: [{}] };
 				}
@@ -401,6 +414,7 @@ class STWConnectors {
 					try {
 						records = await this.executeSqlCommand(content.connector, configuration, command);
 					} catch (error) {
+						if (throwOnError) throw error;
 						const message = error instanceof Error ? error.message : String(error);
 						console.warn(`MySQL query failed for connector "${content.connector}": ${message}`);
 						records = { affectedRows: 0, fields: [], rows: [] };
@@ -408,8 +422,9 @@ class STWConnectors {
 				} else {
 					records = await executeSql(configuration, command);
 				}
-			}
+			} else if (throwOnError) throw new TypeError(`Connector "${content.connector}" is not configured`);
 		} catch (error) {
+			if (throwOnError) throw error;
 			console.warn(
 				`Connector error for connector "${content.connector}": ${error instanceof Error ? error.message : String(error)}`
 			);
@@ -685,6 +700,7 @@ async function fetchAPIData(session, content, connector) {
 	const response = await fetch(`${connector.host}?${WBPL(content.params, session.placeholders)}`, {
 		headers: { "Content-Type": connector.contentType || "application/json" }
 	});
+	if (!response.ok) throw new Error(`API query failed with status ${response.status}`);
 	let json = await response.json();
 	json = expr.evaluate(json);
 	if (json instanceof Promise) {
@@ -694,7 +710,7 @@ async function fetchAPIData(session, content, connector) {
 		return new Promise(
 			(resolve) => resolve({
 				affectedRows: json.length,
-				fields: Object.keys(json[0]) || [],
+				fields: json.length && json[0] && typeof json[0] === "object" ? Object.keys(json[0]) : [],
 				rows: Array.isArray(json) ? json : [json]
 			})
 		);
@@ -707,15 +723,22 @@ async function fetchAPIData(session, content, connector) {
 		})
 	);
 }
-async function executeWbolConnector(session, command, method, fields = {}) {
+async function executeWbolConnector(session, command, method, fields = {}, query) {
 	const resource = WBPL(command, session.placeholders);
 	if (typeof resource !== "string" || !resource.startsWith("/") || resource.startsWith("//")) {
 		throw new TypeError("WBOL connector resources must start with a single slash");
 	}
+	let body = fields;
+	if (method === "PATCH" && Object.hasOwn(fields, "uuid")) {
+		const target = new URL(`http://wbol.internal${resource}`).pathname.slice(1);
+		if (fields.uuid !== target) throw new TypeError("Submitted UUID does not match the WBOL resource");
+		body = { ...fields };
+		delete body.uuid;
+	}
 	const request = new Request(`http://wbol.internal/wbol${resource}`, {
 		method,
 		headers: { "Content-Type": "application/json" },
-		...(method === "GET" ? {} : { body: JSON.stringify(fields) })
+		...(method === "GET" ? {} : { body: JSON.stringify(body) })
 	});
 	const { handleWbolApi } = await import("./stwWBOLApi.js");
 	const response = await handleWbolApi(request, session);
@@ -729,7 +752,10 @@ async function executeWbolConnector(session, command, method, fields = {}) {
 	if (!response.ok) {
 		throw new Error(typeof data?.error === "string" ? data.error : `WBOL API request failed with status ${response.status}`);
 	}
-	const rows = Array.isArray(data) ? data : [data];
+	if (query !== undefined) {
+		data = await jsonata(WBPL(query, session.placeholders)).evaluate(data);
+	}
+	const rows = data === undefined ? [] : Array.isArray(data) ? data : [data];
 	return {
 		affectedRows: rows.length,
 		fields: rows[0] && typeof rows[0] === "object" ? Object.keys(rows[0]) : [],

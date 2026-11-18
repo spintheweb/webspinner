@@ -40,10 +40,10 @@ class STWSession {
 		this.name = "Guest";
 		this.loginId = "-3";
 		this.roles = ["guest"];
-		this.lang = "en";
+		this.placeholders = new Map();
+		this.setLanguage("en");
 		this.langs = ["en"];
 		this.tz = "UTC";
-		this.placeholders = new Map();
 		this.setLoginPlaceholders();
 		this.timestamp = Date.now();
 		this.dev = false;
@@ -51,6 +51,11 @@ class STWSession {
 		this.states = new Map();
 		this.sockets = new Map();
 		debugLog(`${(new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
+	}
+
+	setLanguage(language) {
+		this.lang = language;
+		this.placeholders.set("@@stwlanguage", language);
 	}
 
 	/**
@@ -91,6 +96,7 @@ class STWSession {
 			for (const [key, value2] of obj.headers)
 				this.placeholders.set(`@@${key}`, value2);
 			this.setLoginPlaceholders();
+			this.placeholders.set("@@stwlanguage", this.lang);
 		} else if (typeof obj === "string")
 			this.placeholders.set(`@@${obj}`, value);
 		else

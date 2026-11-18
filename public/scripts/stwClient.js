@@ -14,7 +14,9 @@ let stwWS;
 document.addEventListener("submit", async (event) => {
 	const button = event.submitter;
 	const token = button?.dataset.stwActionToken;
+
 	if (!token) return;
+	
 	event.preventDefault();
 	const form = event.target;
 	const action = button.value || "stwsubmit";
@@ -25,6 +27,7 @@ document.addEventListener("submit", async (event) => {
 	const target = button.dataset.stwCurrentUrl === "true"
 		? new URL(window.location.href)
 		: new URL(button.formAction || form.action || window.location.href, window.location.href);
+		
 	try {
 		for (const [key, value] of JSON.parse(button.dataset.stwParams || "[]")) {
 			target.searchParams.set(key, value);
@@ -64,7 +67,10 @@ document.addEventListener("submit", async (event) => {
 			request.body = formData;
 		}
 		const response = await fetch(url, request);
-		if (!response.ok) throw new Error(`Action failed (${response.status})`);
+		if (!response.ok) {
+			const message = await response.text();
+			throw new Error(message || `Action failed (${response.status})`);
+		}
 		window.location.assign(response.url || target.href);
 	} catch (error) {
 		window.alert(error instanceof Error ? error.message : String(error));

@@ -51,7 +51,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			}
 		} else if (data.method === "HEAD") {
 			session.langs = data.options.langs || ["en"];
-			session.lang = STWPortal.instance.langs.includes(data.options.lang) ? data.options.lang : session.langs.find((lang) => STWPortal.instance.langs.includes(lang.substring(0, 2)))?.substring(0, 2) || "en";
+			session.setLanguage(STWPortal.instance.langs.includes(data.options.lang) ? data.options.lang : session.langs.find((lang) => STWPortal.instance.langs.includes(lang.substring(0, 2)))?.substring(0, 2) || "en");
 			session.tz = data.options.tz || "UTC";
 			resourcesToProcess = STWPortal.instance.find(session, data.resource)?.contents(session) || [];
 		}
