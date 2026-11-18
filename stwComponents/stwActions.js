@@ -6,7 +6,11 @@
  * to connectors or copied into action placeholders. Other submitted fields are
  * made available to action commands as both `@field` and `@@field`.
  *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
  * @module stwActions
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWConnectors } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";

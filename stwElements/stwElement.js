@@ -15,7 +15,8 @@
  * @requires ./stwIndex.js
  * @requires ../stwComponents/stwResponse.js
  * @requires ../stwComponents/stwIds.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWFactory } from "../stwComponents/stwFactory.js";
 import { STWIndex } from "./stwIndex.js";

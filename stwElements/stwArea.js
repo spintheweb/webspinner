@@ -13,7 +13,8 @@
  * @requires ./stwElement.js
  * @requires ./stwPortal.js
  * @requires ../stwComponents/stwResponse.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWElement } from "./stwElement.js";

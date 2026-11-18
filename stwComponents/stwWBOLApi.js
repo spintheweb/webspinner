@@ -34,7 +34,8 @@
  * other roles are denied by default.
  *
  * @module stwWBOLAPI
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWFactory } from "./stwFactory.js";
 import { secureResponse } from "./stwResponse.js";

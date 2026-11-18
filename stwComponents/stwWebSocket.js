@@ -13,7 +13,8 @@
  * @requires ../stwElements/stwContent.js
  * @requires ./stwSession.js
  * @requires ./stwIds.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWPage } from "../stwElements/stwPage.js";

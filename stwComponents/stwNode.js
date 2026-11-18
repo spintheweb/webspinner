@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Provides Node.js filesystem, process, cookie, and static-file utilities.
+ *
+ * Implements safe static file serving within the public root, cookie parsing
+ * and serialization, and child-process command execution with timeouts.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwNode
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, extname } from "node:path";
 import { spawn } from "node:child_process";

@@ -8,7 +8,8 @@
  * @version 1.0.0
  * @module stwShellScript
  * @requires node:path
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWContent } from "../stwElements/stwContent.js";
 import * as path from "node:path";

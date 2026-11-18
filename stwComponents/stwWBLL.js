@@ -6,7 +6,8 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwWBLL
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { WBPL } from "./stwWBPL.js";
 import { signAction } from "./stwActionToken.js";

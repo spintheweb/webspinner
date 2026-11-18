@@ -1,12 +1,14 @@
 /**
- * Spin the Web client
+ * @fileoverview Spin the Web browser client runtime.
  *
- * This file runs in web browser and is responsible for real time communication
- * with the web spinner through web sockets.
+ * Runs in the browser to handle signed server-action submissions and real-time
+ * communication with Webspinner over WebSockets.
  *
- * Language: Javascript
- *
- * GNU GPLv3 License. Copyright (c) 2024-2025 Giancarlo Trevisan
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwClient
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 
 let stwWS;

@@ -8,7 +8,11 @@
  * values. The timeout method refreshes the session's inactivity timer using the
  * configured TIMEOUT in minutes (15 minutes by default).
  *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
  * @module stwSession
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { getCookies } from "./stwNode.js";
 import { debugLog, envGet } from "./stwConfig.js";

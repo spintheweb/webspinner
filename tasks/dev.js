@@ -1,7 +1,15 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Build/development task: dev
-// Runs all development tasks in parallel (e.g., CSS watcher, etc.)
-// Usage: node tasks/dev.js
+/**
+ * @fileoverview Starts local development tasks for Webspinner.
+ *
+ * Launches file watchers and development helpers such as CSS merging.
+ * Usage: `node tasks/dev.js`
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tasks/dev
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 // Import the merge-css watcher as a promise
 import "./merge-css.js";
 // You can import or spawn other tasks here as needed

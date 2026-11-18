@@ -13,7 +13,11 @@
  * The ALLOW_DEV and ALLOW_ROOT settings may remove the corresponding roles from
  * an otherwise valid authenticated session.
  *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
  * @module stwSecurity
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { envGet } from "./stwConfig.js";
 import { dirname } from "node:path";

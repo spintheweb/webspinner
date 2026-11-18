@@ -4,11 +4,12 @@
  * Converts UUID strings to compact base62 identifiers and generates new
  * identifiers from cryptographically random UUID values.
  *
- * @author Giancarlo
+ * @author Giancarlo Trevisan
  * @version 1.0.0
  * @module stwIds
  * @requires crypto.randomUUID
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 function newId() {

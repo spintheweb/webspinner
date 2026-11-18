@@ -16,7 +16,8 @@
  * @requires ./stwArea.js
  * @requires ./stwElement.js
  * @requires ./stwIndex.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWArea } from "./stwArea.js";
 import { STWElement } from "./stwElement.js";

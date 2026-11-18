@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Handles incoming HTTP requests for the Webspinner runtime.
+ *
+ * Routes WBOL API requests, static files, portal elements, and signed server
+ * actions, enforcing session state and RBV visibility rules.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwHttpHandler
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { getCookies, serveFile, setCookie } from "./stwNode.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";

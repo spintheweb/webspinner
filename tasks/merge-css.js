@@ -1,9 +1,16 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Build/development task: merge-css
+/**
+ * @fileoverview Watches, merges, and minifies Webspinner stylesheets into `stwStyle.css`.
+ *
+ * Usage: `node tasks/merge-css.js`
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tasks/merge-css
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { watch } from "node:fs";
-// Watches stwStyles, merges and minifies all .css files into stwStyle.css on change
-// Usage: node tasks/merge-css.js
 const folder = "./stwStyles";
 const output = "./public/styles/stwStyle.css";
 function minifyCSS(css) {

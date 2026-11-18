@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Node.js runtime test suite for Webspinner.
+ *
+ * Verifies session management, WBOL/WBLL/WBPL rendering, action tokens,
+ * RBV security, authentication, and database/API connector behavior.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tests/node-runtime.test
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";

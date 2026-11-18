@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Fallback HTTP server displayed when container configuration is missing.
+ *
+ * Serves `/app/.config-needed.html` on the configured `PORT` and `HOST` when
+ * Webspinner has not yet been configured in a Docker deployment.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module deployment/config-server
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 

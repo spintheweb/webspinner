@@ -8,7 +8,8 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwSpinner
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";

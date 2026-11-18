@@ -9,7 +9,8 @@
  * @version 1.0.0
  * @module stwWBOL
  * @requires @xmldom/xmldom
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { readFileSync } from "node:fs";
 import { DOMParser } from "@xmldom/xmldom";

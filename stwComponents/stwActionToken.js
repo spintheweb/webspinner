@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Signs and verifies per-session HMAC action tokens.
+ *
+ * Generates session-scoped action tokens for server-side actions and verifies
+ * submitted tokens using constant-time comparison.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwActionToken
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const secret = randomBytes(32);

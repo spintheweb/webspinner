@@ -12,7 +12,8 @@
  * @requires ../stwComponents/stwFactory.js
  * @requires ./stwElement.js
  * @requires ./stwContent.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { serveFile } from "../stwComponents/stwNode.js";
 import { registerElement } from "../stwComponents/stwFactory.js";

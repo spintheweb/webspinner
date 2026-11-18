@@ -1,28 +1,19 @@
-/*
- * tasks/release.js
+/**
+ * @fileoverview Builds and optionally publishes Webspinner release artifacts.
  *
- * Builds the release artifacts for Webspinner, updates the package version when needed,
- * and optionally publishes the result to Docker and GitHub.
- *
- * What it does:
- *   - reads the current app version from package.json and keeps package-lock.json aligned
- *   - optionally bumps the patch version unless --no-bump or --dry-run is used
- *   - rebuilds the server installer from deployment/build-server.sh
- *   - copies deployment/docker.sh into the release folder when present
- *   - writes SHA256 checksums for generated installer files
- *   - optionally builds and pushes Docker images tagged as latest, vX.Y.Z, and sanitized semver
- *   - optionally creates or updates a git tag and pushes it
- *   - optionally creates or updates a GitHub release with release notes and attached assets
- *   - cleans up the generated release folder unless --keep-artifacts is used
+ * Reads and updates package versions, builds server installers and SHA256
+ * checksums, and optionally builds/pushes Docker images, git tags, and
+ * GitHub releases.
  *
  * Usage:
  *   node tasks/release.js [options]
  *
- * Simplest usage (no options):
- *   node tasks/release.js
- *   This automatically bumps the patch version, builds the installer and checksums,
- *   then removes deployment/release. It does not publish to GitHub or Docker.
- *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tasks/release
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
  * Common options:
  *   --version vX.Y.Z     Set the release version explicitly (without the v prefix also works)
  *   --publish            Run Docker + Git + GitHub publishing steps

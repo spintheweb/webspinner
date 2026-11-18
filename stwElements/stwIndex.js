@@ -7,7 +7,8 @@
  * @author Giancarlo
  * @version 1.0.0
  * @module stwIndex
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 const STWIndex = new Map();
 export {

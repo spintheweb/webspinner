@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Loads environment configuration and runtime flags for Webspinner.
+ *
+ * Reads `.env` or `.env.docker`, provides environment getters/setters, and
+ * exposes Docker, debugger, and debug logging helpers.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwConfig
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { loadEnvFile } from "node:process";
 import { existsSync } from "node:fs";
 import { url as inspectorUrl } from "node:inspector";

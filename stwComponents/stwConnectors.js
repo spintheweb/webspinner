@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Manages database, API, shell, and built-in WBOL connectors.
+ *
+ * Initializes configured connectors, executes queries and CRUD actions across
+ * supported backends (MySQL, PostgreSQL, SQL Server, MongoDB, REST, shell,
+ * and in-process WBOL), and supports dynamic connector configuration reloads.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module stwConnectors
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { WBPL } from "./stwWBPL.js";
 import { envGet } from "./stwConfig.js";
 import { dirname } from "node:path";

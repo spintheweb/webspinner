@@ -1,17 +1,20 @@
-/*
- * Build the Webspinner Docker image locally without pushing it to a registry.
+/**
+ * @fileoverview Builds the Webspinner Docker image locally without pushing to a registry.
  *
  * Usage:
  *   npm run dockerize
  *   npm run dockerize -- --tag spintheweb/webspinner:dev
  *
- * The default image name matches docker-compose.yml. After building, start it with:
- *   docker compose up -d --no-build
- *
  * Options:
  *   --tag <image:tag>       Override the image name/tag
  *   --node-version <major>  Set the Node.js base image version (default: 26)
  *   --no-cache              Build without using Docker's build cache
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tasks/dockerize
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { runCommand } from "../stwComponents/stwNode.js";
 

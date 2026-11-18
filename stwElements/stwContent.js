@@ -14,7 +14,8 @@
  * @requires ../stwComponents/stwWBLL.js
  * @requires ../stwComponents/stwWBPL.js
  * @requires ../stwComponents/stwResponse.js
- * @license GPL-3.0-or-later
+ * @note Copilot-assisted
+ * @license Apache-2.0
  */
 import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { assertSlugAllowed, STWElement } from "./stwElement.js";

@@ -1,5 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Build/development task: minify
+/**
+ * @fileoverview Minifies the browser client script into `stwClient.min.js`.
+ *
+ * Uses esbuild to bundle/minify `./public/scripts/stwClient.js`.
+ *
+ * @author Giancarlo Trevisan
+ * @version 1.0.0
+ * @module tasks/minify
+ * @note Copilot-assisted
+ * @license Apache-2.0
+ */
 import { readFile, writeFile } from "node:fs/promises";
 import { transform } from "esbuild";
 const inputJs = await readFile("./public/scripts/stwClient.js", "utf8");
