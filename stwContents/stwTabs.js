@@ -34,7 +34,7 @@ class STWTabs extends STWContent {
 		const search = new URL(request.url).search;
 		let body = "<div>", id = "", href = "";
 		for (const option of this.options) {
-			if (option.name.get(session.lang) === "-")
+			if ((option.ref || "-") === "-")
 				body += `<dt style="flex-grow: 1;"></dt>`;
 			else {
 				const element = session.portal.find(session, option.ref || "");

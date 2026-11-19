@@ -19,10 +19,11 @@
  * @note Copilot-assisted
  * @license Apache-2.0
  */
-import { envGet } from "./stwConfig.js";
+import { envGet, envPath } from "./stwConfig.js";
 import { dirname } from "node:path";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { parseEnv } from "node:util";
 import { isNotFoundError } from "./stwNode.js";
 import { STWElement } from "../stwElements/stwElement.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
@@ -37,6 +38,44 @@ const roleImplications = new Map([
 ]);
 const developmentRoles = new Set(["developer", "leaddeveloper", "seo"]);
 const guestLogin = { user: "guest", name: "Guest", id: "-3" };
+let configurationUpdate = Promise.resolve();
+
+function encodeEnvValue(name, value) {
+	for (const encoded of [value, `'${value}'`, `"${value}"`]) {
+		const parsed = parseEnv(`${name}=${encoded}`);
+		if (Object.keys(parsed).length === 1 && parsed[name] === value) return encoded;
+	}
+	throw new TypeError(`Value for ${name} cannot be represented in an environment file`);
+}
+
+async function updateConfiguration(patch) {
+	for (const [name, value] of Object.entries(patch)) {
+		if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || typeof value !== "string") {
+			throw new TypeError("Configuration must contain valid environment names and string values");
+		}
+	}
+	const contents = await STWSecurity.readOptionalFile(envPath) ?? "";
+	const previous = parseEnv(contents);
+	const remaining = new Set(Object.keys(patch));
+	const assignment = /^([ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_]*)[ \t]*=[ \t]*)(?:"[^"]*"|'[^']*'|[^#\r\n]*)([ \t]*(?:#[^\r\n]*)?)/gm;
+	let updated = contents.replace(assignment, (match, prefix, name, suffix) => {
+		if (!Object.hasOwn(patch, name)) return match;
+		remaining.delete(name);
+		return `${prefix}${encodeEnvValue(name, patch[name])}${suffix}`;
+	});
+	const newline = contents.includes("\r\n") ? "\r\n" : "\n";
+	for (const name of remaining) {
+		if (updated && !updated.endsWith("\n")) updated += newline;
+		updated += `${name}=${encodeEnvValue(name, patch[name])}${newline}`;
+	}
+	const expected = { ...previous, ...patch };
+	const actual = parseEnv(updated);
+	if (Object.keys(actual).length !== Object.keys(expected).length ||
+		Object.entries(expected).some(([name, value]) => actual[name] !== value)) {
+		throw new TypeError("Configuration file could not be safely updated");
+	}
+	await writeFile(envPath, updated, { mode: 0o600 });
+}
 
 /**
  * Resolves all roles implied by direct role assignments.
@@ -112,13 +151,38 @@ function readBooleanSetting(name) {
 }
 const STWSecurity = new class {
 	/**
+	 * Reads the active environment file, not the current process environment.
+	 *
+	 * @returns {Promise<Record<string, string>>} Persisted settings.
+	 */
+	async readConfiguration() {
+		await configurationUpdate;
+		return parseEnv(await this.readOptionalFile(envPath) ?? "");
+	}
+
+	/**
+	 * Persists environment settings without changing the running process.
+	 *
+	 * @param {Record<string, string>} patch Settings to update.
+	 * @returns {Promise<void>}
+	 */
+	async updateConfiguration(patch) {
+		const update = configurationUpdate.then(() => updateConfiguration(patch));
+		// Keep later updates available while returning this failure to its caller.
+		configurationUpdate = update.catch(() => {});
+		return update;
+	}
+
+	/**
 	 * Lists users without their password verifiers.
 	 *
 	 * @returns {Promise<Array<{user: string, name: string, roles: string, email: string}>>}
 	 * Public user records.
 	 */
 	async listUsers() {
-		return (await this.readUsers()).map(({ user, name, roles, email }) => ({ user, name, roles, email }));
+		return (await this.readUsers())
+			.filter(({ user }) => user !== "guest" && user !== "root")
+			.map(({ user, name, roles, email }) => ({ user, name, roles, email }));
 	}
 
 	/**
@@ -130,16 +194,9 @@ const STWSecurity = new class {
 	 * @param {string[]} roles Assigned role names.
 	 * @param {string} email Email address.
 	 * @returns {Promise<void>}
-	 * @throws {TypeError} If the login name is invalid or reserved.
 	 * @throws {Error} If the login name already exists.
 	 */
 	async createUser(user, name, password, roles, email) {
-		if (user === "guest" || user === "root") throw new TypeError("User name is reserved");
-		const usernamePattern = /^[A-Za-z0-9_.]{4,}$/;
-		const emailPattern = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
-		if (typeof user !== "string" || /\s/.test(user) || (!usernamePattern.test(user) && !emailPattern.test(user))) {
-			throw new TypeError("User name must be at least four letters, digits, underscores or dots, or an email address");
-		}
 		const users = await this.readUsers();
 		if (users.some((person) => person.user === user)) throw new Error("User already exists");
 		users.push({ user, name, password: await this.hashPassword(password), roles: roles.join(","), email });

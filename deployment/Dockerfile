@@ -31,6 +31,7 @@ ENV HOST=0.0.0.0
 ENV PORT=8080
 ENV ALLOW_DEV=false
 ENV ALLOW_ROOT=false
+ENV ALLOW_AI=false
 ENV SPINNER_ENV=docker
 
 ENTRYPOINT ["/app/deployment/entrypoint.sh"]

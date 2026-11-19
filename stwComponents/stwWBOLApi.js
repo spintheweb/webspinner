@@ -26,6 +26,8 @@
  * requires `root` or `leaddeveloper`. These routes are checked separately
  * from development access. POST /wbol/connectors/reconnect reconnects all
  * configured connectors.
+ * GET/PATCH /wbol/configuration reads or updates the active environment file
+ * and requires the `root` role. Changes take effect after restart.
  * Request bodies are limited to 2 MiB.
  *
  * Developer routes enforce effective Developer-role visibility; SEO metadata
@@ -600,15 +602,15 @@ function jsonResponse(body, status = 200, headers) {
 const connectorTypes = new Set(["api", "mysql", "postgres", "mssql", "mongodb", "shell"]);
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId, action] = segments;
-	if (!["users", "roles", "connectors"].includes(resource || "")) return null;
+	if (!["users", "roles", "connectors", "configuration"].includes(resource || "")) return null;
 	const isRoot = session.roles.includes("root");
 	const isAdmin = session.roles.includes("administrator");
 	const isLeadDeveloper = session.roles.includes("leaddeveloper");
 	const isLeadRoleRoute = resource === "users" && segments.length === 3 &&
 		["developer", "seo"].includes(action);
-	const authorized = resource === "connectors"
-		? isRoot || isLeadDeveloper
-		: isLeadRoleRoute
+	const authorized = resource === "configuration"
+		? isRoot
+		: resource === "connectors" || isLeadRoleRoute
 			? isRoot || isLeadDeveloper
 			: isRoot || isAdmin;
 	if (!authorized) {
@@ -622,6 +624,10 @@ async function handleWbolAdminApi(request, session, segments) {
 	}
 	const method = request.method.toUpperCase();
 	try {
+		if (resource === "configuration") {
+			if (segments.length !== 1) return jsonResponse({ error: "Not found" }, 404);
+			return await configurationRoute(request, method);
+		}
 		if (resource === "users" && segments.length === 3 && ["developer", "seo"].includes(action)) {
 			return await userRoleRoute(request, method, id, action);
 		}
@@ -650,6 +656,30 @@ async function handleWbolAdminApi(request, session, segments) {
 		console.error(`WBOL ${resource} API request failed:`, error);
 		return jsonResponse({ error: "Internal server error" }, 500);
 	}
+}
+async function configurationRoute(request, method) {
+	if (method === "GET") {
+		const configuration = await STWSecurity.readConfiguration();
+		const fields = new URL(request.url).searchParams.get("fields");
+		if (fields !== null) {
+			const names = fields.split(",");
+			if (names.some((name) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) {
+				throw new TypeError("Invalid configuration field name");
+			}
+			const selected = Object.fromEntries(names.map((name) => [
+				name, Object.hasOwn(configuration, name) ? configuration[name] : ""
+			]));
+			return jsonResponse(selected, 200, { "Cache-Control": "no-store" });
+		}
+		return jsonResponse(configuration, 200, { "Cache-Control": "no-store" });
+	}
+	if (method === "PATCH") {
+		const body = await readAdminJson(request);
+		if (!isRecord(body) || !Object.keys(body).length) throw new TypeError("Expected configuration settings");
+		await STWSecurity.updateConfiguration(body);
+		return jsonResponse({ updated: true }, 200, { "Cache-Control": "no-store" });
+	}
+	return methodNotAllowed("GET, PATCH");
 }
 async function usersRoute(request, method, id, session) {
 	if (method === "GET" && !id) return jsonResponse(await STWSecurity.listUsers());

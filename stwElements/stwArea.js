@@ -24,18 +24,21 @@ import { secureResponse } from "../stwComponents/stwResponse.js";
 class STWArea extends STWElement {
 	mainpage;
 	version;
+	inheritContents;
 
 	constructor(area) {
 		super(area);
 		this.mainpage = area.mainpage;
 		this.version = area.version || `v1.0.0 ${(new Date()).toISOString()}`;
+		this.inheritContents = area.inheritContents !== false && area.inheritContents !== "false";
 	}
 
 	toLocalizedJSON(session) {
 		return {
 			...super.toLocalizedJSON(session),
 			mainpage: this.mainpage,
-			version: this.version
+			version: this.version,
+			inheritContents: this.inheritContents
 		};
 	}
 
@@ -43,6 +46,8 @@ class STWArea extends STWElement {
 		super.update(session, data);
 		this.mainpage = data.mainpage || this.mainpage;
 		this.version = data.version || this.version;
+		if (data.inheritContents !== undefined)
+			this.inheritContents = data.inheritContents !== false && data.inheritContents !== "false";
 	}
 
 	serve(req, session) {

@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerGVamxGi8kA"
-	mainpage="c6TC0s1xSa5NgDIgMyCbIhL" langs="en" version="1.0">
+	mainpage="p7w0adQ8hdI0CUWkSHoOhYj" inheritContents="false" langs="en" version="1.0">
 	<name>
 		<text xml:lang="en" slug="stws"><![CDATA[STW Studio]]></text>
 	</name>
+	<visibility>
+		<role id="developer" visibility="true" />
+		<role id="seo" visibility="true" />
+	</visibility>
 	<children>
 		<page uuid="c6TC0s1xSa5NgDIgMyCbIhL" origin="a6T6S55WbZjerGVamxGi8kA">
 			<name>
@@ -110,7 +114,7 @@
 			</options>
 		</content>
 		<content uuid="c64HscPpcM9pByUEWIVTocq" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwOpenModal" class="stwFormCompact">
+			section="stwOpenModal">
 			<name>
 				<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 			</name>
@@ -119,7 +123,7 @@
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="stwOpenModal" class="stwFormCompact">
+			section="stwOpenModal">
 			<name>
 				<text xml:lang="en" slug="settings"><![CDATA[Settings]]></text>
 			</name>
@@ -129,11 +133,17 @@
 		</content>
 		<page uuid="p7w0adQ8hdI0CUWkSHoOhYj" origin="a6T6S55WbZjerGVamxGi8kA">
 			<name>
-				<text xml:lang="en" slug="interface"><![CDATA[Interface]]></text>
+				<text xml:lang="en" slug="interface"><![CDATA[<i class="fa-solid fa-fw fa-book-open"></i>]]></text>
 			</name>
+			<visibility>
+				<role id="developer" visibility="true" />
+				<role id="seo" visibility="true" />
+				<role id="guest" />
+				<role id="user" />
+			</visibility>
 			<children>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzX" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
-					section="stwSidebar" sequence="2">
+					section="leftPanel" sequence="2">
 					<name>
 						<text xml:lang="en" slug="activities"><![CDATA[activities]]></text>
 					</name>
@@ -153,11 +163,46 @@
 						<option ref="c7K3dAiAsstAccrd0000001">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sparkles" aria-label="AI Assistant"></i>]]></text>
 						</option>
-						<option ref="-"></option>
+						<option></option>
 						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-gear" aria-label="Settings"></i>]]></text>
 						</option>
 					</options>
+				</content>
+				<content uuid="c7K3dAiStudioWorkspace1" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
+					section="main" sequence="1">
+					<name>
+						<text xml:lang="en" slug="workspace"><![CDATA[Workspace]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('mode="horizontal"')]]></text>
+					</layout>
+					<options>
+						<option ref="c7K3dAiStudioPreview1">
+							<text xml:lang="en"><![CDATA[Portal]]></text>
+						</option>
+						<option ref="c7K3dAiStudioFiles1">
+							<text xml:lang="en"><![CDATA[Public files]]></text>
+						</option>
+					</options>
+				</content>
+				<content uuid="c7K3dAiStudioPreview1" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
+					class="stwStudioBrowser">
+					<name>
+						<text xml:lang="en" slug="portal-preview"><![CDATA[Portal preview]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[t('<div class="stwStudioBrowserBar"><button type="button" aria-label="Back" onclick="_stwStudioBack()"><i class="fa-light fa-arrow-left"></i></button><button type="button" aria-label="Forward" onclick="_stwStudioForward()"><i class="fa-light fa-arrow-right"></i></button><button type="button" aria-label="Refresh" onclick="_stwStudioRefresh()"><i class="fa-light fa-rotate-right"></i></button>')e('url;stwStudioUrl;')\a('id="stwStudioUrl" data-stw-studio-url aria-label="URL" autocomplete="url" required')t('<button type="submit" aria-label="Go"><i class="fa-light fa-arrow-right-to-bracket"></i></button></div><div id="stwStudioPreviewHost"></div><script>_stwStudioAttachPreview(document.getElementById("stwStudioPreviewHost"));</script>')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7K3dAiStudioFiles1" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
+					<name>
+						<text xml:lang="en" slug="public-files"><![CDATA[Public files]]></text>
+					</name>
+					<query connector="bash"><![CDATA[ls -l ./public]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[]]></text>
+					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCbIhL" origin="a6T6S55WbZjerGVamxGi8kA" type="tree">
 					<name>
@@ -177,7 +222,8 @@
 						<text xml:lang="en"><![CDATA[]]></text>
 					</layout>
 				</content>
-				<content uuid="c7K3dAiAsstAsk000000002" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwFormCompact">
+				<content uuid="c7K3dAiAsstAsk000000002" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
+					class="stwFormCompact">
 					<name>
 						<text xml:lang="en" slug="assistant-ask"><![CDATA[Ask]]></text>
 					</name>
@@ -204,22 +250,16 @@
 						<text xml:lang="en"><![CDATA[\s('nodata="No pending proposal"')l('Field')fl('Current')fl('Proposed')f]]></text>
 					</layout>
 				</content>
-				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form" section="main">
+				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
+					section="main">
 					<name>
-						<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
+						<text xml:lang="en" slug="portal"><![CDATA[Portal]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Logon"')l('Username')e(';usr')t(' ')l('Password')w('pwd')b(';stwlogon;@@usr;@@pwd')]]></text>
+						<text xml:lang="en"><![CDATA[t('<i class="fa-solid fa-fw fa-arrow-left"></i> <i class="fa-solid fa-fw fa-arrow-right"></i> <i class="fa-solid fa-rotate-right"></i> <i class="fa-regular fa-fw fa-house"></i> ')e(';url;@rul')\a('onchange="alert()" style="width:100%"')\nO('@url')]]></text>
 					</layout>
-					<visibility>
-						<role id="guest" visibility="true"></role>
-					</visibility>
 				</content>
 			</children>
 		</page>
 	</children>
-	<visibility>
-		<role id="leaddeveloper" visibility="true" />
-		<role id="developer" visibility="true" />
-	</visibility>
 </webbaselet>

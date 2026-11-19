@@ -37,8 +37,9 @@ class STWPage extends STWElement {
 	}
 
 	/**
-    * Given a page, determine all the visible contents: these are not only its children, but also 
-    * contents that are direct children of the parents areas up to the portal.
+    * Given a page, determine all visible contents from the page and its ancestors.
+    * An area with inheritContents=false includes its own direct contents but stops
+    * content collection before its parent.
     * 
     * @param session The current session
     * @returns String array of contents ids
@@ -51,8 +52,9 @@ class STWPage extends STWElement {
 		return contents;
 		function climb(element, contents2, recurse2) {
 			if (element) {
-				element.children.filter((content) => content.section && content.isVisible(session) & 1).map((content) => contents2.push(content.uuid));
-				climb(element.parent, contents2, recurse2);
+				element.children.filter((content) => content.section && !/(stwOpenModal|stwOpen)/.test(content.section) && content.isVisible(session) & 1).map((content) => contents2.push(content.uuid));
+				if (element.inheritContents !== false)
+					climb(element.parent, contents2, recurse2);
 			}
 		}
 	}
@@ -64,11 +66,14 @@ class STWPage extends STWElement {
     * @param session The current session
     * @returns - A response for the request
     */
-	serve(req, session) {
+	async serve(req, session) {
 		if (!(this.isVisible(session) & 1))
 			return secureResponse(null, { status: 302, headers: { Location: "/" } });
 		debugLog(`${(new Date()).toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
-		return serveFile(req, `./public/${this.template}`);
+		const response = await serveFile(req, `./public/${this.template}`);
+		if (/^\/stws(?:\/|$)/.test(this.pathname(session)))
+			response.headers.append("Content-Security-Policy", "frame-ancestors 'none'");
+		return response;
 	}
 
 	update(session, data) {

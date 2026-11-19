@@ -79,7 +79,7 @@ class STWMenus extends STWContent {
 				href += `${href.includes("?") ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`;
 			}
 
-			const name = WBPL(option?.name.get(session.lang) || element?.localize(session, "name") || href, placeholders);
+			const name = WBPL(option?.name.get(session.lang) || element?.localize(session, "name") || href || "-", placeholders);
 
 			if (name === "-" && settings.has("vertical"))
 				body += "<li><hr></li>";

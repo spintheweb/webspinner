@@ -19,6 +19,13 @@
 	<link href="/styles/style.css" rel="stylesheet">
 	<link href="/styles/stwStyle.css" rel="stylesheet">
 	<script src="/scripts/stwClient.js"></script>
+
+	<script>
+		function toggleSidebar(event) {
+			const sidebar = document.getElementById(event.target.className.indexOf("flip") == -1 ? "leftPanel" : "rightPanel");
+			sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";
+		}
+	</script>
 </head>
 
 <body>

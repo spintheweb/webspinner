@@ -42,16 +42,23 @@ npm start
 
 The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `CERTFILE` and `KEYFILE` in the environment or `.env` file to configure the listener.
 
-Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles.
+Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles. `ALLOW_AI` also defaults to `false`; set it to `true` to enable Studio assistant requests and proposal application.
+
+When Studio is enabled, its controls stay in the top-level page while the live
+portal preview runs in a same-origin iframe. This separates their DOM and styles;
+it is not a security boundary.
+
+Root can read and update the active environment file through `GET /wbol/configuration` and `PATCH /wbol/configuration` (a JSON object of environment names and string values). The configuration page edits `HOST` and `ALLOW_DEV`. Changes require a restart; existing process environment variables take precedence over the file. Docker uses `.env.docker`, which must be persisted separately.
 
 ## Local Studio assistant
 
 The optional Spin the Web Assistant runs separately on the same host and uses a
 local Ollama model. Set a shared random `STW_ASSISTANT_TOKEN` of at least 32
-characters in both services; `STW_ASSISTANT_PORT` defaults to 11435. Enable
-developer access and open Studio to use the AI Assistant tab in the sidebar. The
-assistant UI is ordinary Studio content (see `webbaselets/stwStudio.wbol`) backed by the
-reserved in-process `assistant` connector, so the token never reaches the browser.
+characters in both services; `STW_ASSISTANT_PORT` defaults to 11435. Set
+`ALLOW_AI=true` and enable developer access to use the AI Assistant tab in the
+sidebar. The assistant UI is ordinary Studio content (see
+`webbaselets/stwStudio.wbol`) backed by the reserved in-process `assistant`
+connector, so the token never reaches the browser.
 Enter an element UUID, confirm local context sharing, and send a question or edit request.
 The conversation is stored in the session and shown by the Conversation content.
 Review the Proposed changes content before selecting **Apply proposal**.

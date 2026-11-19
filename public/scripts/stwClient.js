@@ -13,15 +13,23 @@
 
 let stwWS;
 let stwCanStudio = false;
+const stwIsEmbedded = window.self !== window.top;
 
 document.addEventListener("submit", async (event) => {
+	const form = event.target;
+	const studioUrl = form.querySelector("[data-stw-studio-url]");
+	if (studioUrl) {
+		event.preventDefault();
+		_stwStudioNavigate(studioUrl.value);
+		return;
+	}
+
 	const button = event.submitter;
 	const token = button?.dataset.stwActionToken;
 
 	if (!token) return;
-	
+
 	event.preventDefault();
-	const form = event.target;
 	const action = button.value || "stwsubmit";
 	const method = action === "stwsearch" || action === "stwfilter" ? "GET"
 		: action === "stwinsert" ? "PUT"
@@ -100,57 +108,149 @@ function _newId(uuid) {
 	return "x" + out;
 }
 
-const stwTabId = sessionStorage.getItem("stwTabId") || (() => {
+const stwTabIdKey = stwIsEmbedded ? "stwTabId:embedded" : "stwTabId";
+const stwTabId = sessionStorage.getItem(stwTabIdKey) || (() => {
 	const raw = crypto.randomUUID
 		? crypto.randomUUID()
 		: (Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2));
 	const id = _newId(raw);
-	sessionStorage.setItem("stwTabId", id);
+	sessionStorage.setItem(stwTabIdKey, id);
 	return id;
 })();
 
 // --- Studio helpers ---
-function _hasStudioCookie() {
-	return document.cookie.split("; ").some((c) => c.startsWith("stwStudio=1"));
+function _isStudioPage() {
+	return /^\/stws(?:\/|$)/.test(window.location.pathname);
 }
-function _enableStudio() {
-	if (document.getElementById("stwStudio")) return;
-	const stash = document.createElement("div");
-	while (document.body.firstChild) stash.appendChild(document.body.firstChild);
-	document.body.insertAdjacentHTML(
-		"afterbegin",
-		`<div id="stwStudio"><header id="stwMenubar"></header><div><aside id="stwSidebar"></aside><div class="stwSplitter"></div><div id="stwPortal"></div></div><footer id="stwStatusbar"></footer></div>`,
+function _isStudioUrl(url) {
+	return url.origin === window.location.origin && /^\/stws(?:\/|$)/.test(url.pathname);
+}
+function _isStudioPreview() {
+	if (!stwIsEmbedded) return false;
+	try {
+		return window.parent.document.getElementById("stwStudioPreview")?.contentWindow === window;
+	} catch (error) {
+		if (!(error instanceof DOMException && error.name === "SecurityError")) throw error;
+		return false;
+	}
+}
+function _stwOpenContentEditor(uuid) {
+	if (!stwCanStudio || !stwWS || stwWS.readyState !== WebSocket.OPEN) return;
+	stwWS.send(
+		JSON.stringify({
+			method: "PATCH",
+			resource: `/stws/editcontent?uuid=${encodeURIComponent(uuid)}`,
+			options: { placeholder: "" },
+			search: window.location.search
+		}),
 	);
-	while (stash.firstChild) document.getElementById("stwPortal").appendChild(stash.firstChild);
-	if (!document.cookie.includes("stwStudio=")) document.cookie = "stwStudio=1; path=/; max-age=31536000";
-
-	// If WS is open, load studio interface; else defer to onopen
-	if (stwWS && stwWS.readyState === WebSocket.OPEN) {
-		stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
-	} else {
-		// flag for onopen
-		window._stwStudioPending = true;
+}
+function _stwStudioFrame() {
+	return window.stwStudioPreviewFrame?.isConnected
+		? window.stwStudioPreviewFrame
+		: document.getElementById("stwStudioPreview");
+}
+function _stwStudioSyncUrl() {
+	const frame = _stwStudioFrame();
+	const input = document.querySelector("[data-stw-studio-url]");
+	if (!frame) return;
+	try {
+		const url = frame.contentWindow.location.href;
+		frame.dataset.url = url;
+		window.stwStudioPreviewUrl = url;
+		if (input) input.value = url;
+	} catch (error) {
+		if (!(error instanceof DOMException && error.name === "SecurityError")) throw error;
 	}
 }
-
+function _stwStudioAttachPreview(host) {
+	if (!host) return;
+	let frame = _stwStudioFrame();
+	if (!frame) {
+		frame = document.createElement("iframe");
+		frame.id = "stwStudioPreview";
+		frame.title = "Webspinner portal preview";
+		window.stwStudioPreviewUrl ||= new URL("/", window.location.origin).href;
+		frame.src = window.stwStudioPreviewUrl;
+	}
+	window.stwStudioPreviewFrame = frame;
+	host.append(frame);
+	frame.onload = _stwStudioSyncUrl;
+	_stwStudioSyncUrl();
+}
+function _stwStudioNavigate(destination) {
+	const frame = _stwStudioFrame();
+	let url;
+	try {
+		const base = frame?.dataset.url || window.stwStudioPreviewUrl || window.location.href;
+		url = new URL(String(destination || "").trim() || base, base);
+	} catch {
+		return;
+	}
+	if (_isStudioUrl(url)) {
+		window.alert("Studio cannot be opened inside the portal preview.");
+		return;
+	}
+	window.stwStudioPreviewUrl = url.href;
+	if (url.origin !== window.location.origin) {
+		window.location.assign(url.href);
+		return;
+	}
+	if (frame) frame.src = url.href;
+	else window.location.assign(url.href);
+}
+function _stwStudioBack() {
+	const frame = _stwStudioFrame();
+	if (frame?.contentWindow) frame.contentWindow.history.back();
+}
+function _stwStudioForward() {
+	const frame = _stwStudioFrame();
+	if (frame?.contentWindow) frame.contentWindow.history.forward();
+}
+function _stwStudioRefresh() {
+	const frame = _stwStudioFrame();
+	if (frame?.contentWindow) frame.contentWindow.location.reload();
+}
 function _disableStudio() {
-	const stash = document.getElementById("stwPortal");
-	if (stash) {
-		while (stash.firstChild) document.body.appendChild(stash.firstChild);
+	const wasEnabled = _isStudioPage();
+	let destination = window.stwStudioPreviewUrl || window.location.href;
+	const preview = _stwStudioFrame();
+	if (wasEnabled && preview?.contentWindow) {
+		try {
+			const previewUrl = new URL(preview.contentWindow.location.href);
+			if (previewUrl.origin === window.location.origin) destination = previewUrl.href;
+		} catch (error) {
+			if (!(error instanceof DOMException && error.name === "SecurityError")) throw error;
+		}
 	}
-	document.getElementById("stwStudio")?.remove();
-	document.cookie = "stwStudio=; path=/; max-age=0";
+	if (wasEnabled) window.location.assign(destination);
 }
 
-// Toggle studio mode with Alt+F12
+window.addEventListener("message", (event) => {
+	if (event.origin !== window.location.origin || event.source !== _stwStudioFrame()?.contentWindow) return;
+	const message = event.data;
+	if (message?.type === "stwStudio:toggle") {
+		if (stwCanStudio && _isStudioPage()) _disableStudio();
+	} else if (message?.type === "stwStudio:editContent" && typeof message.uuid === "string" &&
+		message.uuid.length > 0 && message.uuid.length <= 128) {
+		_stwOpenContentEditor(message.uuid);
+	} else if (message?.type === "stwStudio:navigate" && typeof message.url === "string") {
+		_stwStudioNavigate(message.url);
+	}
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+	document.body.classList.toggle("stwStudioPage", _isStudioPage());
+});
+
+// Leave studio mode with Alt+F12
 window.addEventListener("keydown", (event) => {
-	if (stwCanStudio && event.altKey && event.key == "F12") {
-		event.preventDefault();
-		if (document.getElementById("stwStudio")) {
-			_disableStudio();
-		} else {
-			_enableStudio();
-		}
+	if (!stwCanStudio || !event.altKey || event.key != "F12" || (!stwIsEmbedded && !_isStudioPage())) return;
+	event.preventDefault();
+	if (stwIsEmbedded) {
+		window.parent.postMessage({ type: "stwStudio:toggle" }, window.location.origin);
+	} else if (_isStudioPage()) {
+		_disableStudio();
 	}
 });
 
@@ -188,17 +288,10 @@ function stwStartWebsocket() {
 
 		if (data.method === "AUTH") {
 			stwCanStudio = data.canStudio === true;
+			if (stwIsEmbedded) return;
 			if (!stwCanStudio) {
-				_disableStudio();
+				if (_isStudioPage()) _disableStudio();
 				return;
-			}
-			if (_hasStudioCookie() && !document.getElementById("stwStudio")) {
-				_enableStudio();
-				return;
-			}
-			if (document.getElementById("stwStudio") || window._stwStudioPending) {
-				window._stwStudioPending = false;
-				stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/interface", options: { recurse: false }, search: window.location.search }));
 			}
 			return;
 		}
@@ -289,21 +382,19 @@ function stwToggleCollapse(event) {
 // Open content properties when studio mode is enabled with Alt+click
 document.addEventListener("click", function (e) {
 	const article = e.target.closest("article[id]");
-	if (document.getElementById("stwStudio") && article && e.altKey) {
+	const inStudio = stwCanStudio && (stwIsEmbedded || _isStudioPage());
+	if (article && e.altKey && inStudio) {
 		e.stopPropagation();
 		e.preventDefault();
-		stwWS.send(
-			JSON.stringify({
-				method: "PATCH",
-				resource: `/stws/editcontent?uuid=${article.id}`,
-				options: { placeholder: "" },
-				search: window.location.search
-			}),
-		);
+		if (stwIsEmbedded) {
+			window.parent.postMessage({ type: "stwStudio:editContent", uuid: article.id }, window.location.origin);
+		} else {
+			_stwOpenContentEditor(article.id);
+		}
 	}
 });
 
-// Global, capture-phase nav handler (works before/after studio reparenting)
+// Global, capture-phase navigation handler
 function _stwHandleNavClick(event) {
 	const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
 	let a = null;
@@ -314,8 +405,26 @@ function _stwHandleNavClick(event) {
 		}
 	}
 	if (!a) return;
-	const href = a.getAttribute("href")?.replace(window.location.origin, "");
-	if (!href || !href.startsWith("/")) return;
+	const href = a.getAttribute("href");
+	if (!href) return;
+	let target;
+	try {
+		target = new URL(a.href, window.location.href);
+	} catch {
+		return;
+	}
+	if (_isStudioPreview() && _isStudioUrl(target)) {
+		event.preventDefault();
+		window.parent.postMessage({ type: "stwStudio:navigate", url: target.href }, window.location.origin);
+		return;
+	}
+	if (stwIsEmbedded && target.origin !== window.location.origin) {
+		event.preventDefault();
+		window.parent.postMessage({ type: "stwStudio:navigate", url: target.href }, window.location.origin);
+		return;
+	}
+	const relativeHref = href.replace(window.location.origin, "");
+	if (!relativeHref.startsWith("/")) return;
 
 	event.preventDefault();
 	window.location.href = a.getAttribute("href");

@@ -15,11 +15,14 @@ import { test } from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { STWElement } from "../stwElements/stwElement.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
+import { STWArea } from "../stwElements/stwArea.js";
+import { STWPage } from "../stwElements/stwPage.js";
 import { STWTabs } from "../stwContents/stwTabs.js";
 import { STWTable } from "../stwContents/stwTable.js";
 import { STWForm } from "../stwContents/stwForm.js";
@@ -38,6 +41,109 @@ import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
 import { executeAssistant } from "../stwComponents/stwAssistant.js";
 import { validateChanges } from "../stwComponents/stwAssistantPersistence.js";
 
+test("studio pages cannot be framed, including when requested by UUID", async () => {
+	const area = new STWArea({ uuid: "a-frame-test", slug: { en: "stws" } });
+	const page = new STWPage({ uuid: "p7w0adQ8hdI0CUWkSHoOhYj", slug: { en: "interface" }, visibility: { developer: true } });
+	area.parent = { pathname: () => "" };
+	page.parent = area;
+	const session = { roles: ["developer"], lang: "en", portal: { mainpage: "" } };
+
+	const response = await page.serve(new Request("http://localhost/p7w0adQ8hdI0CUWkSHoOhYj"), session);
+	assert.equal(response.status, 200);
+	assert.equal(response.headers.get("content-security-policy"), "frame-ancestors 'none'");
+
+	area.slug.set("en", "other");
+	const ordinaryResponse = await page.serve(new Request("http://localhost/other/interface"), session);
+	assert.equal(ordinaryResponse.headers.get("content-security-policy"), null);
+});
+
+test("studio preview blocks studio navigation but permits other destinations", async () => {
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const frame = { isConnected: true, dataset: { url: "http://localhost/home" }, src: "http://localhost/home" };
+	const alerts = [];
+	const navigations = [];
+	const window = {
+		location: { href: "http://localhost/stws", origin: "http://localhost", pathname: "/stws", assign: (url) => navigations.push(url) },
+		stwStudioPreviewFrame: frame,
+		alert: (message) => alerts.push(message),
+		addEventListener() {}
+	};
+	window.self = window;
+	window.top = window;
+	const document = { addEventListener() {}, getElementById: () => frame };
+	const context = { window, document, sessionStorage: { getItem: () => "x1" }, URL, DOMException };
+	runInNewContext(source, context);
+
+	context._stwStudioNavigate("/stws/interface?x=1");
+	context._stwStudioNavigate("/stws");
+	assert.equal(frame.src, "http://localhost/home");
+	assert.equal(window.stwStudioPreviewUrl, undefined);
+	assert.equal(alerts.length, 2);
+	context._stwStudioNavigate("/customers");
+	assert.equal(frame.src, "http://localhost/customers");
+	context._stwStudioNavigate("https://example.com/");
+	assert.deepEqual(navigations, ["https://example.com/"]);
+});
+
+test("studio links in its preview are sent to the parent instead of loading in the iframe", async () => {
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const messages = [];
+	const window = {
+		location: { href: "http://localhost/home", origin: "http://localhost", pathname: "/home" },
+		addEventListener() {}
+	};
+	window.self = window;
+	window.top = {};
+	window.parent = {
+		document: { getElementById: () => ({ contentWindow: window }) },
+		postMessage: (message, origin) => messages.push({ type: message.type, url: message.url, origin })
+	};
+	const context = { window, document: { addEventListener() {} }, sessionStorage: { getItem: () => "x1" }, URL, DOMException };
+	runInNewContext(source, context);
+	const anchor = { href: "http://localhost/stws", getAttribute: () => "/stws" };
+	const node = { nodeType: 1, closest: () => anchor };
+	let prevented = false;
+	context._stwHandleNavClick({ composedPath: () => [node], preventDefault: () => { prevented = true; } });
+	assert.equal(prevented, true);
+	assert.deepEqual(messages, [{ type: "stwStudio:navigate", url: "http://localhost/stws", origin: "http://localhost" }]);
+});
+
+test("area content inheritance can stop before the portal", () => {
+	const portal = new STWPortal({ uuid: "w-area-boundary", langs: ["en"], mainpage: "p-area-boundary", name: { en: "Portal" } });
+	const area = new STWArea({
+		uuid: "a-area-boundary",
+		name: { en: "Studio" },
+		slug: { en: "stws" },
+		mainpage: "p-area-boundary",
+		inheritContents: "false"
+	});
+	const page = new STWPage({
+		uuid: "p-area-boundary",
+		name: { en: "Interface" },
+		slug: { en: "interface" },
+		visibility: { developer: true }
+	});
+	const pageContent = new STWContent({ uuid: "c-page-boundary", subtype: "Text", section: "main", visibility: { developer: true } });
+	const areaContent = new STWContent({ uuid: "c-area-boundary", subtype: "Text", section: "header", visibility: { developer: true } });
+	const portalContent = new STWContent({ uuid: "c-portal-boundary", subtype: "Text", section: "footer", visibility: { developer: true } });
+	const elements = [portal, area, page, pageContent, areaContent, portalContent];
+	try {
+		area.parent = portal;
+		page.parent = area;
+		page.children = [pageContent];
+		area.children = [page, areaContent];
+		portal.children = [area, portalContent];
+		const session = { portal, roles: ["developer"], lang: "en" };
+
+		assert.equal(area.inheritContents, false);
+		assert.deepEqual(page.contents(session), ["c-page-boundary", "c-area-boundary"]);
+		area.inheritContents = true;
+		assert.deepEqual(page.contents(session), ["c-page-boundary", "c-area-boundary", "c-portal-boundary"]);
+	} finally {
+		elements.forEach((element) => STWIndex.delete(element.uuid));
+	}
+});
+
 test("validating a portal proposal does not replace the live portal in the index", () => {
 	const portal = new STWPortal({ uuid: "w-assistant-validation", name: { en: "Old" }, slug: { en: "" } });
 	try {
@@ -46,6 +152,31 @@ test("validating a portal proposal does not replace the live portal in the index
 		assert.equal(portal.name.get("en"), "Old");
 	} finally {
 		STWIndex.delete(portal.uuid);
+	}
+});
+
+test("assistant requests are disabled unless ALLOW_AI=true", async () => {
+	const oldAllowAi = process.env.ALLOW_AI;
+	let requested = false;
+	try {
+		process.env.ALLOW_AI = "false";
+		await assert.rejects(
+			executeAssistant(
+				{ roles: ["developer"], states: new Map() },
+				"/chat",
+				"POST",
+				{ consent: "yes", message: "Question" },
+				async () => {
+					requested = true;
+					return Response.json({ answer: "Unexpected", changes: {} });
+				}
+			),
+			/ALLOW_AI=true/
+		);
+		assert.equal(requested, false);
+	} finally {
+		if (oldAllowAi === undefined) delete process.env.ALLOW_AI;
+		else process.env.ALLOW_AI = oldAllowAi;
 	}
 });
 
@@ -69,6 +200,7 @@ test("assistant reviews and persistently applies authorized changes with conflic
 		process.env.STUDIO_WEBBASE = join(dir, "missing-studio.wbol");
 		process.env.STW_ASSISTANT_TOKEN = "x".repeat(32);
 		process.env.PORTAL_URL = "";
+		process.env.ALLOW_AI = "true";
 		const portal = new STWPortal(WBOL(source));
 		const session = { roles: ["developer"], portal, lang: "en", states: new Map() };
 		const mock = async (url, options) => {
@@ -93,6 +225,10 @@ test("assistant reviews and persistently applies authorized changes with conflic
 		assert.equal(proposal.find((row) => row.field === "name").current, "Old");
 		assert.equal(await readFile(file, "utf8"), source);
 		await assert.rejects(run({ ...session, roles: ["guest"] }, "/apply", "POST"), /Developer access required/);
+		process.env.ALLOW_AI = "false";
+		await assert.rejects(run(session, "/apply", "POST"), /ALLOW_AI=true/);
+		assert.equal(await readFile(file, "utf8"), source);
+		process.env.ALLOW_AI = "true";
 		await run(session, "/apply", "POST");
 		const loaded = WBOL(await readFile(file, "utf8")).children[0];
 		assert.equal(loaded.name.en, "New");
@@ -112,7 +248,7 @@ test("assistant reviews and persistently applies authorized changes with conflic
 	} finally {
 		STWIndex.delete("ctest");
 		STWIndex.delete("wtest");
-		for (const key of ["WEBBASE", "COMMON_WEBBASE", "STUDIO_WEBBASE", "STW_ASSISTANT_TOKEN", "PORTAL_URL"]) {
+		for (const key of ["WEBBASE", "COMMON_WEBBASE", "STUDIO_WEBBASE", "STW_ASSISTANT_TOKEN", "PORTAL_URL", "ALLOW_AI"]) {
 			if (oldEnv[key] === undefined) delete process.env[key];
 			else process.env[key] = oldEnv[key];
 		}

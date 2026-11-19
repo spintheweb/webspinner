@@ -1,5 +1,20 @@
 [
   {
+    "user": "root",
+    "name": "root",
+    "password": "73960ca0c5751dbb15ab486171556b0d:0fa4dbb9bd36dd1f2a3c4c2605da3a7bda2b7fb628b07d88ea78c79101150e6e",
+    "roles": "root",
+    "id": -7,
+    "disabled": false
+  },
+  {
+    "user": "guest",
+    "name": "guest",
+    "roles": "guest",
+    "id": -3,
+    "disabled": false
+  },
+  {
     "user": "admin",
     "name": "Administrator",
     "password": "73960ca0c5751dbb15ab486171556b0d:0fa4dbb9bd36dd1f2a3c4c2605da3a7bda2b7fb628b07d88ea78c79101150e6e",

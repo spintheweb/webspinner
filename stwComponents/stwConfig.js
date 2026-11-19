@@ -37,6 +37,7 @@ const isDebugging = Boolean(inspectorUrl());
 export {
 	debugLog,
 	envGet,
+	envPath,
 	envSet,
 	isDocker,
 	isDebugging
