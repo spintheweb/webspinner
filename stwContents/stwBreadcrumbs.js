@@ -21,7 +21,7 @@ class STWBreadcrumbs extends STWContent {
 	async render(request, session, _records) {
 		let body = "";
 		for (let element = session.portal.find(session, new URL(request.url).pathname); element; element = element.parent)
-			if (element.isVisible(session) && element.pathname(session))
+			if ((element.isVisible(session) & 1) && element.pathname(session))
 				body = `/<a href="${element.pathname(session)}">${element.localize(session, "name")}</a>` + body;
 		return `<nav>${body}</nav>`;
 	}

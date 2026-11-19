@@ -23,7 +23,7 @@ class STWText extends STWContent {
 	}
 
 	async serve(req, session, ref) {
-		if (!ref && !this.isVisible(session)) {
+		if (!(this.isVisible(session) & 1) || (ref && !(ref.isVisible(session) & 1))) {
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
 		}
 		if (ref) {
@@ -47,7 +47,7 @@ class STWText extends STWContent {
 
 	async render(_request, session, records) {
 		let dev = "";
-		if (session.dev && this.isVisible(session, "developer"))
+		if (session.dev && (this.isVisible(session, "developer") & 1))
 			dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i></span>`;
 
 		const layoutValue = this.layout?.get(session.lang);

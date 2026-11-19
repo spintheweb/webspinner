@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <webbaselet xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="a6T6S55WbZjerBB8QbSCr9y"
-	mainpage="p2QRzp9e4jh4XK8EEMPXEMH" langs="en" version="1.0">
+	langs="en" version="1.0">
 	<name>
 		<text xml:lang="en" slug="stwc"><![CDATA[STW Commons]]></text>
 	</name>
@@ -9,6 +9,9 @@
 			<name>
 				<text xml:lang="en" slug="configuration"><![CDATA[Configuration]]></text>
 			</name>
+			<visibility>
+				<role id="root" visibility="true" />
+			</visibility>
 			<children>
 				<content uuid="c2mKzHtKJ9CAWaGfqxW60PS" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
 					section="main" class="stwForm">
@@ -31,22 +34,116 @@
 				</content>
 			</children>
 		</page>
-		<content uuid="c7NwX2qLm8RvJ4kTp6YsD3" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-			section="stwOpen" class="stwForm">
+		<page uuid="p7UserManagement0000001" origin="a6T6S55WbZjerBB8QbSCr9y">
 			<name>
-				<text xml:lang="en" slug="edit-content"><![CDATA[Edit Content]]></text>
+				<text xml:lang="en" slug="users"><![CDATA[Users]]></text>
 			</name>
-			<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
-			<layout>
-				<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')h('uuid;@@uuid')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\nl('Type')D('type;@@type;wbol;/content-types')\nl('Section')e(';section;@@section')l('Sequence')e(';sequence;@@sequence')\a('type="number"')\nl('CSS class')e(';cssClass;@@cssClass')\nl('Connector')e(';connector;@@connector')\nl('Query')m(';query;@@query')\nl('Parameters')e(';params;@@params')\nl('Layout')m(';layout;@@layout')\nb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
-			</layout>
 			<visibility>
-				<role id="leaddeveloper" visibility="true" />
-				<role id="developer" visibility="true" />
+				<role id="administrator" visibility="true" />
+				<role id="guest" />
 			</visibility>
-		</content>
+			<children>
+				<content uuid="c7UserManagementList001" origin="a6T6S55WbZjerBB8QbSCr9y" type="table"
+					section="main">
+					<name>
+						<text xml:lang="en" slug="user-list"><![CDATA[Users]]></text>
+					</name>
+					<query connector="wbol" parameters="/users"><![CDATA[(
+								$users := $;
+								$escape := function($value) {
+									$replace($replace($replace($string($value), "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+								};
+								$map($users, function($item) {
+									{"user": $escape($item.user), "name": $escape($item.name),
+									 "email": $escape($item.email), "roles": $escape($item.roles),
+									 "encodeduser": $encodeUrlComponent($item.user), "recordcount": $count($users)}
+								})
+							)]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fas fa-fw fa-user"></i> Users' nodata="No users found"')l('User')a('/stwc/users/edit')p('manageduser;@@encodeduser')fl('Full Name')fl('Email')fl('Roles')f]]></text>
+					</layout>
+				</content>
+				<content uuid="c7UserManagementDialog1" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
+					section="stwOpenModal">
+					<name>
+						<text xml:lang="en" slug="edit"><![CDATA[Edit User]]></text>
+					</name>
+					<query connector="wbol" parameters="/users"><![CDATA[($selected := "@manageduser"; $filter($, function($item) { $encodeUrlComponent($item.user) = $selected }).{"linkuser": $encodeUrlComponent(user)})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('caption="Edit User"')o('/stwc/users/user-details')p('manageduser;@@linkuser')o('/stwc/users/user-password')p('manageduser;@@linkuser')o('/stwc/users/user-roles')p('manageduser;@@linkuser')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7UserManagementEdit001" origin="a6T6S55WbZjerBB8QbSCr9y" type="form">
+					<name>
+						<text xml:lang="en" slug="user-details"><![CDATA[User Details]]></text>
+					</name>
+					<query connector="wbol" parameters="/users"><![CDATA[($selected := "@manageduser"; $filter($, function($item) { $encodeUrlComponent($item.user) = $selected }).{"user": user, "name": name, "email": email, "roles": roles, "encodeduser": $encodeUrlComponent(user)})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[l('User')e(';user;@@user')\a('disabled')\rl('Name')e(';name;@@name')\rl('Email')e('email;email;@@email')\rb('/stwc/users;stwupdate;wbol;/users/@manageduser')p('manageduser;@@encodeduser')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7UserManagementPass001" origin="a6T6S55WbZjerBB8QbSCr9y" type="form">
+					<name>
+						<text xml:lang="en" slug="user-password"><![CDATA[Password]]></text>
+					</name>
+					<query connector="wbol" parameters="/users"><![CDATA[($selected := "@manageduser"; $filter($, function($item) { $encodeUrlComponent($item.user) = $selected }).{"encodeduser": $encodeUrlComponent(user)})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[l('New password')w('password')\a('required autocomplete="new-password"')\rb('/stwc/users;stwupdate;wbol;/users/@manageduser')p('manageduser;@@encodeduser')t('Change password')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7UserManagementRoles01" origin="a6T6S55WbZjerBB8QbSCr9y" type="table">
+					<name>
+						<text xml:lang="en" slug="user-roles"><![CDATA[Roles]]></text>
+					</name>
+					<query connector="wbol" parameters="/users"><![CDATA[($selected := "@manageduser"; $filter($, function($item) { $encodeUrlComponent($item.user) = $selected }).{"roles": roles, "displayroles": $replace($replace($replace(roles, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "encodeduser": $encodeUrlComponent(user)})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[l('Roles (comma-separated)')e(';roles;@@roles')fb(';stwupdate')\a('type="button" data-user="@@encodeduser" onclick="stwUpdateManagedRoles(this)"')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7UserManagementScript1" origin="a6T6S55WbZjerBB8QbSCr9y" type="text"
+					section="main">
+					<name>
+						<text xml:lang="en" slug="user-management-script"><![CDATA[User Management Script]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[<script name="stwUserManagement">
+const stwUsersUrl = new URL(window.location.href);
+if (stwUsersUrl.searchParams.has("manageduser")) {
+	stwUsersUrl.searchParams.delete("manageduser");
+	history.replaceState(history.state, "", stwUsersUrl);
+}
+document.addEventListener("click", event => {
+	const edit = event.target.closest("#c7UserManagementRoles01 .stwTableEditRow");
+	edit?.closest("tr").querySelector(".stwTableRowActions button[hidden]")?.removeAttribute("hidden");
+});
+async function stwUpdateManagedRoles(button) {
+	const roles = button.closest("tr").querySelector('[name="roles"]').value
+		.split(",").map(role => role.trim()).filter(Boolean);
+	button.disabled = true;
+	try {
+		const response = await fetch("/wbol/users/" + button.dataset.user, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ roles })
+		});
+		if (!response.ok) {
+			const result = await response.json();
+			throw new Error(result.error || "Unable to update roles.");
+		}
+		window.location.reload();
+	} catch (error) {
+		window.alert(error instanceof Error ? error.message : String(error));
+		button.disabled = false;
+	}
+}
+</script>]]></text>
+					</layout>
+				</content>
+			</children>
+		</page>
+		<!-- Password recovery, log in and log out -->
 		<content uuid="c5TokLIuAijfTRXR4HqwejR" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
-			section="stwOpenModal" class="stwForm">
+			section="stwOpenModal">
 			<name>
 				<text xml:lang="en" slug="password-recovery"><![CDATA[Password Recovery]]></text>
 			</name>
@@ -57,7 +154,7 @@
 		</content>
 		<content uuid="c2hvVEcjC57XCDxmovj54PD" origin="a6T6S55WbZjerBB8QbSCr9y" type="form">
 			<name>
-				<text xml:lang="en" slug="logon"><![CDATA[Logon]]></text>
+				<text xml:lang="en" slug="logon"><![CDATA[Log on]]></text>
 			</name>
 			<query connector="json"><![CDATA[{"usr":"john","pwd":"password"}]]></query>
 			<layout>
@@ -76,8 +173,23 @@
 				<text xml:lang="en"><![CDATA[b(';stwlogoff')]]></text>
 			</layout>
 			<visibility>
-				<role id="guest"></role>
+				<role id="guest" />
 				<role id="user" visibility="true" />
+			</visibility>
+		</content>
+		<!-- Belongs in Studio -->
+		<content uuid="c7NwX2qLm8RvJ4kTp6YsD3" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
+			section="stwOpen" class="stwForm">
+			<name>
+				<text xml:lang="en" slug="edit-content"><![CDATA[Edit Content]]></text>
+			</name>
+			<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')h('uuid;@@uuid')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\nl('Type')D('type;@@type;wbol;/content-types')\nl('Section')e(';section;@@section')l('Sequence')e(';sequence;@@sequence')\a('type="number"')\nl('CSS class')e(';cssClass;@@cssClass')\nl('Connector')e(';connector;@@connector')\nl('Query')m(';query;@@query')\nl('Parameters')e(';params;@@params')\nl('Layout')m(';layout;@@layout')\nb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+			</layout>
+			<visibility>
+				<role id="leaddeveloper" visibility="true" />
+				<role id="developer" visibility="true" />
 			</visibility>
 		</content>
 	</children>

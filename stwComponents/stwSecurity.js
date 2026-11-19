@@ -130,9 +130,16 @@ const STWSecurity = new class {
 	 * @param {string[]} roles Assigned role names.
 	 * @param {string} email Email address.
 	 * @returns {Promise<void>}
+	 * @throws {TypeError} If the login name is invalid or reserved.
 	 * @throws {Error} If the login name already exists.
 	 */
 	async createUser(user, name, password, roles, email) {
+		if (user === "guest" || user === "root") throw new TypeError("User name is reserved");
+		const usernamePattern = /^[A-Za-z0-9_.]{4,}$/;
+		const emailPattern = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+		if (typeof user !== "string" || /\s/.test(user) || (!usernamePattern.test(user) && !emailPattern.test(user))) {
+			throw new TypeError("User name must be at least four letters, digits, underscores or dots, or an email address");
+		}
 		const users = await this.readUsers();
 		if (users.some((person) => person.user === user)) throw new Error("User already exists");
 		users.push({ user, name, password: await this.hashPassword(password), roles: roles.join(","), email });

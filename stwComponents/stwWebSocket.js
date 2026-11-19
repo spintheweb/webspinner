@@ -17,6 +17,7 @@
  * @license Apache-2.0
  */
 import { STWPortal } from "../stwElements/stwPortal.js";
+import { STWArea } from "../stwElements/stwArea.js";
 import { STWPage } from "../stwElements/stwPage.js";
 import { newId } from "./stwIds.js";
 import { debugLog } from "./stwConfig.js";
@@ -43,8 +44,19 @@ function handleWebSocket(request, socket, session, stwSessions) {
 		const syntheticRequest = new Request(url2, { headers: request.headers });
 		session.setPlaceholders(syntheticRequest);
 		let resourcesToProcess = [];
+		let element = STWPortal.instance.find(session, data.resource);
+		if (element instanceof STWArea) {
+			if (!(element.isVisible(session) & 1)) {
+				socket.send(JSON.stringify({ method: "REDIRECT", url: "/" }));
+				return;
+			}
+			element = STWPortal.index.get(element.mainpage);
+		}
+		if (element instanceof STWPage && !(element.isVisible(session) & 1)) {
+			socket.send(JSON.stringify({ method: "REDIRECT", url: "/" }));
+			return;
+		}
 		if (data.method === "PATCH") {
-			const element = STWPortal.instance.find(session, data.resource);
 			if (element instanceof STWPage) {
 				resourcesToProcess = element.contents(session, typeof data.options.recurse == "undefined" ? true : data.options.recurse) || [];
 			} else if (element) {
@@ -58,7 +70,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 				method: "AUTH",
 				canStudio: session.roles.some((role) => ["leaddeveloper", "developer", "seo"].includes(role))
 			}));
-			resourcesToProcess = STWPortal.instance.find(session, data.resource)?.contents(session) || [];
+			resourcesToProcess = element instanceof STWPage ? element.contents(session) : [];
 		}
 		if (resourcesToProcess.length === 0) return;
 		const finalData = [];

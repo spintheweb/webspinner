@@ -119,7 +119,7 @@ class STWContent extends STWElement {
 	}
 
 	async serve(request, session, ref) {
-		if (!ref && !this.isVisible(session))
+		if (!(this.isVisible(session) & 1) || (ref && !(ref.isVisible(session) & 1)))
 			return secureResponse(null, { status: 204 });
 		if (ref) {
 			debugLog(
@@ -133,7 +133,7 @@ class STWContent extends STWElement {
 		let settings, HTML, records, dev = "";
 		const layout = this.getLayout(session);
 		try {
-			if (session.dev && this.isVisible(session, "developer"))
+			if (session.dev && (this.isVisible(session, "developer") & 1))
 				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i></span>`;
 
 			records = await STWConnectors.command(session, this);

@@ -11,6 +11,7 @@
  */
 import { WBPL } from "./stwWBPL.js";
 import { signAction } from "./stwActionToken.js";
+import { newId } from "./stwIds.js";
 
 const WBLL = { a, A, b, c, d, D, e, f, h, i, j, k, l, L, m, n, o, O, r, s, S, t, u, v, w, x, y, z, $s, $A, $r, $n, $t, $mc };
 const FLAGS = {
@@ -35,6 +36,7 @@ function escapeAttribute(value) {
 }
 
 class ChoiceQueryError extends Error {}
+class EmbedFetchError extends Error {}
 
 class STWLayout {
 	wbll;
@@ -114,7 +116,8 @@ class STWLayout {
 			Cols: 1,
 			Index: 0,
 			Downgrade: false, // From table to form
-			Mode: FLAGS.stwnone
+			Mode: FLAGS.stwnone,
+			HasEmbeddedContent: false
 		};
 		try {
 			await this.renderer(WBLL, WBPL, runtime);
@@ -155,9 +158,14 @@ class STWLayout {
 			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
 				return { settings: runtime.Settings, HTML: "" };
 
-			return { settings: runtime.Settings, HTML: runtime.HTML };
+			return {
+				settings: runtime.Settings,
+				HTML: runtime.HTML,
+				hasEmbeddedContent: runtime.HasEmbeddedContent,
+				formFields: runtime.FormFields
+			};
 		} catch (_err) {
-			if (_err instanceof ChoiceQueryError) throw _err;
+			if (_err instanceof ChoiceQueryError || _err instanceof EmbedFetchError) throw _err;
 			const index = runtime.Index;
 			throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
 		}
@@ -682,17 +690,22 @@ class ConnectorChoiceSymbol extends ChoiceSymbol {
 }
 class EmbedSymbol extends BaseSymbol {
 	url;
+	relativeUrl;
+	localContent;
 	constructor(args, tagName = "", runtime) {
 		super(args, tagName, runtime);
-		try {
-			this.url = new URL(this.args[0]);
-		} catch {
-			this.url = new URL(this.args[0], `https://${runtime.Session.baseurl}`);
-		}
+		this.relativeUrl = !/^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/.test(this.args[0]);
+		const base = runtime.Session.baseurl ? `https://${runtime.Session.baseurl}` : "http://stw.invalid";
+		this.url = new URL(this.args[0] || ".", base);
+		this.localContent = this.relativeUrl || (runtime.Session.baseurl && this.url.host === new URL(base).host);
 		if (tagName === "embed") {
-			this.attrs.set("src", this.url.toString());
+			this.attrs.set("src", this.urlValue());
 			this.attrs.set("type", "text/html");
 			this.attrs.set("style", "display:block; width: 100%; height: 100%");
+		} else if (this.localContent) {
+			this.tagName = "article";
+			this.attrs.set("id", newId());
+			this.attrs.set("href", this.contentUrl());
 		}
 	}
 	p(args, index, runtime) {
@@ -700,7 +713,8 @@ class EmbedSymbol extends BaseSymbol {
 		args = WBPL(args, runtime.Placeholders);
 		const search = `${args};;`.split(";");
 		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
-		this.attrs.set("src", this.url.toString());
+		if (this.tagName)
+			this.attrs.set(this.tagName === "embed" ? "src" : "href", this.tagName === "embed" ? this.urlValue() : this.contentUrl());
 		return this;
 	}
 	q(args, index, runtime) {
@@ -711,7 +725,8 @@ class EmbedSymbol extends BaseSymbol {
 			const params = new URLSearchParams(qs);
 			for (const [k2, v2] of params.entries())
 				this.url.searchParams.set(k2, v2);
-			this.attrs.set("src", this.url.toString());
+			if (this.tagName)
+				this.attrs.set(this.tagName === "embed" ? "src" : "href", this.tagName === "embed" ? this.urlValue() : this.contentUrl());
 		} catch {
 		}
 		return this;
@@ -719,12 +734,31 @@ class EmbedSymbol extends BaseSymbol {
 	async $() {
 		if (this.runtime.Downgrade)
 			return;
-		if (this.tagName === "embed")
+		if (this.tagName === "article") {
+			const portal = this.runtime.Session.portal;
+			if (portal && !portal.find(this.runtime.Session, this.contentUrl()))
+				throw new EmbedFetchError(`Embedded content not found: ${this.contentUrl()}`);
+			this.runtime.HasEmbeddedContent = true;
 			this.runtime.HTML += super.toString();
-		else {
-			const response = await fetch(this.url);
-			this.runtime.HTML += await response.text();
+		} else if (this.tagName === "embed") {
+			this.runtime.HTML += super.toString();
+		} else {
+			try {
+				const response = await fetch(this.url);
+				if (!response.ok) throw new Error(`HTTP ${response.status}`);
+				this.runtime.HTML += await response.text();
+			} catch (error) {
+				throw new EmbedFetchError(`Embedded content request failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+			}
 		}
+	}
+	urlValue() {
+		return this.relativeUrl ? `${this.url.pathname}${this.url.search}${this.url.hash}` : this.url.toString();
+	}
+	contentUrl() {
+		const pathname = /^[xwapc][0-9a-zA-Z]{21,22}(?:[?#]|$)/i.test(this.args[0])
+			? this.url.pathname.slice(1) : this.url.pathname;
+		return `${pathname}${this.url.search}${this.url.hash}`;
 	}
 }
 class ProgressSymbol extends BaseSymbol {

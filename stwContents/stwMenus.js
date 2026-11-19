@@ -65,7 +65,7 @@ class STWMenus extends STWContent {
 
 			if (element && "mainpage" in element && element.mainpage) {
 				const mainPage = session.portal.find(session, element.mainpage);
-				if (mainPage && mainPage.isVisible(session)) {
+				if (mainPage && (mainPage.isVisible(session) & 1)) {
 					element = mainPage;
 					href = mainPage.pathname(session);
 				} else {
@@ -85,7 +85,7 @@ class STWMenus extends STWContent {
 				body += "<li><hr></li>";
 			else if (name === "-")
 				body += !iteration ? `<li class="stwNotOption" style="flex-grow:1"><li>` : "";
-			else if (!element || element.isVisible(session)) {
+			else if (!element || (element.isVisible(session) & 1)) {
 				if (element instanceof STWContent) {
 					const search = new URL(request.url).search;
 					const contentSearch = parameters ? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}` : search;

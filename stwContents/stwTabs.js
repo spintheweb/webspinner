@@ -38,7 +38,7 @@ class STWTabs extends STWContent {
 				body += `<dt style="flex-grow: 1;"></dt>`;
 			else {
 				const element = session.portal.find(session, option.ref || "");
-				if (element instanceof STWContent && element.isVisible(session)) {
+				if (element instanceof STWContent && (element.isVisible(session) & 1)) {
 					const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
 					const contentSearch = option.parameters ? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}` : search;
 					const contentHref = `${element.uuid}${contentSearch}`;

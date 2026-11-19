@@ -36,6 +36,7 @@
 					</options>
 				</option>
 				<option ref="/sales"></option>
+				<option ref="/stwc/users"></option>
 				<option ref="-"></option>
 				<option ref="https://github.com/spintheweb">
 					<text xml:lang="en"><![CDATA[<i class="fa-brands fa-github"></i>]]></text>

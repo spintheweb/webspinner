@@ -20,7 +20,7 @@ class STWScript extends STWContent {
 	}
 
 	serve(_request, _session) {
-		if (!this.isVisible(_session))
+		if (!(this.isVisible(_session) & 1))
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
 
 		const data = {

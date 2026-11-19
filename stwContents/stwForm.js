@@ -22,14 +22,21 @@ class STWForm extends STWContent {
 		const layout = this.getLayout(session, "l\\tf\\r".repeat(records.fields.length));
 		
 		let body = "";
+		let hasEmbeddedContent = false;
+		let hasFormFields = false;
 		const placeholders = new Map(session.placeholders);
 		for (const row of records.rows) {
 			records.fields.forEach((field) => placeholders.set(`@@${field}`, row[field] || ""));
 			placeholders.set("@@stwOrigin", this.uuid);
-			body += (await layout.render(records.fields, placeholders, session, "", this.uuid)).HTML;
+			const rendered = await layout.render(records.fields, placeholders, session, "", this.uuid);
+			body += rendered.HTML;
+			hasEmbeddedContent ||= rendered.hasEmbeddedContent;
+			hasFormFields ||= rendered.formFields > 0;
 		}
 		if (body === "")
 			return "";
+		if (hasEmbeddedContent && !hasFormFields)
+			return body;
 		return `<form${this.section === "stwOpenModal" ? ` method="dialog"` : ""}>${body}<input type="hidden" name="stwOrigin" value="${this.uuid}"></form>`;
 	}
 }

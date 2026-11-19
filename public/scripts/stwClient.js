@@ -181,6 +181,11 @@ function stwStartWebsocket() {
 		// event.data = { method: "GET" | "PUT" | "PATCH" | "DELETE", id: string, section: string, sequence: number, body: string }
 		const data = JSON.parse(event.data);
 
+		if (data.method === "REDIRECT") {
+			window.location.assign(data.url);
+			return;
+		}
+
 		if (data.method === "AUTH") {
 			stwCanStudio = data.canStudio === true;
 			if (!stwCanStudio) {
@@ -203,16 +208,17 @@ function stwStartWebsocket() {
 			return;
 		}
 
+		if (data.method === "DELETE") {
+			document.getElementById(data.placeholder || data.id)?.remove();
+			return;
+		}
+
 		if (data.placeholder) {
 			const placeholder = document.getElementById(data.placeholder);
 			placeholder?.insertAdjacentHTML("afterend", data.body);
 			placeholder?.remove();
 		} else {
 			// Replace or delete existing element by id first
-			if (data.method === "DELETE") {
-				document.getElementById(data.id)?.remove();
-				return;
-			}
 			if (data.method === "PUT") {
 				const element = document.getElementById(data.id);
 				if (element) {

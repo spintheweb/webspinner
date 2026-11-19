@@ -35,7 +35,8 @@ class STWShortcut extends STWContent {
 
 	serve(_request, _session) {
 		const ref = STWIndex.get(this.ref);
-		if (!(ref instanceof STWContent) || !this.isVisible(_session) || !ref || ref instanceof STWShortcut)
+		if (!(ref instanceof STWContent) || ref instanceof STWShortcut ||
+			!(this.isVisible(_session) & 1) || !(ref.isVisible(_session) & 1))
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
 
 		debugLog(`${(new Date()).toISOString()}: \u251C\u252C ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);

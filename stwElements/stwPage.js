@@ -18,6 +18,7 @@
 import { serveFile } from "../stwComponents/stwNode.js";
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
+import { secureResponse } from "../stwComponents/stwResponse.js";
 import { STWElement } from "./stwElement.js";
 
 class STWPage extends STWElement {
@@ -43,6 +44,7 @@ class STWPage extends STWElement {
     * @returns String array of contents ids
     */
 	contents(session, recurse = true) {
+		if (!(this.isVisible(session) & 1)) return [];
 		const contents = this.children.filter((content) => !/(stwOpenModal|stwOpen)/.test(content.section) && content.isVisible(session) & 1).map((content) => content.uuid);
 		if (recurse)
 			climb(this.parent, contents, recurse);
@@ -63,6 +65,8 @@ class STWPage extends STWElement {
     * @returns - A response for the request
     */
 	serve(req, session) {
+		if (!(this.isVisible(session) & 1))
+			return secureResponse(null, { status: 302, headers: { Location: "/" } });
 		debugLog(`${(new Date()).toISOString()}: ${this.type} (${this.pathname(session)}) [${this.uuid}]`);
 		return serveFile(req, `./public/${this.template}`);
 	}

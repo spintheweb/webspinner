@@ -46,6 +46,8 @@ class STWArea extends STWElement {
 	}
 
 	serve(req, session) {
+		if (!(this.isVisible(session) & 1))
+			return secureResponse(null, { status: 302, headers: { Location: "/" } });
 		const page = STWPortal.index.get(this.mainpage);
 		return page?.serve(req, session) || new Promise((resolve) => {
 			const response = secureResponse(`Area '${this.localize(session, "name")}' main page not found`, { status: 404, statusText: "Not Found" });

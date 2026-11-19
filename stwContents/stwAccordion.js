@@ -40,7 +40,7 @@ class STWAccordion extends STWContent {
 		const search = new URL(_req.url).search;
 		this.options.forEach((option, i) => {
 			const element = session.portal.find(session, option.ref || "");
-			if (element instanceof STWContent && element.isVisible(session)) {
+			if (element instanceof STWContent && (element.isVisible(session) & 1)) {
 				const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
 				const contentSearch = option.parameters ? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}` : search;
 				body += `<dt data-ref="${element.uuid}"><i class="fa-light fa-angle-${i > 0 ? "right" : "down"}"></i>${name}</dt><dd><article id="${newId()}" href="${option.ref}${contentSearch}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
