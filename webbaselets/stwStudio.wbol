@@ -153,6 +153,7 @@
 						<option ref="c7K3dAiAsstAccrd0000001">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sparkles" aria-label="AI Assistant"></i>]]></text>
 						</option>
+						<option ref="-"></option>
 						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-gear" aria-label="Settings"></i>]]></text>
 						</option>

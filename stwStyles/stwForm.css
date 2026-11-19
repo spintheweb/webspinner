@@ -8,7 +8,7 @@
 	font-weight: bolder;
 }
 
-.stwForm input {
+.stwForm input, .stwForm select, .stwForm textarea, .stwForm button {
 	padding: var(--padding);
 	margin: var(--padding) var(--padding) var(--padding) 0;
 }

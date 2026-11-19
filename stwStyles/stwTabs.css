@@ -22,8 +22,10 @@
 	display: inline-block;
 	padding: var(--padding-reduced) calc(2 * var(--padding));
 	cursor: pointer;
-	height: 1.5em;
-	background-color: var(--bg-faint);
+}
+
+.stwTabs dt i.fa-2x {
+	padding: 0.5rem 0;
 }
 
 .stwTabs dt[data-ref]:hover {

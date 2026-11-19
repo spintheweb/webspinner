@@ -20,59 +20,29 @@
 				<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('vertical footer="User: @@stwloginname"')]]></text>
+				<text xml:lang="en"><![CDATA[\s('xvertical')]]></text>
 			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
 				<role id="user" visibility="true" />
 			</visibility>
 			<options>
+				<option ref="/home"></option>
 				<option>
-					<text xml:lang="en"><![CDATA[Animals]]></text>
+					<text xml:lang="en"><![CDATA[Data]]></text>
 					<options>
-						<option ref="/home">
-							<text xml:lang="en"><![CDATA[Dogs]]></text>
-						</option>
-						<option ref="/home">
-							<text xml:lang="en"><![CDATA[Cats]]></text>
-						</option>
-						<option>
-							<text xml:lang="en"><![CDATA[Bears]]></text>
-							<options>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Dogs]]></text>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Cats]]></text>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Bears]]></text>
-								</option>
-								<option ref="-"></option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Orcas]]></text>
-								</option>
-								<option ref="/home">
-									<text xml:lang="en"><![CDATA[Whales]]></text>
-								</option>
-							</options>
-						</option>
-						<option ref="/home">
-							<text xml:lang="en"><![CDATA[Orcas]]></text>
-						</option>
-						<option ref="/home">
-							<text xml:lang="en"><![CDATA[Whales]]></text>
-						</option>
+						<option ref="/sales"></option>
+						<option ref="/customers"></option>
 					</options>
 				</option>
-				<option ref="/sales">
-					<text xml:lang="en"><![CDATA[Sales]]></text>
+				<option ref="/sales"></option>
+				<option ref="-"></option>
+				<option ref="https://github.com/spintheweb">
+					<text xml:lang="en"><![CDATA[<i class="fa-brands fa-github"></i>]]></text>
 				</option>
-				<option ref="/customers">
-					<text xml:lang="en"><![CDATA[Customers]]></text>
+				<option>
+					<text xml:lang="en"><![CDATA[User: @@stwloginname]]></text>
 				</option>
-				<option ref="wGGpiW7IjjrFqapqVuZopW" parameters="txt=@txt"></option>
-				<option ref="https://www.keyvisions.it"></option>
 			</options>
 		</content>
 		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD" type="shortcut"
@@ -232,6 +202,7 @@
 						</option>
 						<option ref="c3YCLoAbUczjbaXTHruz8Yx" parameters="what=3">
 						</option>
+						<option></option>
 						<option ref="c4sHhypzM1UjizY20C0N9LP" parameters="what=3">
 						</option>
 					</options>
@@ -268,22 +239,6 @@
 						<role id="guest" visibility="true" />
 					</visibility>
 				</content>
-				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="rightPanel" sequence="1">
-					<name>
-						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[select * from offices]]></query>
-					<layout>
-						<!--text
-						xml:lang="en"><![CDATA[\s('caption="Offices"
-						key="officeId"')l('City')hel('Tel.')e('tel')b(';stwdelete')t('-')b(';stwinsert')t('+')]]></text-->
-						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
 				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
 					section="leftPanel" sequence="1">
 					<name>
@@ -307,6 +262,22 @@
 				<role id="guest" visibility="true" />
 			</visibility>
 			<children>
+				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+					section="rightPanel" sequence="1">
+					<name>
+						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
+					</name>
+					<query connector="mysqlsample"><![CDATA[select * from offices]]></query>
+					<layout>
+						<!--text
+						xml:lang="en"><![CDATA[\s('caption="Offices"
+						key="officeId"')l('City')hel('Tel.')e('tel')b(';stwdelete')t('-')b(';stwinsert')t('+')]]></text-->
+						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
+					</layout>
+					<visibility>
+						<role id="guest" visibility="true" />
+					</visibility>
+				</content>
 				<content uuid="c3YCLoAbUczj9NNvlOFO081" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
 					sequence="1">
 					<name>

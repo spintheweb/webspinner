@@ -33,7 +33,7 @@
 
 .stwMenus menu li:has(menu)>div {
 	position: relative;
-	padding-right: 2rem;
+	/* padding-right: 2rem; */
 }
 
 .stwMenus menu li:has(menu) .fa-angle-right {
@@ -59,7 +59,7 @@
 }
 
 .stwMenus menu li>div {
-	padding: 0 0.5rem;
+	padding: 0 1rem;
 	line-height: 2rem;
 }
 
@@ -67,6 +67,6 @@
 	display: inherit;
 }
 
-.stwMenus menu li:not(:has(article)):hover {
+.stwMenus menu li:not(.stwNotOption):hover {
 	background-color: var(--special-hover);
 }

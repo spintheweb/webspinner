@@ -13,6 +13,7 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { newId } from "../stwComponents/stwIds.js";
+import { WBPL } from "../stwComponents/stwWBPL.js";
 
 class STWMenus extends STWContent {
 	options = [];
@@ -52,9 +53,9 @@ class STWMenus extends STWContent {
 		const firstRender = await layout.render([], placeholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const settings = firstRender.settings;
 
-		this.options.forEach((option) => subrender(option));
+		this.options.forEach(option => { subrender(option); });
 		if (settings.has("vertical"))
-			return `<nav><menu><li style="width:2rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>`;
+			return `<nav><menu><li style="width:3rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>`;
 		return `<nav><menu>${body}</menu></nav>`;
 
 		function subrender(option, iteration = false) {
@@ -77,21 +78,25 @@ class STWMenus extends STWContent {
 			if (href && parameters) {
 				href += `${href.includes("?") ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`;
 			}
-			
-			const name = option?.name.get(session.lang) || element?.localize(session, "name") || href;
-			if (name === "-") {
-				body += iteration ? "<hr>" : "";
-			} else if (!element || element.isVisible(session)) {
+
+			const name = WBPL(option?.name.get(session.lang) || element?.localize(session, "name") || href, placeholders);
+
+			if (name === "-" && settings.has("vertical"))
+				body += "<li><hr></li>";
+			else if (name === "-")
+				body += !iteration ? `<li class="stwNotOption" style="flex-grow:1"><li>` : "";
+			else if (!element || element.isVisible(session)) {
 				if (element instanceof STWContent) {
 					const search = new URL(request.url).search;
 					const contentSearch = parameters ? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}` : search;
-					body += `<li><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
+					body += `<li class="stwNotOption"><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
 				} else if (option.options?.length) {
-					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name}<i class="fa-light fa-angle-right"></i></div>`;
+					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name} <i class="fa-light fa-angle-${iteration || settings.has("vertical") ? "right": "down"}"></i></div>`;
 					body += "<menu>", option.options.forEach((option2) => subrender(option2, true)), body += "</menu>";
-				} else {
-					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name}</div>`;
-				}
+				} else if (!option.options?.length && href) {
+					body += `<li><div><a href="${href}">${name}</a></div>`;
+				} else
+					body += `<li class="stwNotOption"><div>${name}</div>`;
 				body += "</li>";
 			}
 		}
