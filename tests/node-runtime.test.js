@@ -31,6 +31,8 @@ import { STWText } from "../stwContents/stwText.js";
 import { STWTree } from "../stwContents/stwTree.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { handleWbolApi } from "../stwComponents/stwWBOLApi.js";
+import { registerWebbaselet } from "../stwComponents/stwWebbaselets.js";
+import { applyPersistentChanges, captureRevision } from "../stwComponents/stwAssistantPersistence.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { signAction, verifyAction } from "../stwComponents/stwActionToken.js";
 import { STWActionRouter } from "../stwComponents/stwActions.js";
@@ -403,7 +405,7 @@ test("WebSocket reports studio access only for development roles", async () => {
 	}
 });
 
-test("developer content cogs open the Common editor with the selected content UUID", async () => {
+test("developer content cogs open the Studio editor with the selected content UUID", async () => {
 	const command = STWConnectors.command;
 	STWConnectors.command = async () => ({ fields: [], rows: [{}] });
 	try {
@@ -427,7 +429,7 @@ test("developer content cogs open the Common editor with the selected content UU
 		const response = await content.serve(new Request("http://localhost/"), session);
 		const { body } = await response.json();
 
-		assert.match(body, /resource: "\/stwc\/edit-content"/);
+		assert.match(body, /resource: "\/stws\/edit\/edit-content"/);
 		assert.match(body, /search: \{ uuid: "c4sHhypzNzBJ7LpOv3ROBvX" \}/);
 	} finally {
 		STWConnectors.command = command;
@@ -682,7 +684,7 @@ test("Studio webbase tree maps elements to icons and editor routes", async () =>
 		data.children[0].url,
 		data.children[0].children[0].url,
 		data.children[0].children[0].children[0].url
-	], ["/stws/edit/edit-area", "/stws/edit/edit-page", "/stws/edit-content"]);
+	], ["/stws/edit/edit-area", "/stws/edit/edit-page", "/stws/edit/edit-content"]);
 
 	const tree = new STWTree(definition);
 	const html = await tree.render(null, {
@@ -1260,6 +1262,44 @@ test("authentication resolves role inheritance and filters privileged roles usin
 	}
 });
 
+test("LeadDeveloper and root can edit the portal without changing its visibility", async () => {
+	const portal = new STWPortal({
+		uuid: "portal-lead-edit-test",
+		langs: ["en"],
+		name: { en: "Original" },
+		slug: { en: "original" },
+		mainpage: "original-home"
+	});
+	const request = (roles, method, body) => handleWbolApi(
+		new Request(`http://localhost/wbol/${portal.uuid}`, {
+			method,
+			headers: body === undefined ? {} : { "Content-Type": "application/json" },
+			body: body === undefined ? undefined : JSON.stringify(body)
+		}),
+		{ roles, lang: "en", portal }
+	);
+	try {
+		for (const roles of [["developer"], ["seo"], ["administrator"], ["leaddeveloper"], ["root"]]) {
+			assert.equal((await request(roles, "GET")).status, 403);
+			assert.equal((await request(roles, "PATCH", { name: "Denied" })).status, 403);
+		}
+		for (const roles of [["developer", "leaddeveloper"], ["developer", "root"]]) {
+			assert.equal((await request(roles, "GET")).status, 200);
+			assert.equal((await request(roles, "PATCH", {
+				name: "Updated", slug: "updated", mainpage: "new-home"
+			})).status, 200);
+			assert.equal((await request(roles, "PATCH", { visibility: { developer: true } })).status, 403);
+		}
+		assert.equal(portal.name.get("en"), "Updated");
+		assert.equal(portal.slug.get("en"), "updated");
+		assert.equal(portal.mainpage, "new-home");
+		assert.deepEqual(Object.fromEntries(portal.visibility), { root: true });
+		assert.equal(portal.isVisible({ roles: ["leaddeveloper", "developer"], portal }, "developer") & 1, 0);
+	} finally {
+		STWIndex.delete(portal.uuid);
+	}
+});
+
 test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", async () => {
 	const portalId = `portal-${Date.now()}`;
 	const tabsId = `tabs-${Date.now()}`;
@@ -1305,10 +1345,20 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		assert.equal(response.status, 403, "developer users cannot change RBV");
 		response = await callAs({ roles: ["leaddeveloper"] }, `${tabsId}/visibility`, "PATCH", { seo: true });
 		assert.deepEqual(await response.json(), { developer: true, seo: true });
+		response = await call(tabsId, "PATCH", { visibility: { guest: true } });
+		assert.equal(response.status, 403, "element updates cannot bypass visibility permissions");
+		tabs.visibility.set("root", true);
+		tabs.visibility.set("administrator", false);
+		response = await callAs({ roles: ["leaddeveloper"] }, `${tabsId}/visibility`, "PUT", { developer: true });
+		assert.deepEqual(await response.json(), { developer: true, root: true, administrator: false });
+		tabs.visibility.delete("root");
+		tabs.visibility.delete("administrator");
 		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`);
 		assert.deepEqual(await response.json(), { developer: false, root: true });
 		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PATCH", { root: true });
 		assert.equal(response.status, 403, "LeadDeveloper cannot assign root visibility");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${tabsId}/visibility`, "PATCH", { administrator: true });
+		assert.equal(response.status, 403, "LeadDeveloper cannot assign administrator visibility");
 		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PATCH", { developer: true });
 		assert.equal(response.status, 403, "the portal cannot grant visibility to non-root roles");
 		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/visibility`, "PUT", { developer: false });
@@ -1385,6 +1435,24 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		assert.equal(response.status, 403);
 		response = await call(`${portalId}/roles`, "POST", { role: "developer" });
 		assert.equal(response.status, 403);
+		portal.visibility.set("developer", true);
+		response = await call(`${portalId}/roles`);
+		assert.ok((await response.json()).includes("developer"));
+		response = await call(`${portalId}/roles`, "POST", { role: "blocked" });
+		assert.equal(response.status, 403, "portal route cannot bypass role management permissions");
+		response = await callAs({ roles: ["leaddeveloper"] }, `${portalId}/roles`, "POST", { role: "portal-role" });
+		assert.equal(response.status, 201);
+		response = await call("", "POST", {
+			parentId: portalId,
+			element: { type: "Page", children: [{ type: "Text", visibility: { guest: true } }] }
+		});
+		assert.equal(response.status, 403, "nested element creation cannot bypass visibility permissions");
+		response = await call("", "POST", {
+			parentId: portalId,
+			element: { type: "Page", visibility: { guest: true } }
+		});
+		assert.equal(response.status, 403, "element creation cannot bypass visibility permissions");
+		portal.visibility.delete("developer");
 
 		tabs.visibility.delete("developer");
 		response = await call(`${tabsId}/options`);
@@ -1485,18 +1553,77 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 	}
 });
 
+test("deployed project webbaselets are visible as specified and protected from edits", async () => {
+	const oldDeployed = process.env.DEPLOYED;
+	const portal = new STWPortal({ uuid: "deployed-test-portal", langs: ["en"] });
+	const common = new STWArea({ uuid: "deployed-test-common" });
+	const studio = new STWArea({ uuid: "deployed-test-studio", visibility: { developer: true } });
+	const commonTabs = new STWTabs({ uuid: "deployed-test-tabs", subtype: "Tabs", options: [] });
+	const studioPage = new STWPage({ uuid: "deployed-test-page" });
+	common.parent = portal;
+	studio.parent = portal;
+	commonTabs.parent = common;
+	studioPage.parent = studio;
+	common.children.push(commonTabs);
+	studio.children.push(studioPage);
+	portal.children.push(common, studio);
+	registerWebbaselet(common, "common");
+	registerWebbaselet(studio, "studio");
+	for (const element of [common, studio, commonTabs, studioPage]) STWIndex.set(element.uuid, element);
+	const session = { roles: ["developer", "leaddeveloper"], portal, lang: "en" };
+	const call = (path, method = "GET", body) => handleWbolApi(new Request(`http://localhost/wbol/${path}`, {
+		method,
+		headers: { "Content-Type": "application/json" },
+		body: body === undefined ? undefined : JSON.stringify(body)
+	}), session);
+	try {
+		process.env.DEPLOYED = "true";
+		let tree = await (await call("")).json();
+		assert.ok(tree.children.some((item) => item.uuid === common.uuid && item.children[0].uuid === commonTabs.uuid));
+		assert.equal(tree.children.some((item) => item.uuid === studio.uuid), false);
+		assert.equal((await call(common.uuid)).status, 200);
+		const commonResponse = await call(commonTabs.uuid);
+		assert.equal(commonResponse.status, 200);
+		assert.equal((await commonResponse.json()).readonly, "true");
+		assert.equal((await call(commonTabs.uuid, "PATCH", { name: "Changed" })).status, 403);
+		assert.equal((await call(studioPage.uuid, "DELETE")).status, 403);
+		assert.equal((await call("", "POST", { parentId: common.uuid, element: { type: "Page" } })).status, 403);
+		assert.equal((await call(`${commonTabs.uuid}/visibility`, "PATCH", { user: true })).status, 403);
+		assert.equal((await call(`${commonTabs.uuid}/options`, "PUT", [])).status, 403);
+		assert.throws(() => captureRevision(commonTabs), /read-only/);
+		assert.throws(() => applyPersistentChanges(commonTabs, "en", { name: "Changed" }, {}), /read-only/);
+		commonTabs.visibility.set("test-managed-role", true);
+		assert.equal((await call("roles/test-managed-role", "PATCH", { role: "renamed" })).status, 403);
+		assert.equal((await call("roles/test-managed-role", "DELETE")).status, 403);
+		process.env.DEPLOYED = "false";
+		tree = await (await call("")).json();
+		assert.ok(tree.children.some((item) => item.uuid === studio.uuid && item.children[0].uuid === studioPage.uuid));
+		assert.equal((await (await call(commonTabs.uuid)).json()).readonly, undefined);
+		assert.equal((await call(commonTabs.uuid, "PATCH", { name: "Changed" })).status, 200);
+		assert.equal((await call(studioPage.uuid, "PATCH", { name: "Changed" })).status, 200);
+		delete process.env.DEPLOYED;
+		assert.equal((await call(commonTabs.uuid, "PATCH", { name: "Denied" })).status, 403);
+	} finally {
+		if (oldDeployed === undefined) delete process.env.DEPLOYED;
+		else process.env.DEPLOYED = oldDeployed;
+		for (const element of [portal, common, studio, commonTabs, studioPage]) STWIndex.delete(element.uuid);
+	}
+});
+
 test("role assignments respect administrator, LeadDeveloper, and root boundaries", async () => {
 	const previousRolesPath = process.env.ROLES;
 	const previousUsersPath = process.env.USERS;
 	const directory = await mkdtemp(join(tmpdir(), "webspinner-role-assignment-"));
+	const element = new STWContent({ uuid: `role-test-${Date.now()}`, subtype: "Text" });
+	STWIndex.set(element.uuid, element);
 	try {
 		process.env.ROLES = join(directory, "roles.json");
 		process.env.USERS = join(directory, "users.json");
 		await writeFile(process.env.USERS, "[]");
 
 		const listedRoles = await handleWbolApi(
-			new Request("http://localhost/wbol/roles"),
-			{ roles: ["root"] }
+			new Request("http://localhost/wbol/roles/visibility"),
+			{ roles: ["developer"] }
 		);
 		const roles = await listedRoles.json();
 		for (const role of ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"]) {
@@ -1516,6 +1643,32 @@ test("role assignments respect administrator, LeadDeveloper, and root boundaries
 			}),
 			{ roles }
 		);
+		const managementRoles = await request("roles", "GET", undefined, ["leaddeveloper"]);
+		const customRoles = await managementRoles.json();
+		for (const role of ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"]) {
+			assert.equal(customRoles.includes(role), false, `mandatory role ${role} is hidden in management`);
+		}
+		for (const role of ["administrator", "developer"]) {
+			assert.equal((await request("roles", "GET", undefined, [role])).status, 403);
+			assert.equal((await request("roles", "POST", { role: "blocked" }, [role])).status, 403);
+		}
+		assert.equal((await request("roles/visibility", "GET", undefined, ["guest"])).status, 403);
+		assert.equal((await request("roles", "POST", { role: "editors" }, ["leaddeveloper"])).status, 201);
+		assert.ok((await (await request("roles", "GET", undefined, ["leaddeveloper"])).json()).includes("editors"));
+		assert.ok((await (await request("roles/visibility", "GET", undefined, ["developer"])).json()).includes("editors"));
+		assert.equal((await request("users", "POST", { user: "editor", password: "pass", roles: ["editors"] }, ["administrator"])).status, 201);
+		assert.equal((await request(`${element.uuid}/visibility`, "PATCH", { editors: true }, ["leaddeveloper"])).status, 200);
+		assert.equal((await request("roles/developer", "PATCH", { role: "renamed" }, ["leaddeveloper"])).status, 409);
+		assert.equal((await request("roles/developer", "DELETE", undefined, ["leaddeveloper"])).status, 409);
+		assert.equal((await request("roles/editors", "PATCH", { role: "writers" }, ["leaddeveloper"])).status, 200);
+		assert.equal(element.visibility.get("writers"), true);
+		assert.equal((await STWSecurity.listUsers()).find((user) => user.user === "editor").roles, "writers");
+		assert.equal((await request("roles/writers", "DELETE", undefined, ["leaddeveloper"])).status, 204);
+		assert.equal(element.visibility.has("writers"), false);
+		assert.equal((await STWSecurity.listUsers()).find((user) => user.user === "editor").roles, "");
+		assert.equal((await request("roles", "POST", { role: "root-managed" }, ["root"])).status, 201);
+		assert.equal((await request("roles/root-managed", "DELETE", undefined, ["root"])).status, 204);
+
 		for (const role of ["root", "developer", "leaddeveloper", "seo"]) {
 			const response = await request("users", "POST", { user: `admin-${role}`, password: "pass", roles: [role] }, ["administrator"]);
 			assert.equal(response.status, 403, `administrator cannot assign ${role}`);
@@ -1549,6 +1702,7 @@ test("role assignments respect administrator, LeadDeveloper, and root boundaries
 		const rootSeoRoute = await request("users/developer/seo", "PATCH", { enabled: true }, ["root"]);
 		assert.equal(rootSeoRoute.status, 200);
 	} finally {
+		STWIndex.delete(element.uuid);
 		if (previousRolesPath === undefined) delete process.env.ROLES;
 		else process.env.ROLES = previousRolesPath;
 		if (previousUsersPath === undefined) delete process.env.USERS;
@@ -1557,24 +1711,165 @@ test("role assignments respect administrator, LeadDeveloper, and root boundaries
 	}
 });
 
-test("LeadDeveloper users can manage connector configuration", async () => {
+test("Node connector runs WBPL-expanded queries and actions and reports failures", async () => {
+	const previousConnectorsPath = process.env.CONNECTORS;
+	const previousSecret = process.env.STW_TEST_CONNECTOR_SECRET;
+	const previousDeployed = process.env.DEPLOYED;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-node-connector-"));
+	const connectorsPath = join(directory, "connectors.json");
+	await writeFile(connectorsPath, JSON.stringify([{ id: "node", name: "Node scripts", type: "node", host: process.execPath }]));
+	process.env.CONNECTORS = connectorsPath;
+	process.env.STW_TEST_CONNECTOR_SECRET = "not for the launcher";
+	process.env.DEPLOYED = "true";
+	try {
+		await STWConnectors.resetRuntime();
+		const session = { placeholders: new Map([["@value", "hello"]]) };
+		const query = await STWConnectors.execute(session, {
+			connector: "node",
+			query: 'const value = "@value"; console.log(JSON.stringify([{ value }]))'
+		});
+		assert.deepEqual(query.rows, [{ value: "hello" }]);
+		const action = await STWConnectors.executeAction(session, "node",
+			'const value = "@value"; console.log(JSON.stringify({ value }))', "POST");
+		assert.deepEqual(action.rows, [{ value: "hello" }]);
+		const environment = await STWConnectors.execute(session, {
+			connector: "node", query: 'console.log(JSON.stringify({ exposed: "STW_TEST_CONNECTOR_SECRET" in process.env }))'
+		});
+		assert.deepEqual(environment.rows, [{ exposed: false }]);
+		await assert.rejects(STWConnectors.execute(session, {
+			connector: "node", query: 'throw new Error("node failure")'
+		}), /node failure/);
+		STWConnectors.connectors.set("unconfigured", { id: "unconfigured", name: "unconfigured", type: "node" });
+		await assert.rejects(STWConnectors.execute(session, {
+			connector: "unconfigured", query: "console.log(1)"
+		}), /requires an absolute launcher path/);
+		process.env.DEPLOYED = "false";
+		const unrestricted = await STWConnectors.execute(session, {
+			connector: "unconfigured",
+			query: 'console.log(JSON.stringify({ value: process.env.STW_TEST_CONNECTOR_SECRET }))'
+		});
+		assert.deepEqual(unrestricted.rows, [{ value: "not for the launcher" }]);
+		STWConnectors.connectors.set("ignored-launcher", {
+			id: "ignored-launcher", name: "ignored-launcher", type: "node", host: join(directory, "missing-launcher")
+		});
+		const unrestrictedAction = await STWConnectors.executeAction(session, "ignored-launcher",
+			'console.log(JSON.stringify({ value: process.env.STW_TEST_CONNECTOR_SECRET }))', "POST");
+		assert.deepEqual(unrestrictedAction.rows, [{ value: "not for the launcher" }]);
+		process.env.DEPLOYED = "invalid";
+		await assert.rejects(STWConnectors.execute(session, {
+			connector: "unconfigured", query: "console.log(1)"
+		}), /DEPLOYED must be "true" or "false"/);
+	} finally {
+		await STWConnectors.resetRuntime();
+		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousConnectorsPath;
+		if (previousSecret === undefined) delete process.env.STW_TEST_CONNECTOR_SECRET;
+		else process.env.STW_TEST_CONNECTOR_SECRET = previousSecret;
+		if (previousDeployed === undefined) delete process.env.DEPLOYED;
+		else process.env.DEPLOYED = previousDeployed;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test("only root can configure a Node launcher", async () => {
+	const previousConnectorsPath = process.env.CONNECTORS;
+	const previousDeployed = process.env.DEPLOYED;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-node-admin-"));
+	const connectorsPath = join(directory, "connectors.json");
+	await writeFile(connectorsPath, "[]");
+	process.env.CONNECTORS = connectorsPath;
+	process.env.DEPLOYED = "true";
+	try {
+		await STWConnectors.resetRuntime();
+		const create = (roles, connector) => handleWbolApi(new Request("http://localhost/wbol/connectors", {
+			method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(connector)
+		}), { roles });
+		const connector = { id: "node", name: "node", type: "node", host: process.execPath };
+		assert.equal((await create(["leaddeveloper"], connector)).status, 403);
+		assert.equal((await create(["root"], { ...connector, host: "node" })).status, 400);
+		assert.equal((await create(["root"], { id: "node-local", type: "node" })).status, 400);
+		assert.equal((await create(["root"], connector)).status, 201);
+		const response = await handleWbolApi(new Request("http://localhost/wbol/connectors/node", {
+			method: "PATCH", headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ type: "api", host: "https://example.test" })
+		}), { roles: ["leaddeveloper"] });
+		assert.equal(response.status, 403);
+		const changeLauncher = await handleWbolApi(new Request("http://localhost/wbol/connectors/node", {
+			method: "PATCH", headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ host: process.execPath })
+		}), { roles: ["leaddeveloper"] });
+		assert.equal(changeLauncher.status, 403);
+		const remove = await handleWbolApi(new Request("http://localhost/wbol/connectors/node", {
+			method: "DELETE"
+		}), { roles: ["leaddeveloper"] });
+		assert.equal(remove.status, 403);
+		process.env.DEPLOYED = "false";
+		assert.equal((await create(["root"], { id: "node-local", type: "node" })).status, 201);
+	} finally {
+		await STWConnectors.resetRuntime();
+		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousConnectorsPath;
+		if (previousDeployed === undefined) delete process.env.DEPLOYED;
+		else process.env.DEPLOYED = previousDeployed;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test("LeadDeveloper manages non-Node connectors while developers can list names", async () => {
 	const previousConnectorsPath = process.env.CONNECTORS;
 	const directory = await mkdtemp(join(tmpdir(), "webspinner-connectors-api-"));
 	const connectorsPath = join(directory, "connectors.json");
 	await writeFile(connectorsPath, JSON.stringify([
-		{ name: "sample", type: "api", host: "https://api.example.test", password: "secret" }
+		{ id: "sample", name: "Sample API", type: "api", host: "https://api.example.test", password: "secret" }
 	]));
 	process.env.CONNECTORS = connectorsPath;
 	try {
-		const session = { roles: ["leaddeveloper"] };
-		const response = await handleWbolApi(new Request("http://localhost/wbol/connectors"), session);
+		const response = await handleWbolApi(new Request("http://localhost/wbol/connectors"), { roles: ["root"] });
 		assert.equal(response.status, 200);
 		assert.deepEqual(await response.json(), [{
-			name: "sample",
+			id: "sample",
+			name: "Sample API",
 			type: "api",
 			host: "https://api.example.test",
 			hasPassword: true
 		}]);
+		const names = await handleWbolApi(new Request("http://localhost/wbol/connectors/names"), { roles: ["developer"] });
+		assert.equal(names.status, 200);
+		assert.deepEqual((await names.json()).filter((item) => item.id !== "assistant"), [
+			{ id: "json", name: "json" }, { id: "wbol", name: "wbol" }, { id: "sample", name: "Sample API" }
+		]);
+		assert.equal((await handleWbolApi(new Request("http://localhost/wbol/connectors/names"), { roles: ["guest"] })).status, 403);
+		const lead = { roles: ["leaddeveloper"] };
+		assert.equal((await handleWbolApi(new Request("http://localhost/wbol/connectors"), lead)).status, 200);
+		const update = (method, path, body) => handleWbolApi(new Request(`http://localhost/wbol/connectors${path}`, {
+			method, headers: { "Content-Type": "application/json" },
+			...(body === undefined ? {} : { body: JSON.stringify(body) })
+		}), lead);
+		const created = await update("POST", "", { id: "extra", type: "api", host: "https://example.test" });
+		assert.equal(created.status, 201);
+		assert.equal((await created.json()).name, "extra");
+		assert.equal((await update("POST", "", { id: "extra", name: "Other", type: "api", host: "https://example.test" })).status, 409);
+		for (const id of ["json", "wbol", "assistant", "names", "reconnect"]) {
+			assert.equal((await update("POST", "", { id, type: "api", host: "https://example.test" })).status, 400);
+		}
+		assert.equal((await update("PATCH", "/extra", { id: "changed" })).status, 400);
+		assert.equal((await update("PATCH", "/extra", { name: "Renamed connector" })).status, 200);
+		assert.equal(STWConnectors.connectors.get("extra").name, "Renamed connector");
+		assert.equal(STWConnectors.connectors.has("Renamed connector"), false);
+		const renamedChoices = await handleWbolApi(new Request("http://localhost/wbol/connectors/names"), { roles: ["developer"] });
+		assert.ok((await renamedChoices.json()).some(({ id, name }) => id === "extra" && name === "Renamed connector"));
+		assert.equal((await update("POST", "", { id: "another", name: "Renamed connector", type: "api", host: "https://example.test" })).status, 201);
+		assert.equal((await update("DELETE", "/another")).status, 204);
+		const referencingContent = new STWText({ uuid: "connector-id-reference-test", connector: "extra" });
+		STWIndex.set(referencingContent.uuid, referencingContent);
+		try {
+			assert.equal((await update("DELETE", "/extra")).status, 409);
+		} finally {
+			STWIndex.delete(referencingContent.uuid);
+		}
+		assert.equal((await update("PATCH", "/extra", { host: "https://other.example.test" })).status, 200);
+		assert.equal((await update("PATCH", "/extra", { type: "node", host: process.execPath })).status, 403);
+		assert.equal((await update("DELETE", "/extra")).status, 204);
 		const administratorResponse = await handleWbolApi(
 			new Request("http://localhost/wbol/connectors"),
 			{ roles: ["administrator"] }
@@ -1585,7 +1880,15 @@ test("LeadDeveloper users can manage connector configuration", async () => {
 			{ roles: ["leaddeveloper", "developer"] }
 		);
 		assert.equal(legacyResponse.status, 404);
+		await writeFile(connectorsPath, JSON.stringify([
+			{ id: "duplicate", name: "First", type: "api", host: "https://example.test" },
+			{ id: "duplicate", name: "Second", type: "api", host: "https://example.test" }
+		]));
+		await assert.rejects(STWConnectors.getConfigurations(), /Duplicate connector ID: duplicate/);
+		await STWConnectors.resetRuntime();
+		await assert.rejects(STWConnectors.initialize(true), /Duplicate connector ID: duplicate/);
 	} finally {
+		await STWConnectors.resetRuntime();
 		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
 		else process.env.CONNECTORS = previousConnectorsPath;
 		await rm(directory, { recursive: true, force: true });
@@ -1599,7 +1902,7 @@ test("IMAP and SMTP connector settings validate and redact credentials", async (
 	await writeFile(connectorsPath, "[]");
 	process.env.CONNECTORS = connectorsPath;
 	try {
-		const session = { roles: ["leaddeveloper"] };
+		const session = { roles: ["root"] };
 		const create = async (value) => await handleWbolApi(
 			new Request("http://localhost/wbol/connectors", {
 				method: "POST",
@@ -1609,7 +1912,7 @@ test("IMAP and SMTP connector settings validate and redact credentials", async (
 			session
 		);
 		const imap = await create({
-			name: "imapApi",
+			id: "imapApi", name: "imapApi",
 			type: "imap",
 			host: "imap.example.test",
 			user: "mailbox@example.test",
@@ -1623,7 +1926,7 @@ test("IMAP and SMTP connector settings validate and redact credentials", async (
 		assert.equal("password" in imapConfiguration, false);
 
 		const smtp = await create({
-			name: "smtpApi",
+			id: "smtpApi", name: "smtpApi",
 			type: "smtp",
 			host: "smtp.example.test",
 			port: 587,
@@ -1639,7 +1942,7 @@ test("IMAP and SMTP connector settings validate and redact credentials", async (
 		assert.equal(smtpConfiguration.hasPassword, true);
 
 		const insecureImap = await create({
-			name: "insecureImap",
+			id: "insecureImap", name: "insecureImap",
 			type: "imap",
 			host: "imap.example.test",
 			user: "mailbox@example.test",
@@ -1648,7 +1951,7 @@ test("IMAP and SMTP connector settings validate and redact credentials", async (
 		});
 		assert.equal(insecureImap.status, 400);
 		const missingFrom = await create({
-			name: "missingFrom",
+			id: "missingFrom", name: "missingFrom",
 			type: "smtp",
 			host: "smtp.example.test",
 			user: "mailer",
@@ -1669,8 +1972,8 @@ test("LeadDeveloper connector reconnect resets and attempts every configured con
 	const directory = await mkdtemp(join(tmpdir(), "webspinner-connector-retry-"));
 	const connectorsPath = join(directory, "connectors.json");
 	const originalConfigurations = [
-		{ name: "mysqlsample", type: "mysql", host: "old-db.example.test", user: "portal", database: "portal" },
-		{ name: "pgsample", type: "postgres", host: "pg.example.test", user: "portal", database: "portal" }
+		{ id: "mysqlsample", name: "mysqlsample", type: "mysql", host: "old-db.example.test", user: "portal", database: "portal" },
+		{ id: "pgsample", name: "pgsample", type: "postgres", host: "pg.example.test", user: "portal", database: "portal" }
 	];
 	await writeFile(connectorsPath, JSON.stringify(originalConfigurations));
 	process.env.CONNECTORS = connectorsPath;

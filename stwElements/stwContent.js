@@ -22,6 +22,7 @@ import { assertSlugAllowed, STWElement } from "./stwElement.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
+import { isProtectedWebbaselet } from "../stwComponents/stwWebbaselets.js";
 
 class STWContent extends STWElement {
 	type;
@@ -160,8 +161,8 @@ class STWContent extends STWElement {
 				return JSON.stringify(filtered, null, 2);
 			};
 			let dev = "";
-			if (session.dev && (this.isVisible(session, "developer") & 1) && !this.pathname(session).startsWith("/stws"))
-				dev = `<i class="fa-light fa-fw fa-pen-to-square" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i>`;
+			if (session.dev && (this.isVisible(session, "developer") & 1) && !isProtectedWebbaselet(this) && !this.pathname(session).startsWith("/stws"))
+				dev = `<i class="fa-light fa-fw fa-pen-to-square" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i>`;
 
 			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error</h1>\n<header>${error.message}</header>\n<pre>${safeStringify(this)}</pre>\n</article>`;
 		}
@@ -206,10 +207,10 @@ class STWContent extends STWElement {
 	// When the cookie _stwdevelop=true allow opening content editors
 	develop(session, content) {
 		content = content || this;
-		if (session.dev && content.pathname(session).startsWith("/stws") && session.user != "root")
+		if (isProtectedWebbaselet(content))
 			return "";
 		if (session.dev && (content.isVisible(session, "developer") & 1))
-			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit-content", search: { uuid: "${content.uuid}" }, options: { recurse: false } }))'><i class="fa-light fa-pen-to-square"></i></span>`;
+			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit/edit-content", search: { uuid: "${content.uuid}" }, options: { recurse: false } }))'><i class="fa-light fa-pen-to-square"></i></span>`;
 		return "";
 	}
 }

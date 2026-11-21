@@ -5,9 +5,11 @@
 	flex: 1 1 auto;
 	gap: 0.2rem 1rem;
 }
+
 .stwCompact form {
-	flex-direction: initial;
+	flex-direction: row;
 	flex-wrap: wrap;
+	font-size: smaller;
 }
 
 .stwForm label {
@@ -28,12 +30,13 @@
 .stwForm label:has(> input[type="text"]),
 .stwForm label:has(> input:not([type])),
 .stwForm label:has(> textarea) {
-    flex: 1 1 12rem;
+	flex: 1 1 12rem;
 }
 
 .stwForm input[type="text"] {
 	width: 100%;
 }
+
 .stwForm textarea {
 	width: 100%;
 	box-sizing: border-box;
@@ -42,4 +45,8 @@
 
 .stwForm button {
 	min-width: 7rem;
+}
+
+.stwForm button>i {
+	width: 3rem;
 }

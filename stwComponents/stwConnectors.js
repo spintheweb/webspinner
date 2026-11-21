@@ -1,8 +1,8 @@
 /**
- * @fileoverview Manages database, API, shell, and built-in WBOL connectors.
+ * @fileoverview Manages database, API, Node, and built-in WBOL connectors.
  *
  * Initializes configured connectors, executes queries and CRUD actions across
- * supported backends (MySQL, PostgreSQL, SQL Server, MongoDB, REST, shell,
+ * supported backends (MySQL, PostgreSQL, SQL Server, MongoDB, REST, Node,
  * and in-process WBOL), and supports dynamic connector configuration reloads.
  *
  * @author Giancarlo Trevisan
@@ -13,7 +13,7 @@
  */
 import { WBPL } from "./stwWBPL.js";
 import { envGet } from "./stwConfig.js";
-import { dirname } from "node:path";
+import { dirname, isAbsolute } from "node:path";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createConnection } from "mysql2/promise";
@@ -23,6 +23,31 @@ import { BSON, MongoClient, ObjectId } from "mongodb";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
 import { executeImapQuery, executeSmtpAction } from "./stwMailConnector.js";
+import { isDeployed } from "./stwWebbaselets.js";
+
+const reservedConnectorIds = new Set(["json", "wbol", "assistant", "names", "reconnect"]);
+
+function assertConnectorId(id) {
+	if (typeof id !== "string" || !/^[A-Za-z0-9_-]+$/.test(id) || reservedConnectorIds.has(id)) {
+		throw new TypeError("Invalid or reserved connector ID");
+	}
+}
+
+function validateConnectorIdentities(configurations) {
+	if (!Array.isArray(configurations)) throw new TypeError("Connector configuration must be a JSON array");
+	const ids = new Set();
+	for (const configuration of configurations) {
+		if (!configuration || typeof configuration !== "object" || Array.isArray(configuration)) {
+			throw new TypeError("Each connector configuration must be an object");
+		}
+		assertConnectorId(configuration.id);
+		if (typeof configuration.name !== "string" || !configuration.name.trim()) {
+			throw new TypeError(`Connector "${configuration.id}" requires a name`);
+		}
+		if (ids.has(configuration.id)) throw new TypeError(`Duplicate connector ID: ${configuration.id}`);
+		ids.add(configuration.id);
+	}
+}
 
 class STWConnectors {
 	static connectors = new Map();
@@ -32,7 +57,7 @@ class STWConnectors {
 		const path = envGet("CONNECTORS") || "./.data/connectors.json";
 		try {
 			const configurations = JSON.parse(await readFile(path, "utf8"));
-			if (!Array.isArray(configurations)) throw new TypeError("Connector configuration must be a JSON array");
+			validateConnectorIdentities(configurations);
 			return configurations;
 		} catch (error) {
 			if (isNotFoundError(error)) return [];
@@ -40,6 +65,7 @@ class STWConnectors {
 		}
 	}
 	static async saveConfigurations(configurations) {
+		validateConnectorIdentities(configurations);
 		const path = envGet("CONNECTORS") || "./.data/connectors.json";
 		await mkdir(dirname(path), { recursive: true });
 		let previousConfiguration;
@@ -106,6 +132,7 @@ class STWConnectors {
 				let connectors = [];
 				try {
 					connectors = JSON.parse(readFileSync(envGet("CONNECTORS") || "./.data/connectors.json", "utf8"));
+					validateConnectorIdentities(connectors);
 				} catch (error) {
 					if (strict) throw error;
 					console.error(
@@ -117,29 +144,29 @@ class STWConnectors {
 				for (const settings of connectors) {
 					try {
 						if (isDatabaseType(settings.type)) {
-							this.connectorConfigs.set(settings.name, settings);
+							this.connectorConfigs.set(settings.id, settings);
 						}
 						switch (settings.type) {
 							case "api":
-								this.connectors.set(settings.name, settings);
+								this.connectors.set(settings.id, settings);
 								break;
 							case "imap":
 							case "smtp":
-								this.connectors.set(settings.name, {
+								this.connectors.set(settings.id, {
 									...settings,
 									port: settings.port ?? (settings.type === "imap" ? 993 : 465),
 									secure: settings.secure ?? (settings.type === "imap" || settings.port === 465)
 								});
 								break;
-							case "shell":
-								this.connectors.set(settings.name, { ...settings, name: settings.name });
+							case "node":
+								this.connectors.set(settings.id, settings);
 								break;
 							case "mysql":
 							case "postgres":
 							case "mssql":
 							case "mongodb": {
 								const connection = await this.connectDatabase(settings);
-								this.connectors.set(settings.name, connection);
+								this.connectors.set(settings.id, connection);
 								break;
 							}
 							default:
@@ -148,7 +175,7 @@ class STWConnectors {
 					} catch (error) {
 						if (strict) {
 							initializationErrors.push(new Error(
-								`Connector "${settings.name}" failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+								`Connector "${settings.id}" failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
 								{ cause: error }
 							));
 						}
@@ -198,14 +225,14 @@ class STWConnectors {
 		return await this.execute(session, content);
 	}
 	static async executeCommand(session, connector, query, values = []) {
-		if (!connector) throw new TypeError("Connector name is required");
+		if (!connector) throw new TypeError("Connector ID is required");
 		await this.initialize();
 		const connection = requireSqlConnection(connector, this.connectors.get(connector));
 		const sql = WBPL(query, session.placeholders);
 		return await this.executeSqlCommand(connector, connection, sql, values);
 	}
 	static async executeBoundCommand(connector, query, values = []) {
-		if (!connector) throw new TypeError("Connector name is required");
+		if (!connector) throw new TypeError("Connector ID is required");
 		await this.initialize();
 		const connection = requireSqlConnection(connector, this.connectors.get(connector));
 		return await this.executeSqlCommand(connector, connection, query, values);
@@ -253,7 +280,7 @@ class STWConnectors {
 		return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
 	}
 	static async executeAction(session, connector, command, method, fields = {}) {
-		if (!connector) throw new TypeError("Connector name is required");
+		if (!connector) throw new TypeError("Connector ID is required");
 		if (connector === "wbol") {
 			return await executeWbolConnector(session, command, method, fields);
 		}
@@ -274,28 +301,8 @@ class STWConnectors {
 			if (method !== "POST") throw new TypeError("SMTP actions must use POST");
 			return await executeSmtpAction(configuration, WBPL(command, session.placeholders), fields);
 		}
-		if (configuration.type === "shell") {
-			const shellName = configuration.host || configuration.name || connector;
-			if (/@{1,3}[A-Za-z0-9_$.]+/.test(command)) {
-				throw new TypeError("Shell action commands cannot contain placeholders");
-			}
-			const shellCommand = command.trim();
-			if (/\bsudo\b/i.test(shellCommand)) {
-				throw new TypeError("Forbidden token 'sudo' in shell command");
-			}
-			let args;
-			if (/(bash|sh|zsh)/i.test(shellName)) {
-				args = ["-c", shellCommand];
-			} else if (/powershell/i.test(shellName)) {
-				args = ["-NoProfile", "-Command", shellCommand];
-			} else {
-				throw new TypeError(`Unsupported shell: ${shellName}`);
-			}
-			const output = await runCommand(shellName, args);
-			if (output.code !== 0) {
-				throw new Error(output.stderr.trim() || `Shell command exited with code ${output.code}`);
-			}
-			return { affectedRows: 1, fields: ["value"], rows: [{ value: output.stdout.trim() }] };
+		if (configuration.type === "node") {
+			return await executeNodeConnector(configuration, WBPL(command, session.placeholders));
 		}
 		if (configuration.type === "api") {
 			const base = new URL(configuration.host);
@@ -380,69 +387,8 @@ class STWConnectors {
 				records = await fetchAPIData(session, content, configuration);
 			} else if (configuration.type === "imap") {
 				return await executeImapQuery(session, configuration, content.query);
-			} else if ("type" in configuration && configuration.type === "shell") {
-				const shellConnector = configuration;
-				const shellName = shellConnector.host || shellConnector.name || content.connector;
-				const cmdString = WBPL(content.query, session.placeholders).trim();
-				let args = [];
-				if (/\bsudo\b/i.test(cmdString)) {
-					if (throwOnError) throw new TypeError("Forbidden token 'sudo' in shell command");
-					records = {
-						affectedRows: 1,
-						fields: ["error"],
-						rows: [{ error: "Forbidden token 'sudo' in shell command" }]
-					};
-					return records;
-				}
-				if (/(bash|sh|zsh)/i.test(shellName)) {
-					args = ["-c", cmdString];
-				} else if (/powershell/i.test(shellName)) {
-					args = ["-NoProfile", "-Command", cmdString];
-				} else {
-					throw new Error(`Unsupported shell: ${shellName}`);
-				}
-				try {
-					const output = await runCommand(shellName, args);
-					if (throwOnError && output.code !== 0) {
-						throw new Error(output.stderr.trim() || `Shell command exited with code ${output.code}`);
-					}
-					const stdout = output.stdout.trim();
-					const stderr = output.stderr.trim();
-					let rows = [], fields = [];
-					if (stdout) {
-						try {
-							const parsed = JSON.parse(stdout);
-							if (Array.isArray(parsed)) {
-								rows = parsed.map((r) => typeof r === "object" ? r : { value: r });
-								fields = rows.length ? Object.keys(rows[0]) : [];
-							} else if (typeof parsed === "object") {
-								rows = [parsed];
-								fields = Object.keys(parsed);
-							} else {
-								rows = [{ value: parsed }];
-								fields = ["value"];
-							}
-						} catch {
-							rows = stdout.split(/\r?\n/).map((line, i) => ({ line: i + 1, value: line }));
-							fields = ["line", "value"];
-						}
-					} else {
-						rows = [{}];
-						fields = [];
-					}
-					if (stderr) {
-						if (!rows.length) {
-							rows = stderr.split(/\r?\n/).map((line, i) => ({ line: i + 1, error: line }));
-							fields = ["line", "error"];
-						}
-					}
-					records = { affectedRows: rows.length, fields, rows };
-				} catch (e) {
-					if (throwOnError) throw e;
-					if (throwOnError || connectorType === "imap") throw error;
-					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
-					records = { affectedRows: 0, fields: [], rows: [{}] };
-				}
+			} else if (configuration.type === "node") {
+				records = await executeNodeConnector(configuration, WBPL(content.query, session.placeholders));
 			} else if (isDatabaseConnection(configuration)) {
 				const command = WBPL(content.query, session.placeholders);
 				if (configuration.type === "mongodb") {
@@ -461,7 +407,7 @@ class STWConnectors {
 				}
 			} else if (throwOnError) throw new TypeError(`Connector "${content.connector}" is not configured`);
 		} catch (error) {
-			if (throwOnError) throw error;
+			if (throwOnError || connectorType === "node") throw error;
 			console.warn(
 				`Connector error for connector "${content.connector}": ${error instanceof Error ? error.message : String(error)}`
 			);
@@ -469,6 +415,36 @@ class STWConnectors {
 		}
 		return records;
 	}
+}
+async function executeNodeConnector(configuration, script) {
+	let output;
+	if (isDeployed()) {
+		if (typeof configuration.host !== "string" || !isAbsolute(configuration.host)) {
+			throw new TypeError(`Node connector "${configuration.id}" requires an absolute launcher path in host`);
+		}
+		const env = {};
+		for (const name of ["PATH", "SystemRoot", "WINDIR", "TEMP", "TMP"]) {
+			if (process.env[name] !== undefined) env[name] = process.env[name];
+		}
+		output = await runCommand(configuration.host, [], { input: script, env, timeoutMs: 30000 });
+	} else {
+		output = await runCommand(process.execPath, [], { input: script });
+	}
+	if (output.code !== 0) {
+		throw new Error(output.stderr.trim() || `Node launcher exited with code ${output.code}`);
+	}
+	const stdout = output.stdout.trim();
+	if (!stdout) return { affectedRows: 0, fields: [], rows: [] };
+	let parsed;
+	try {
+		parsed = JSON.parse(stdout);
+	} catch {
+		const rows = stdout.split(/\r?\n/).map((value, index) => ({ line: index + 1, value }));
+		return { affectedRows: rows.length, fields: ["line", "value"], rows };
+	}
+	const rows = (Array.isArray(parsed) ? parsed : [parsed])
+		.map((row) => row !== null && typeof row === "object" && !Array.isArray(row) ? row : { value: row });
+	return { affectedRows: rows.length, fields: rows.length ? Object.keys(rows[0]) : [], rows };
 }
 function bindSqlPlaceholders(query, placeholders, type) {
 	const values = [];
@@ -815,5 +791,5 @@ async function executeAssistantConnector(session, command, method, fields = {}, 
 	};
 }
 export {
-	STWConnectors
+	STWConnectors, assertConnectorId
 };

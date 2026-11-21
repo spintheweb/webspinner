@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Executes IMAP queries and SMTP actions for mail connectors.
+ *
+ * @author Copilot
+ * @module stwMailConnector
+ * @license Apache-2.0
+ */
 import { convert } from "html-to-text";
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";

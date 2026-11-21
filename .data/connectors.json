@@ -1,5 +1,6 @@
 [
 	{
+		"id": "mysqlsample",
 		"name": "mysqlsample",
 		"type": "mysql",
 		"host": "81.88.53.84",
@@ -9,17 +10,19 @@
 		"database": "qt3ul9nb_sampledb"
 	},
 	{
+		"id": "objects",
 		"name": "objects",
 		"type": "api",
 		"host": "https://api.restful-api.dev/objects",
 		"contentType": "application/json"
 	},
 	{
-		"name": "bash",
-		"type": "shell",
-		"host": "C:/Program Files/Git/bin/bash.exe"
+		"id": "node",
+		"name": "node",
+		"type": "node"
 	},
 	{
+		"id": "imapApi",
 		"name": "imapApi",
 		"type": "imap",
 		"host": "pop.securemail.pro",
@@ -29,6 +32,7 @@
 		"password": "MAIL_PASSWORD"
 	},
 	{
+		"id": "smtpApi",
 		"name": "smtpApi",
 		"type": "smtp",
 		"host": "authsmtp.securemail.pro",

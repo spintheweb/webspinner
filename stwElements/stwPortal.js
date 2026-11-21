@@ -24,6 +24,7 @@ import { STWElement } from "./stwElement.js";
 import { STWIndex } from "./stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog, envGet, isDebugging } from "../stwComponents/stwConfig.js";
+import { registerWebbaselet } from "../stwComponents/stwWebbaselets.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { watch } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
@@ -63,6 +64,8 @@ class STWPortal extends STWElement {
 	static get instance() {
 		if (!STWPortal.#instance) {
 			debugLog(`${(new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
+			const allowDev = envGet("ALLOW_DEV", "false").trim().toLowerCase();
+			if (allowDev !== "true" && allowDev !== "false") throw new TypeError('ALLOW_DEV must be "true" or "false"');
 			const webbase = envGet("WEBBASE") || "./.data/webbase.wbol";
 			const wbol = WBOL(webbase);
 			STWPortal.#instance = new STWPortal(wbol);
@@ -70,8 +73,9 @@ class STWPortal extends STWElement {
 				throw new Error(
 					`Webbase '${webbase}' not found. Set WEBBASE="<path>" in the .env file or place the webbase in ${webbase}.`
 				);
-			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol");
-			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol");
+			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol", "common");
+			if (allowDev === "true")
+				STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol", "studio");
 			
 			if (isDebugging)
 				STWPortal.watchWebbases();
@@ -82,7 +86,7 @@ class STWPortal extends STWElement {
 	/**
     * Load Spin the Web Studio webbase, if it's already present, replace it.
     */
-	addWebbaselet(filepath) {
+	addWebbaselet(filepath, kind) {
 		debugLog(`${(new Date()).toISOString()}: Adding webbaselet '${filepath}'...`);
 		try {
 			if (URL.parse(filepath || ""))
@@ -98,8 +102,11 @@ class STWPortal extends STWElement {
 			const loaded = STWPortal.index.get(webbaselet.uuid);
 			if (loaded)
 				STWPortal.#instance.remove(loaded.uuid);
-			STWPortal.#instance.children.unshift(new STWArea(webbaselet));
-			STWPortal.#instance.children[0].parent = STWPortal.#instance;
+			const area = new STWArea(webbaselet);
+			area.parent = STWPortal.#instance;
+			if (kind) registerWebbaselet(area, kind);
+			STWPortal.index.set(area.uuid, area);
+			STWPortal.#instance.children.unshift(area);
 		}
 	}
 	/**

@@ -1,8 +1,16 @@
+/**
+ * @fileoverview Validates and persists assistant-proposed WBOL changes.
+ *
+ * @author Copilot
+ * @module stwAssistantPersistence
+ * @license Apache-2.0
+ */
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import { envGet } from "./stwConfig.js";
+import { isProtectedWebbaselet } from "./stwWebbaselets.js";
 import { WBOL } from "./stwWBOL.js";
 import { assertSlugAllowed, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
 import { STWContent } from "../stwElements/stwContent.js";
@@ -81,6 +89,7 @@ function definitionValue(definition, field, locale) {
 }
 
 function captureRevision(element) {
+	if (isProtectedWebbaselet(element)) throw new Error("Deployed webbaselets are read-only");
 	const source = sourceFor(element.uuid);
 	return {
 		path: source.path,
@@ -137,6 +146,7 @@ function writeLocalized(document, node, field, locale, value) {
 }
 
 function applyPersistentChanges(element, locale, changes, revision) {
+	if (isProtectedWebbaselet(element)) throw new Error("Deployed webbaselets are read-only");
 	const shadow = validateChanges(element, locale, changes);
 	const source = sourceFor(element.uuid);
 	if (source.path !== revision.path || hash(source.source) !== revision.sourceHash ||

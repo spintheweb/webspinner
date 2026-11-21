@@ -29,8 +29,7 @@ body.stwStudioPage > #header {
 
 body.stwStudioPage #leftPanel,
 body.stwStudioPage #rightPanel {
-	min-width: 0;
-	max-width: 25rem;
+	min-width: 25rem;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
@@ -38,11 +37,12 @@ body.stwStudioPage #rightPanel {
 }
 
 body.stwStudioPage #leftPanel {
+	grid-column: 1;
 	border-right: thin solid var(--border);
 }
 
 body.stwStudioPage #rightPanel {
-	display: none;
+	grid-column: 3;
 	border-left: thin solid var(--border);
 }
 
@@ -52,8 +52,9 @@ body.stwStudioPage #rightPanel > * {
 	overflow-y: auto;
 }
 
+body.stwStudioPage #leftPanel:empty,
 body.stwStudioPage #rightPanel:empty {
-	display: none;
+	display: none !important;
 }
 
 body.stwStudioPage > #footer {
@@ -61,6 +62,7 @@ body.stwStudioPage > #footer {
 }
 
 body.stwStudioPage #main {
+	grid-column: 2;
 	display: flex !important;
 	flex-direction: column;
 	width: auto !important;

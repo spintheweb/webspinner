@@ -66,11 +66,10 @@ h1 {
 }
 
 dialog[open] {
-	position: fixed;
 	padding: 0;
-	font-size: smaller;
 	border: thin solid var(--border);
 	z-index: 1000;
+	min-width: 30rem;
 	max-width: 40rem;
 }
 

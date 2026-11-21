@@ -234,17 +234,10 @@
 					<name>
 						<text xml:lang="en" slug="files"><![CDATA[Files]]></text>
 					</name>
-					<query connector="bash"><![CDATA[ls -l ./public | awk '
-BEGIN {
-    print "["
-}
-NR>1 {
-    printf "%s{\"permissions\":\"%s\",\"links\":\"%s\",\"owner\":\"%s\",\"group\":\"%s\",\"size\":%s,\"month\":\"%s\",\"day\":\"%s\",\"time\":\"%s\",\"name\":\"%s\"}",
-        (NR>2?",":""), $1, $2, $3, $4, $5, $6, $7, $8, $9
-}
-END {
-    print "]"
-}'
+					<query connector="node"><![CDATA[
+const fs = require("node:fs");
+console.log(JSON.stringify(fs.readdirSync("./public", { withFileTypes: true })
+    .map(entry => ({ name: entry.name, type: entry.isDirectory() ? "directory" : "file" }))));
 ]]></query>
 				</content>
 				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list"

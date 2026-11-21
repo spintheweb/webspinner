@@ -132,7 +132,7 @@ function _stwToggleStudio() {
 }
 
 function _stwOpenContentEditor(uuid) {
-	_stwSendEditorRequest("/stws/edit-content", uuid);
+	_stwSendEditorRequest("/stws/edit/edit-content", uuid);
 }
 
 function _stwOpenElementEditor(anchor) {
@@ -142,7 +142,7 @@ function _stwOpenElementEditor(anchor) {
 		Portal: "/stws/edit/edit-site",
 		Area: "/stws/edit/edit-area",
 		Page: "/stws/edit/edit-page",
-		Content: "/stws/edit-content"
+		Content: "/stws/edit/edit-content"
 	}[type];
 	if (!resource) {
 		window.alert(`No Studio editor is available for ${type || "this element"}.`);

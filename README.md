@@ -19,7 +19,7 @@ A Webbaselet is a standalone module that describes a functionality—e.g., a web
 
 ## Database connectors and data actions
 
-Database connector types are adapters, not the connector model itself. The runtime supports MySQL (`mysql`), PostgreSQL (`postgres`), SQL Server (`mssql`), and MongoDB (`mongodb`), alongside API and shell connectors. The `stwinsert`, `stwupdate`, and `stwdelete` actions use the same CRUD action contract for these database connectors; SQL adapters handle their dialect-specific identifier quoting and parameter binding.
+Database connector types are adapters, not the connector model itself. The runtime supports MySQL (`mysql`), PostgreSQL (`postgres`), SQL Server (`mssql`), and MongoDB (`mongodb`), alongside API and Node connectors. The `stwinsert`, `stwupdate`, and `stwdelete` actions use the same CRUD action contract for these database connectors; SQL adapters handle their dialect-specific identifier quoting and parameter binding.
 
 SQL content uses native SQL. For MongoDB, content queries use JSON Extended JSON with a collection name and optional query options, for example:
 
@@ -45,7 +45,11 @@ The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `
 For local development, run `npm run dev:tasks` to watch and merge styles and
 sync `../schemas/wbol.xsd` to `public/schemas/wbol.xsd`.
 
-Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles. `ALLOW_AI` also defaults to `false`; set it to `true` to enable Studio assistant requests and proposal application.
+Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles and prevents Studio from loading. `ALLOW_AI` also defaults to `false`; set it to `true` to enable Studio assistant requests and proposal application.
+
+`DEPLOYED` defaults to `true`. In deployed installations, the Studio webbaselet is hidden from the webbase tree and the Common webbaselet is visible but read-only. Both project-managed webbaselets are protected from editing because updates overwrite them. Set `DEPLOYED=false` for local development to view and edit both webbaselets; Studio still requires `ALLOW_DEV=true`. Restart after changing these settings.
+
+With `DEPLOYED=false`, Node connector scripts run directly with Webspinner's OS permissions and environment, without a launcher or timeout. They can access Webspinner's credentials and files; use this mode only in a trusted development environment. Deployed installations require a restricted launcher.
 
 When Studio is enabled, its controls stay in the top-level page while the live
 portal preview runs in a same-origin iframe. This separates their DOM and styles;

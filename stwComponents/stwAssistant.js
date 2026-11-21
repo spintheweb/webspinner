@@ -1,8 +1,16 @@
+/**
+ * @fileoverview Manages Studio assistant conversations and change proposals.
+ *
+ * @author Copilot
+ * @module stwAssistant
+ * @license Apache-2.0
+ */
 import { randomUUID } from "node:crypto";
 import { envGet } from "./stwConfig.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { applyPersistentChanges, captureRevision, validateChanges } from "./stwAssistantPersistence.js";
+import { canDevelopElement } from "./stwWebbaselets.js";
 
 const proposalKey = "stwAssistantProposal";
 const historyKey = "stwAssistantHistory";
@@ -21,7 +29,7 @@ function history(session) {
 
 function visibleElement(session, uuid) {
 	const element = STWIndex.get(uuid);
-	if (!element || !(element.isVisible(session, "developer") & 1)) throw new Error("Element is unavailable");
+	if (!element || !canDevelopElement(session, element)) throw new Error("Element is unavailable");
 	return element;
 }
 

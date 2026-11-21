@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Client helpers for Studio panels and user management.
+ *
+ * @author Copilot
+ * @module client
+ * @license Apache-2.0
+ */
 function toggleSidebar(event) {
 	const sidebar = document.getElementById(event.target.className.indexOf("flip") === -1 ? "leftPanel" : "rightPanel");
 	sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";

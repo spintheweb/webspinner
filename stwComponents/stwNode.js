@@ -25,6 +25,9 @@ function runCommand(command, args, options = {}) {
 			env: options.env,
 			stdio: ["pipe", "pipe", "pipe"]
 		});
+		child.stdin?.on("error", (error) => {
+			if (error.code !== "EPIPE") reject(error);
+		});
 		child.stdin?.end(options.input);
 		const stdout = [];
 		const stderr = [];

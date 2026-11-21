@@ -294,6 +294,15 @@ const STWSecurity = new class {
 	}
 
 	/**
+	 * Lists roles that can be managed, excluding mandatory roles.
+	 *
+	 * @returns {Promise<string[]>} Sorted custom role names.
+	 */
+	async listCustomRoles() {
+		return (await this.listRoles()).filter((role) => !mandatoryRoles.includes(role));
+	}
+
+	/**
 	 * Adds a custom role to the roles file.
 	 *
 	 * @param {string} role Role name beginning with a letter and containing only

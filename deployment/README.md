@@ -26,25 +26,29 @@ Notes:
 
 ## Developer WBOL API
 
-Authenticated sessions with the `developer` role can manage elements in the in-memory webbase at `/wbol` when their effective `developer` RBV is true. Portal visibility is granted only to `root`; developer users can access elements explicitly granted to them below the portal.
+`DEPLOYED=true` (the default) hides the project-managed Studio webbaselet from the webbase tree and makes both Studio and Common read-only. Common remains visible in the tree. Set `DEPLOYED=false` only in development to view and edit both; installed project webbaselets are overwritten on updates. `ALLOW_DEV=false` prevents Studio from loading regardless of `DEPLOYED`. Changes require a restart.
+
+Authenticated sessions with the `developer` role can manage elements in the in-memory webbase at `/wbol` when their effective `developer` RBV is true. Portal visibility is granted only to `root`; LeadDeveloper and root can nevertheless read and edit the portal through the API. Developer users can access elements explicitly granted to them below the portal.
 
 - `GET /wbol` returns the portal tree; `GET /wbol/<uuid>` returns one element and its children.
-- `POST /wbol` creates an element. The JSON body contains `parentId` and an `element` definition accepted by the registered element constructor.
+- `POST /wbol` creates an element. The JSON body contains `parentId` and an `element` definition accepted by the registered element constructor. Set visibility separately through the visibility route.
 - `PATCH /wbol/<uuid>` updates an element through its runtime update method. Include `parentId` to move it, with optional `position` for its new child index. Localized string values update only `?locale=<portal-locale>`; without it, the Developer's session language is used. Localized maps merge locale entries rather than replacing the other locales.
 - `DELETE /wbol/<uuid>` removes an element and its descendants.
-- `GET /wbol/<uuid>/visibility` reads explicit role visibility. Only sessions with `leaddeveloper` may change it: `PUT` replaces the role-to-boolean map; `PATCH` merges it, and a `null` value removes that role's override. LeadDeveloper users cannot assign `root` or `administrator`.
+- `GET /wbol/<uuid>/visibility` reads explicit role visibility for LeadDeveloper or for developers with effective developer visibility. Only LeadDeveloper or root may change it: `PUT` replaces the manageable entries while preserving `root` and `administrator`; `PATCH` merges entries, and a `null` value removes that role's override. Neither role can assign `root` or `administrator`. Element creation and updates cannot set visibility directly.
 - `GET /wbol/<uuid>/options` reads options for content types that define them (for example menus, tabs, and accordions); `PUT` replaces the complete options array. `PATCH` with `?locale=<portal-locale>` and `{"path":[0],"name":"Label"}` updates one option name at its array-index path, preserving its other locale values. The session language is the default.
-- `GET /wbol/<portal-uuid>/connectors` reads the portal's connector values; `PUT` replaces the name-to-value map. These routes require `leaddeveloper` or `root`.
-- `GET /wbol/<portal-uuid>/roles` lists known roles; `POST` with `{"role":"editors"}` creates a role.
+- `GET /wbol/<portal-uuid>/connectors` reads the portal's connector values; `PUT` replaces the name-to-value map. Both require `leaddeveloper` or `root`.
+- `GET /wbol/<portal-uuid>/roles` lists all known roles for LeadDeveloper, root, or developers with effective developer visibility on the portal; `POST` with `{"role":"editors"}` creates a role for LeadDeveloper or root.
 - SEO sessions with effective `seo` visibility can read filtered element metadata and `PATCH` only `name`, `slug`, `keywords`, and `description`. Supply locale-to-string maps to update any supported portal locale; SEO access does not permit other element edits.
 
-Root or administrator sessions can manage accounts and roles through separate admin routes. The `administrator` role cannot assign `root`, `developer`, `leaddeveloper`, or `seo`. LeadDeveloper users can assign `developer` and `seo`; root can manage any role. Connector configuration routes instead require `leaddeveloper` or `root`:
+Root or administrator sessions can manage accounts; root or LeadDeveloper can manage custom roles. The `administrator` role cannot assign `root`, `developer`, `leaddeveloper`, or `seo`. LeadDeveloper users can assign `developer` and `seo`; root can manage any role. Connector configuration routes require `leaddeveloper` or `root`, except that only root can configure Node connectors:
 
 - `GET /wbol/users` lists accounts without password hashes. `POST` creates an account; `PATCH /wbol/users/<user>` changes its name, email, password, or role assignments; `DELETE` removes it. `GET/PATCH /wbol/users/<user>/developer` and `/wbol/users/<user>/seo` read or toggle those assignments with `{"enabled":true|false}`. LeadDeveloper users can manage these two roles; root can manage any role.
-- `GET /wbol/roles` lists known roles. `POST` with `{"role":"editors"}` creates one; `PATCH /wbol/roles/<role>` with `{"role":"new-name"}` renames it; `DELETE` removes it from accounts and in-memory visibility rules. Mandatory roles cannot be renamed or deleted.
-- `GET /wbol/connectors` lists connector definitions with credentials redacted. `POST` creates one; `PATCH /wbol/connectors/<name>` updates it; `DELETE` removes it only when no content references it. Updated definitions are written to the configured `CONNECTORS` file and reloaded. `POST /wbol/connectors/reconnect` reconnects configured connectors.
+- `GET /wbol/roles` lists custom roles for LeadDeveloper and root, excluding predefined roles. `POST` with `{"role":"editors"}` creates one; `PATCH /wbol/roles/<role>` with `{"role":"new-name"}` renames it; `DELETE` removes it from accounts and in-memory visibility rules. Predefined roles cannot be renamed or deleted. `GET /wbol/roles/visibility` lists all known roles, including predefined roles, for developers, LeadDeveloper and root.
+- `GET /wbol/connectors/names` lists available connector IDs and display names for developers and root. Root and LeadDeveloper can use `GET /wbol/connectors` to list definitions with credentials redacted, `POST` to create one, `PATCH /wbol/connectors/<id>` to update it, and `DELETE` to remove it when no content references it. IDs are unique and immutable; display names can be changed and default to the ID on creation. Only root can create, modify, or remove Node connectors. Updated definitions are written to the configured `CONNECTORS` file and reloaded. Root or LeadDeveloper can use `POST /wbol/connectors/reconnect` to reconnect configured connectors.
 
-Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Connector passwords may be supplied when creating or updating a connector, but are never returned by the connector API. The `developer` role is required for element edits; it does not grant account administration or RBV management. Only `leaddeveloper` can change RBV; LeadDeveloper users and root can manage connectors, not users with the administrator role. Account and role routes require `root` or `administrator`.
+With `DEPLOYED=false`, Node connector scripts run directly as Webspinner with its full environment and no timeout; a configured launcher is ignored. This exposes Webspinner's permissions and credentials to those scripts and is suitable only for trusted development. With `DEPLOYED=true`, an administrator-provisioned restricted launcher is required and the connector uses a minimal environment and a 30-second timeout.
+
+Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Connector passwords may be supplied when creating or updating a connector, but are never returned by the connector API. The `developer` role is required for element edits; it does not grant account administration or RBV management. LeadDeveloper and root manage RBV and custom roles; root and LeadDeveloper manage connectors, except Node connectors, which are root-only. Account routes require `root` or `administrator`.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
 
 ## Mail connector setup
@@ -54,6 +58,7 @@ The Common WBOL mail page uses connector IDs `imapApi` and `smtpApi`, with conne
 ```json
 [
   {
+    "id": "imapApi",
     "name": "imapApi",
     "type": "imap",
     "host": "imap.example.com",
@@ -61,6 +66,7 @@ The Common WBOL mail page uses connector IDs `imapApi` and `smtpApi`, with conne
     "passwordEnv": "MAIL_PASSWORD"
   },
   {
+    "id": "smtpApi",
     "name": "smtpApi",
     "type": "smtp",
     "host": "smtp.example.com",
