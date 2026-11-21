@@ -836,6 +836,10 @@ Production-ready self-extracting installer for Linux systems. Includes complete 
 - PostgreSQL database
 - systemd service
 
+### Security
+
+Fresh installs enable Studio and include example accounts with the password \`password\`. Change or remove these accounts before exposing the server. The root password is chosen during installation.
+
 ### Installation
 
 \`\`\`bash

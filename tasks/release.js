@@ -328,6 +328,10 @@ Self-extracting installer for Linux systems. Includes the runtime, automated dep
 - PostgreSQL database and connector
 - systemd service
 
+### Security
+
+Fresh installs enable Studio and include example accounts with the password \`password\`. Change or remove these accounts before exposing the server. The root password is chosen during installation.
+
 ### Installation
 
 \`\`\`bash
