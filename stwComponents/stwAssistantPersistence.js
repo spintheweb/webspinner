@@ -16,8 +16,8 @@ class AssistantConflictError extends Error {}
 function sourcePaths() {
 	return [...new Set([
 		envGet("WEBBASE") || "./.data/webbase.wbol",
-		envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol",
-		envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol"
+		envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol",
+		envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol"
 	].filter((path) => !/^https?:\/\//i.test(path)).map((path) => resolve(path)))].filter(existsSync);
 }
 

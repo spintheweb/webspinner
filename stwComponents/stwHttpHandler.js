@@ -135,7 +135,8 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 				const result = await actionRouter.execute(ctx);
 				if (!result.ok && result.error) {
 					session.placeholders.set("ERROR", result.error.message);
-					if (["stwinsert", "stwupdate", "stwdelete"].includes(ctx.action)) {
+					if (["stwinsert", "stwupdate", "stwdelete"].includes(ctx.action) ||
+						ctx.action === "stwsubmit" && ctx.args?.length > 0) {
 						console.error(`Action ${ctx.action} failed:`, result.error.message);
 						return secureResponse(result.error.message, { status: 400 });
 					}

@@ -33,14 +33,14 @@ class STWShortcut extends STWContent {
 		if (typeof data.ref === "string") this.ref = data.ref;
 	}
 
-	serve(_request, _session) {
+	serve(request, session) {
 		const ref = STWIndex.get(this.ref);
 		if (!(ref instanceof STWContent) || ref instanceof STWShortcut ||
-			!(this.isVisible(_session) & 1) || !(ref.isVisible(_session) & 1))
+			!(this.isVisible(session) & 1) || !(ref.isVisible(session) & 1))
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
 
-		debugLog(`${(new Date()).toISOString()}: \u251C\u252C ${this.type} (${this.pathname(_session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
-		return ref.serve(_request, _session, this);
+		debugLog(`${(new Date()).toISOString()}: \u251C\u252C ${this.type} (${this.pathname(session)}) @${this.section}.${this.sequence} [${this.uuid}]`);
+		return ref.serve(request, session, this);
 	}
 }
 

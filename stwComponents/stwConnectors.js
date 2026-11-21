@@ -22,6 +22,7 @@ import sql from "mssql";
 import { BSON, MongoClient, ObjectId } from "mongodb";
 import jsonata from "jsonata";
 import { isNotFoundError, runCommand } from "./stwNode.js";
+import { executeImapQuery, executeSmtpAction } from "./stwMailConnector.js";
 
 class STWConnectors {
 	static connectors = new Map();
@@ -121,6 +122,14 @@ class STWConnectors {
 						switch (settings.type) {
 							case "api":
 								this.connectors.set(settings.name, settings);
+								break;
+							case "imap":
+							case "smtp":
+								this.connectors.set(settings.name, {
+									...settings,
+									port: settings.port ?? (settings.type === "imap" ? 993 : 465),
+									secure: settings.secure ?? (settings.type === "imap" || settings.port === 465)
+								});
 								break;
 							case "shell":
 								this.connectors.set(settings.name, { ...settings, name: settings.name });
@@ -261,6 +270,10 @@ class STWConnectors {
 			return await this.executeBoundCommand(connector, query, values);
 		}
 		if (!configuration) throw new TypeError(`Connector "${connector}" is not configured`);
+		if (configuration.type === "smtp") {
+			if (method !== "POST") throw new TypeError("SMTP actions must use POST");
+			return await executeSmtpAction(configuration, WBPL(command, session.placeholders), fields);
+		}
 		if (configuration.type === "shell") {
 			const shellName = configuration.host || configuration.name || connector;
 			if (/@{1,3}[A-Za-z0-9_$.]+/.test(command)) {
@@ -343,6 +356,7 @@ class STWConnectors {
 			return { affectedRows: 0, fields: [], rows: [{}] };
 		}
 		let records = { affectedRows: 0, fields: [], rows: [{}] };
+		let connectorType;
 		try {
 			if (content.connector === "wbol") {
 				return await executeWbolConnector(session, content.params, "GET", {}, content.query);
@@ -361,8 +375,11 @@ class STWConnectors {
 			}
 			await this.initialize();
 			const configuration = STWConnectors.connectors.get(content.connector) || {};
+			connectorType = configuration.type;
 			if ("type" in configuration && configuration.type === "api") {
 				records = await fetchAPIData(session, content, configuration);
+			} else if (configuration.type === "imap") {
+				return await executeImapQuery(session, configuration, content.query);
 			} else if ("type" in configuration && configuration.type === "shell") {
 				const shellConnector = configuration;
 				const shellName = shellConnector.host || shellConnector.name || content.connector;
@@ -422,6 +439,7 @@ class STWConnectors {
 					records = { affectedRows: rows.length, fields, rows };
 				} catch (e) {
 					if (throwOnError) throw e;
+					if (throwOnError || connectorType === "imap") throw error;
 					console.warn(`Shell command failed: ${e instanceof Error ? e.message : String(e)}`);
 					records = { affectedRows: 0, fields: [], rows: [{}] };
 				}

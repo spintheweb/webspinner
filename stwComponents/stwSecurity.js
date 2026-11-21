@@ -30,7 +30,7 @@ import { STWIndex } from "../stwElements/stwIndex.js";
 
 const mandatoryRoles = ["root", "administrator", "guest", "user", "developer", "leaddeveloper", "seo"];
 const roleImplications = new Map([
-	["root", ["user"]],
+	["root", ["user", "leaddeveloper", "administrator"]],
 	["administrator", ["user"]],
 	["developer", ["user"]],
 	["seo", ["user"]],

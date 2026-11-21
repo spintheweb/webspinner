@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns="https://spintheweb.org/schemas/wbol.xsd"
+	xmlns:wbol="https://spintheweb.org/schemas/wbol.xsd"
+	targetNamespace="https://spintheweb.org/schemas/wbol.xsd"
+	elementFormDefault="qualified"
+	attributeFormDefault="unqualified"
+	version="1.1">
+	<xs:import namespace="http://www.w3.org/XML/1998/namespace"
+		schemaLocation="http://www.w3.org/2001/xml.xsd" />
+	<xs:element name="webbase" type="WebbaseType">
+		<!-- Keys for area, page, and content UUIDs -->
+		<xs:key name="areaUuids">
+			<xs:selector xpath=".//wbol:area | .//wbol:webbaselet" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="pageUuids">
+			<xs:selector xpath=".//wbol:page" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="contentUuids">
+			<xs:selector xpath=".//wbol:content" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="navigableUuids">
+			<xs:selector xpath=". | .//wbol:area | .//wbol:webbaselet | .//wbol:page | .//wbol:content" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<!-- Keyrefs referencing the above keys (must be in scope) -->
+		<xs:keyref name="mainpageRef" refer="pageUuids">
+			<xs:selector xpath="." />
+			<xs:field xpath="@mainpage" />
+		</xs:keyref>
+		<xs:keyref name="areaMainpageRef" refer="pageUuids">
+			<xs:selector xpath=".//wbol:area | .//wbol:webbaselet" />
+			<xs:field xpath="@mainpage" />
+		</xs:keyref>
+		<xs:keyref name="optionTargetRef" refer="navigableUuids">
+			<xs:annotation>
+				<xs:documentation>Every option target must resolve to a uuid in scope (webbase, area,
+					webbaselet, page, or content). Type-specific rules (menu vs tabs/accordion) are
+					semantic constraints and should be enforced by runtime logic or XSD 1.1 assertions.</xs:documentation>
+			</xs:annotation>
+			<xs:selector xpath=".//wbol:content/wbol:options/wbol:option" />
+			<xs:field xpath="@target" />
+		</xs:keyref>
+		<!-- Keys and keyrefs for roles: the webbase's own visibility element is the role registry -->
+		<xs:key name="portalRoleIds">
+			<xs:selector xpath="wbol:visibility/wbol:role" />
+			<xs:field xpath="@id" />
+		</xs:key>
+		<xs:keyref name="visibilityRoleRefs" refer="portalRoleIds">
+			<xs:selector xpath=".//wbol:visibility/wbol:role" />
+			<xs:field xpath="@id" />
+		</xs:keyref>
+	</xs:element>
+
+	<xs:element name="webbaselet" type="WebbaseletType">
+		<xs:key name="areaUuidsInWebbaselet">
+			<xs:selector xpath=". | .//wbol:area | .//wbol:webbaselet" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="pageUuidsInWebbaselet">
+			<xs:selector xpath=".//wbol:page" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="contentUuidsInWebbaselet">
+			<xs:selector xpath=".//wbol:content" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:key name="navigableUuidsInWebbaselet">
+			<xs:selector xpath=". | .//wbol:area | .//wbol:webbaselet | .//wbol:page | .//wbol:content" />
+			<xs:field xpath="@uuid" />
+		</xs:key>
+		<xs:keyref name="webbaseletMainpageRef" refer="pageUuidsInWebbaselet">
+			<xs:selector xpath="." />
+			<xs:field xpath="@mainpage" />
+		</xs:keyref>
+		<xs:keyref name="areaMainpageRefInWebbaselet" refer="pageUuidsInWebbaselet">
+			<xs:selector xpath=". | .//wbol:area | .//wbol:webbaselet" />
+			<xs:field xpath="@mainpage" />
+		</xs:keyref>
+		<xs:keyref name="optionTargetRefInWebbaselet" refer="navigableUuidsInWebbaselet">
+			<xs:annotation>
+				<xs:documentation>Every option target in a webbaselet must resolve to a uuid in the same
+					webbaselet scope. Type-specific rules are semantic constraints and should be enforced
+					by runtime logic or XSD 1.1 assertions.</xs:documentation>
+			</xs:annotation>
+			<xs:selector xpath=".//wbol:content/wbol:options/wbol:option" />
+			<xs:field xpath="@target" />
+		</xs:keyref>
+	</xs:element>
+
+	<xs:complexType name="WebbaseType">
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="connectors" type="ConnectorsType" minOccurs="0" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" maxOccurs="1" />
+			<!-- Also the role registry: declares every role in the webbase with its default visibility -->
+			<xs:element name="visibility" type="WebbaseVisibilityType" minOccurs="0" />
+			<xs:element name="children" type="ChildrenType" minOccurs="1" maxOccurs="1" />
+		</xs:all>
+		<xs:attribute name="uuid" type="WebbaseUuidType" use="required" />
+		<xs:attribute name="mainpage" type="PageUuidType" use="required" />
+		<xs:attribute name="protocol" type="ProtocolType" use="optional" default="https://" />
+		<xs:attribute name="langs" type="LangsType" use="required" />
+	</xs:complexType>
+
+	<xs:simpleType name="LangsType">
+		<xs:list itemType="xs:language" />
+	</xs:simpleType>
+
+	<xs:simpleType name="WebbaseUuidType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="w[0-9A-Za-z]+" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="AreaUuidType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="a[0-9A-Za-z]+" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="OriginUuidType">
+		<xs:union memberTypes="WebbaseUuidType AreaUuidType" />
+	</xs:simpleType>
+
+	<xs:simpleType name="PageUuidType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="p[0-9A-Za-z]+" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="ContentUuidType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="c[0-9A-Za-z]+" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="OptionTargetUuidType">
+		<xs:annotation>
+			<xs:documentation>Union of uuid types that an option can point to. Additional keyrefs
+				narrow the allowed subset by content type.</xs:documentation>
+		</xs:annotation>
+		<xs:union memberTypes="WebbaseUuidType AreaUuidType PageUuidType ContentUuidType" />
+	</xs:simpleType>
+
+	<xs:simpleType name="OptionRefType">
+		<xs:annotation>
+			<xs:documentation>An option reference may be a navigable UUID, an arbitrary string, or the
+				literal '-' placeholder.</xs:documentation>
+		</xs:annotation>
+		<xs:union memberTypes="OptionTargetUuidType xs:string" />
+	</xs:simpleType>
+
+	<xs:simpleType name="ProtocolType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="http://" />
+			<xs:enumeration value="https://" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="SlugType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="[a-z0-9]+([.-][a-z0-9]+)*" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="VisibilityLiteralType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="true" />
+			<xs:enumeration value="false" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="VisibilityFunctionCallType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="[A-Za-z_][A-Za-z0-9_]*\(\)" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="VisibilityValueType">
+		<xs:union memberTypes="VisibilityLiteralType VisibilityFunctionCallType" />
+	</xs:simpleType>
+
+	<xs:simpleType name="VisibilityFunctionResultType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="true" />
+			<xs:enumeration value="false" />
+			<xs:enumeration value="null" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="ContentKindType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="text" />
+			<xs:enumeration value="table" />
+			<xs:enumeration value="form" />
+			<xs:enumeration value="list" />
+			<xs:enumeration value="graph" />
+			<xs:enumeration value="plots" />
+			<xs:enumeration value="calendar" />
+			<xs:enumeration value="tree" />
+			<xs:enumeration value="tabs" />
+			<xs:enumeration value="accordion" />
+			<xs:enumeration value="menus" />
+			<xs:enumeration value="geomap" />
+			<xs:enumeration value="languages" />
+			<xs:enumeration value="breadcrumbs" />
+			<xs:enumeration value="keypad" />
+			<xs:enumeration value="imagemap" />
+			<xs:enumeration value="map" />
+			<xs:enumeration value="serverside" />
+			<xs:enumeration value="clientside" />
+			<xs:enumeration value="shortcut" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="SectionType">
+		<xs:restriction base="xs:token">
+			<!-- Layout sections -->
+			<xs:enumeration value="header" />
+			<xs:enumeration value="footer" />
+			<xs:enumeration value="main" />
+			<xs:enumeration value="leftPanel" />
+			<xs:enumeration value="rightPanel" />
+			<!-- Overlay sections -->
+			<xs:enumeration value="modeless" />
+			<xs:enumeration value="modal" />
+			<!-- Notification sections -->
+			<xs:enumeration value="alert" />
+			<xs:enumeration value="warning" />
+			<xs:enumeration value="messages" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="PredefinedRoleIdType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="root" />
+			<xs:enumeration value="administrator" />
+			<xs:enumeration value="guest" />
+			<xs:enumeration value="user" />
+			<xs:enumeration value="developer" />
+			<xs:enumeration value="leaddeveloper" />
+			<xs:enumeration value="seo" />
+			<xs:enumeration value="ai" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="CustomRoleIdType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="[A-Za-z][A-Za-z0-9_-]*" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="RoleIdType">
+		<xs:union memberTypes="PredefinedRoleIdType CustomRoleIdType" />
+	</xs:simpleType>
+
+	<xs:complexType name="ChildrenType">
+		<xs:sequence>
+			<xs:choice maxOccurs="unbounded">
+				<xs:element name="area" type="AreaType" />
+				<xs:element name="webbaselet" type="NestedWebbaseletType" />
+				<xs:element name="page" type="PageType" />
+				<xs:element name="content" type="ContentType" />
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PageChildrenType">
+		<xs:sequence>
+			<xs:choice maxOccurs="unbounded">
+				<xs:element name="content" type="ContentType" />
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="AreaType">
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="visibility" type="VisibilityType" minOccurs="0" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" />
+			<xs:element name="children" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice maxOccurs="unbounded">
+							<xs:element name="area" type="AreaType" />
+							<xs:element name="page" type="PageType" />
+							<xs:element name="content" type="ContentType" />
+						</xs:choice>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+		<xs:attribute name="uuid" type="AreaUuidType" use="required" />
+		<xs:attribute name="origin" type="OriginUuidType" use="required" />
+		<xs:attribute name="mainpage" type="PageUuidType" use="optional" />
+		<xs:attribute name="inheritContents" type="xs:boolean" use="optional" default="true" />
+		<xs:attribute name="src" type="xs:anyURI" use="optional" />
+		<xs:attribute name="sequence" type="xs:decimal" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="NestedWebbaseletType">
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="visibility" type="VisibilityType" minOccurs="0" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" />
+			<xs:element name="children" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice maxOccurs="unbounded">
+							<xs:element name="area" type="AreaType" />
+							<xs:element name="webbaselet" type="NestedWebbaseletType" />
+							<xs:element name="page" type="PageType" />
+							<xs:element name="content" type="ContentType" />
+						</xs:choice>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+		<xs:attribute name="uuid" type="AreaUuidType" use="required" />
+		<xs:attribute name="origin" type="OriginUuidType" use="required" />
+		<xs:attribute name="mainpage" type="PageUuidType" use="optional" />
+		<xs:attribute name="inheritContents" type="xs:boolean" use="optional" default="true" />
+		<xs:attribute name="src" type="xs:anyURI" use="optional" />
+		<xs:attribute name="sequence" type="xs:decimal" use="optional" />
+		<xs:attribute name="version" type="xs:token" use="optional" />
+	</xs:complexType>
+
+	<!-- Root webbaselets behave like root webbases: no origin, but version is required. -->
+	<xs:complexType name="WebbaseletType">
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="visibility" type="VisibilityType" minOccurs="0" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" />
+			<xs:element name="children" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice maxOccurs="unbounded">
+							<xs:element name="area" type="AreaType" />
+							<xs:element name="webbaselet" type="NestedWebbaseletType" />
+							<xs:element name="page" type="PageType" />
+							<xs:element name="content" type="ContentType" />
+						</xs:choice>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+		<xs:attribute name="uuid" type="AreaUuidType" use="required" />
+		<xs:attribute name="mainpage" type="PageUuidType" use="optional" />
+		<xs:attribute name="inheritContents" type="xs:boolean" use="optional" default="true" />
+		<xs:attribute name="src" type="xs:anyURI" use="optional" />
+		<xs:attribute name="sequence" type="xs:decimal" use="optional" />
+		<xs:attribute name="version" type="xs:token" use="required" />
+		<xs:attribute name="langs" type="LangsType" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="PageType">
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="keywords" type="KeywordsType" minOccurs="0" />
+			<xs:element name="description" type="KeywordsType" minOccurs="0" />
+			<xs:element name="visibility" type="VisibilityType" minOccurs="0" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" />
+			<xs:element name="children" type="PageChildrenType" minOccurs="0" />
+		</xs:all>
+		<xs:attribute name="uuid" type="PageUuidType" use="required" />
+		<xs:attribute name="origin" type="OriginUuidType" use="required" />
+		<xs:attribute name="template" type="xs:anyURI" use="optional" default="index.html" />
+		<xs:attribute name="sequence" type="xs:decimal" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="ConnectorsType">
+		<xs:sequence>
+			<xs:element name="connector" type="ConnectorType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="ConnectorType">
+		<xs:annotation>
+			<xs:documentation>WBOL identifies a connector and its native query language without
+				restricting the backend to a particular database vendor or data model.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="id" type="xs:token" use="required" />
+		<xs:attribute name="queryLanguage" type="xs:token" use="required" />
+		<xs:attribute name="connection-string" type="xs:string" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="ContentType">
+		<xs:annotation>
+			<xs:documentation>The options child is syntactically available on content. Intended use is
+				for menu, tabs, and accordion content; additional type-specific restrictions are
+				semantic and should be enforced by runtime logic or XSD 1.1 assertions.</xs:documentation>
+		</xs:annotation>
+		<xs:all>
+			<xs:element name="name" type="NameType" />
+			<xs:element name="query" type="QueryType" minOccurs="0" maxOccurs="1" />
+			<xs:element name="layout" type="LayoutType" minOccurs="0" maxOccurs="1" />
+			<xs:element name="documentation" type="DocumentationType" minOccurs="0" maxOccurs="1" />
+			<xs:element name="options" type="OptionsType" minOccurs="0" maxOccurs="1" />
+			<xs:element name="visibility" type="VisibilityType" minOccurs="0" maxOccurs="1" />
+		</xs:all>
+		<xs:attribute name="uuid" type="ContentUuidType" use="required" />
+		<xs:attribute name="ref" type="ContentUuidType" use="optional" />
+		<xs:attribute name="origin" type="OriginUuidType" use="required" />
+		<xs:attribute name="type" type="ContentKindType" use="optional" default="text" />
+		<xs:attribute name="section" type="SectionType" use="optional" />
+		<xs:attribute name="sequence" type="xs:decimal" use="optional" />
+		<xs:attribute name="class" type="xs:token" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="NameType">
+		<xs:sequence>
+			<xs:element name="text" type="NameTextType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="KeywordsType">
+		<xs:sequence>
+			<xs:element name="text" type="LocalizedTextType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="LocalizedTextType" mixed="true">
+		<xs:attribute ref="xml:lang" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="NameTextType" mixed="true">
+		<xs:attribute ref="xml:lang" use="required" />
+		<xs:attribute name="slug" type="SlugType" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="QueryType" mixed="true">
+		<xs:attribute name="connector" type="xs:token" use="optional" />
+		<xs:attribute name="parameters" type="xs:string" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="LayoutType">
+		<xs:sequence>
+			<xs:element name="text" type="LocalizedTextType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DocumentationType">
+		<xs:sequence>
+			<xs:element name="text" type="DocumentationTextType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DocumentationTextType" mixed="true">
+		<xs:attribute ref="xml:lang" use="optional" />
+		<xs:attribute name="format" type="xs:string" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="OptionsType">
+		<xs:annotation>
+			<xs:documentation>Optional options container. It may be empty to support staged authoring.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="option" type="OptionType" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="OptionType">
+		<xs:annotation>
+			<xs:documentation>An option reference drives behavior: menu navigates (area uses mainpage,
+				webbase uses mainpage), while content references render content. An option without a ref
+				is a structural group whose nested options provide the available choices. Direct
+				localized text can override the target name. Each option may contain zero or one options
+				container. Parameters is a querystring payload appended or passed at render time.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="text" type="LocalizedTextType" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="options" type="OptionsType" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+		<xs:attribute name="ref" type="OptionRefType" use="optional" />
+		<xs:attribute name="parameters" type="xs:string" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="VisibilityType">
+		<xs:sequence>
+			<xs:element name="role" type="RoleType" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="WebbaseVisibilityType">
+		<xs:sequence>
+			<!-- A webbase must register at least the seven mandatory preset roles; tooling adds any
+			missing ones. -->
+			<xs:element name="role" type="RoleType" minOccurs="7" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="RoleType">
+		<xs:attribute name="id" type="RoleIdType" use="required" />
+		<xs:attribute name="visibility" type="VisibilityValueType" use="optional" default="false" />
+	</xs:complexType>
+
+</xs:schema>

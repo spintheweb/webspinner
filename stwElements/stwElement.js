@@ -36,7 +36,7 @@ class STWElement {
 	extra;
 
 	constructor(element) {
-		this.uuid = element.uuid ? element.uuid : newId();
+		this.uuid = element.uuid ? element.uuid : newId(element.type === "Portal" ? "P" : element.type[0]);
 		this.type = element.type || this.constructor.name.replace("STW", "");
 		this.name = new Map(Object.entries(element.name || { "en": `New ${this.type}` }));
 		this.slug = new Map(Object.entries(element.slug || { "en": `New ${this.type}`.replace(/[^a-z0-9_]/gi, "").toLowerCase() }));

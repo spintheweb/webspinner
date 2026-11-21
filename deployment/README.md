@@ -22,7 +22,7 @@ Notes:
 - Images are tagged locally as `ghcr.io/spintheweb/webspinner:latest` by default but are not pushed anywhere unless you explicitly use `--push`.
 - First run: if `PORTAL_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `PORTAL_DOMAIN` to proceed.
 - Persistent data: `./webspinner-data` on host is mounted to `/app/.data` in the container.
-- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASE` and `PORTAL_DOMAIN`.
+- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASELET` and `PORTAL_DOMAIN`.
 
 ## Developer WBOL API
 
@@ -46,6 +46,34 @@ Root or administrator sessions can manage accounts and roles through separate ad
 
 Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Connector passwords may be supplied when creating or updating a connector, but are never returned by the connector API. The `developer` role is required for element edits; it does not grant account administration or RBV management. Only `leaddeveloper` can change RBV; LeadDeveloper users and root can manage connectors, not users with the administrator role. Account and role routes require `root` or `administrator`.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
+
+## Mail connector setup
+
+The Common WBOL mail page uses connector IDs `imapApi` and `smtpApi`, with connector types `imap` and `smtp`. Configure both in the JSON array at `CONNECTORS` (default: `.data/connectors.json`). Supply credentials through environment variables using `passwordEnv` rather than storing passwords in the connector file:
+
+```json
+[
+  {
+    "name": "imapApi",
+    "type": "imap",
+    "host": "imap.example.com",
+    "user": "mailbox@example.com",
+    "passwordEnv": "MAIL_PASSWORD"
+  },
+  {
+    "name": "smtpApi",
+    "type": "smtp",
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": false,
+    "user": "mailbox@example.com",
+    "passwordEnv": "MAIL_PASSWORD",
+    "from": "mailbox@example.com"
+  }
+]
+```
+
+IMAP connections always require verified TLS. SMTP uses verified TLS and requires STARTTLS when `secure` is `false`; port 465 defaults to implicit TLS. The mail page currently accesses a shared mailbox and is visible only to `root` and `leaddeveloper`.
 
 ## Quick start (docker-compose)
 

@@ -4,6 +4,7 @@ body.stwStudioPage {
 	height: 100vh;
 	overflow: hidden;
 	background-color: var(--bg);
+	margin: 0;
 }
 
 body.stwStudioPage > div {
@@ -41,6 +42,7 @@ body.stwStudioPage #leftPanel {
 }
 
 body.stwStudioPage #rightPanel {
+	display: none;
 	border-left: thin solid var(--border);
 }
 
@@ -126,4 +128,8 @@ body.stwStudioPage #main > .stwTabs > dl > dd > article {
 .stwStudioBrowserBar input {
 	flex: 1;
 	min-width: 0;
+}
+
+.stwDevelop {
+	line-height: 1rem;
 }

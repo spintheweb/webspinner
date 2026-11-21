@@ -16,6 +16,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
+import jsonata from "jsonata";
 import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { STWContent } from "../stwElements/stwContent.js";
@@ -35,6 +36,7 @@ import { signAction, verifyAction } from "../stwComponents/stwActionToken.js";
 import { STWActionRouter } from "../stwComponents/stwActions.js";
 import { handleHttp } from "../stwComponents/stwHttpHandler.js";
 import { STWConnectors } from "../stwComponents/stwConnectors.js";
+import { executeImapQuery, executeSmtpAction, parseImapCommand } from "../stwComponents/stwMailConnector.js";
 import { STWSecurity } from "../stwComponents/stwSecurity.js";
 import { STWSession } from "../stwComponents/stwSession.js";
 import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
@@ -83,6 +85,62 @@ test("studio preview blocks studio navigation but permits other destinations", a
 	assert.equal(frame.src, "http://localhost/customers");
 	context._stwStudioNavigate("https://example.com/");
 	assert.deepEqual(navigations, ["https://example.com/"]);
+});
+
+test("Alt+F12 toggles studio and returns to the page it was opened from", async () => {
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const storage = new Map();
+	const createContext = (pathname, href, frame) => {
+		const listeners = {};
+		const navigations = [];
+		const window = {
+			location: { href, origin: "http://localhost", pathname, assign: (url) => navigations.push(url) },
+			addEventListener: (type, listener) => { listeners[type] = listener; }
+		};
+		window.self = window;
+		window.top = window;
+		const document = {
+			addEventListener() {},
+			createElement: () => frame,
+			querySelector: () => null,
+			getElementById: () => null
+		};
+		const context = {
+			window,
+			document,
+			sessionStorage: {
+				getItem: (key) => storage.get(key) || null,
+				setItem: (key, value) => storage.set(key, value),
+				removeItem: (key) => storage.delete(key)
+			},
+			crypto: { randomUUID: () => "test-id" },
+			URL,
+			DOMException
+		};
+		runInNewContext(source, context);
+		runInNewContext("stwCanStudio = true", context);
+		return { context, listeners, navigations };
+	};
+	storage.set("stwTabId", "x1");
+	const originUrl = "http://localhost/customers?sort=name#list";
+	const normal = createContext("/customers", originUrl);
+	let prevented = false;
+	normal.listeners.keydown({ altKey: true, key: "F12", preventDefault: () => { prevented = true; } });
+	assert.equal(prevented, true);
+	assert.deepEqual(normal.navigations, ["http://localhost/stws"]);
+	assert.equal(storage.get("stwStudioReturnUrl"), originUrl);
+
+	const frame = {
+		isConnected: true,
+		dataset: {},
+		contentWindow: { location: { href: originUrl } }
+	};
+	const studio = createContext("/stws", "http://localhost/stws", frame);
+	studio.context._stwStudioAttachPreview({ append() {} });
+	assert.equal(frame.src, originUrl);
+	studio.listeners.keydown({ altKey: true, key: "F12", preventDefault() {} });
+	assert.deepEqual(studio.navigations, [originUrl]);
+	assert.equal(storage.has("stwStudioReturnUrl"), false);
 });
 
 test("studio links in its preview are sent to the parent instead of loading in the iframe", async () => {
@@ -381,6 +439,11 @@ test("static file serving returns content and blocks paths outside public", asyn
 	assert.equal(response.status, 200);
 	assert.match(response.headers.get("content-type") ?? "", /text\/html/);
 
+	const schema = await serveFile(new Request("http://localhost/schemas/wbol.xsd"), "./public/schemas/wbol.xsd");
+	assert.equal(schema.status, 200);
+	assert.match(schema.headers.get("content-type") ?? "", /application\/xml/);
+	assert.match(await schema.text(), /targetNamespace="https:\/\/spintheweb\.org\/schemas\/wbol\.xsd"/);
+
 	const forbidden = await serveFile(new Request("http://localhost/.env"), "./public/../.env");
 	assert.equal(forbidden.status, 403);
 });
@@ -576,6 +639,61 @@ test("tree content renders path-based rows using the configured key", async () =
 	assert.match(html, /parent/);
 	assert.match(html, /child/);
 	assert.doesNotMatch(html, /\[object Promise\]/);
+});
+
+test("Studio webbase tree maps elements to icons and editor routes", async () => {
+	const studio = WBOL(await readFile("./webbaselets/stwStudio.wbol", "utf8"));
+	const find = (element, slug) => element.slug?.en === slug
+		? element
+		: (element.children || []).map((child) => find(child, slug)).find(Boolean);
+	const definition = find(studio, "webbase");
+	assert.ok(definition);
+	assert.equal(definition.params, "/");
+
+	const data = await jsonata(definition.query).evaluate({
+		uuid: "site-id",
+		type: "Portal",
+		name: { en: "Site" },
+		children: [{
+			uuid: "area-id",
+			type: "Area",
+			name: { en: "Area" },
+			children: [{
+				uuid: "page-id",
+				type: "Page",
+				name: { en: "Page" },
+				children: [{
+					uuid: "content-id",
+					type: "Content",
+					subtype: "Table",
+					section: "main",
+					name: { en: "People" },
+					children: []
+				}]
+			}]
+		}]
+	});
+	assert.deepEqual(
+		[data.icon, data.url, data.name, data.type],
+		["Site*", "/stws/edit/edit-site", "Site", "Portal"]
+	);
+	assert.equal(Array.isArray(data.children), true);
+	assert.deepEqual([
+		data.children[0].url,
+		data.children[0].children[0].url,
+		data.children[0].children[0].children[0].url
+	], ["/stws/edit/edit-area", "/stws/edit/edit-page", "/stws/edit-content"]);
+
+	const tree = new STWTree(definition);
+	const html = await tree.render(null, {
+		lang: "en",
+		baseurl: "localhost",
+		tz: "UTC",
+		placeholders: new Map()
+	}, { fields: Object.keys(data), rows: [data] });
+	assert.match(html, /data-stw-editor-type="Portal"/);
+	assert.match(html, /data-stw-editor-uuid="site-id"/);
+	assert.match(html, /People/);
 });
 
 test("WBOL lists registered content types only for developers", async () => {
@@ -849,6 +967,53 @@ test("POST action requests execute and return a GET redirect", async () => {
 			"@@stwloginid": "-3"
 		});
 	} finally {
+		STWIndex.delete(id);
+	}
+});
+
+test("connector-backed form submission returns action errors to the client", async () => {
+	const id = `submit-error-${Date.now()}`;
+	const content = new STWContent({ uuid: id, subtype: "Form" });
+	content.visibility.set("user", true);
+	STWIndex.set(id, content);
+	const session = {
+		sessionId: "submit-error-session",
+		portal: STWPortal.instance,
+		roles: ["user"],
+		lang: "en",
+		placeholders: new Map(),
+		sockets: new Map()
+	};
+	const executeAction = STWConnectors.executeAction;
+	const consoleError = console.error;
+	STWConnectors.executeAction = async () => {
+		throw new Error("SMTP unavailable");
+	};
+	console.error = () => {};
+	try {
+		const layout = new STWLayout("b('.;stwsubmit;smtpApi;send')");
+		const html = (await layout.render([], session.placeholders, session, "", id)).HTML;
+		const token = /data-stw-action-token="([^"]+)"/.exec(html)?.[1];
+		assert.ok(token);
+		const formData = new FormData();
+		formData.set("stwAction", "stwsubmit");
+		formData.set("stwActionToken", token);
+		formData.set("stwOrigin", id);
+		formData.set("stwRedirect", "http://localhost/");
+		formData.set("to", "user@example.test");
+		formData.set("subject", "Test");
+		formData.set("text", "Test message");
+
+		const response = await handleHttp(
+			new Request("http://localhost/submit", { method: "POST", body: formData }),
+			session,
+			session.sessionId
+		);
+		assert.equal(response.status, 400);
+		assert.equal(await response.text(), "SMTP unavailable");
+	} finally {
+		console.error = consoleError;
+		STWConnectors.executeAction = executeAction;
 		STWIndex.delete(id);
 	}
 });
@@ -1427,6 +1592,77 @@ test("LeadDeveloper users can manage connector configuration", async () => {
 	}
 });
 
+test("IMAP and SMTP connector settings validate and redact credentials", async () => {
+	const previousConnectorsPath = process.env.CONNECTORS;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-mail-connectors-"));
+	const connectorsPath = join(directory, "connectors.json");
+	await writeFile(connectorsPath, "[]");
+	process.env.CONNECTORS = connectorsPath;
+	try {
+		const session = { roles: ["leaddeveloper"] };
+		const create = async (value) => await handleWbolApi(
+			new Request("http://localhost/wbol/connectors", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(value)
+			}),
+			session
+		);
+		const imap = await create({
+			name: "imapApi",
+			type: "imap",
+			host: "imap.example.test",
+			user: "mailbox@example.test",
+			passwordEnv: "WEBSPINNER_TEST_IMAP_PASSWORD"
+		});
+		assert.equal(imap.status, 201);
+		const imapConfiguration = await imap.json();
+		assert.equal(imapConfiguration.port, 993);
+		assert.equal(imapConfiguration.secure, true);
+		assert.equal(imapConfiguration.hasPassword, true);
+		assert.equal("password" in imapConfiguration, false);
+
+		const smtp = await create({
+			name: "smtpApi",
+			type: "smtp",
+			host: "smtp.example.test",
+			port: 587,
+			secure: false,
+			user: "mailer",
+			passwordEnv: "WEBSPINNER_TEST_SMTP_PASSWORD",
+			from: "noreply@example.test"
+		});
+		assert.equal(smtp.status, 201);
+		const smtpConfiguration = await smtp.json();
+		assert.equal(smtpConfiguration.secure, false);
+		assert.equal(smtpConfiguration.from, "noreply@example.test");
+		assert.equal(smtpConfiguration.hasPassword, true);
+
+		const insecureImap = await create({
+			name: "insecureImap",
+			type: "imap",
+			host: "imap.example.test",
+			user: "mailbox@example.test",
+			password: "secret",
+			secure: false
+		});
+		assert.equal(insecureImap.status, 400);
+		const missingFrom = await create({
+			name: "missingFrom",
+			type: "smtp",
+			host: "smtp.example.test",
+			user: "mailer",
+			password: "secret"
+		});
+		assert.equal(missingFrom.status, 400);
+	} finally {
+		await STWConnectors.resetRuntime();
+		if (previousConnectorsPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousConnectorsPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
 test("LeadDeveloper connector reconnect resets and attempts every configured connector", async () => {
 	const previousConnectorsPath = process.env.CONNECTORS;
 	const originalConnectDatabase = STWConnectors.connectDatabase;
@@ -1520,6 +1756,168 @@ test("LeadDeveloper connector reconnect resets and attempts every configured con
 		else process.env.CONNECTORS = previousConnectorsPath;
 		await rm(directory, { recursive: true, force: true });
 	}
+});
+
+test("IMAP connector limits reads, parses messages safely, and closes each connection", async () => {
+	const queries = [];
+	let released = 0;
+	let loggedOut = 0;
+	let clientOptions;
+	const client = {
+		usable: false,
+		mailbox: { exists: 3 },
+		async connect() { this.usable = true; },
+		async getMailboxLock(mailbox) {
+			assert.equal(mailbox, "INBOX");
+			return { release() { released++; } };
+		},
+		async *fetch(range, query) {
+			assert.equal(range, "1:*");
+			assert.deepEqual(query, { uid: true, envelope: true, flags: true, internalDate: true, size: true });
+			for (const uid of [1, 2, 3]) {
+				yield {
+					uid,
+					envelope: { from: [{ name: "Sender", address: "sender@example.test" }], subject: `<subject ${uid}>`, date: new Date("2026-01-01T00:00:00Z") },
+					flags: new Set(["\\Seen"]),
+					size: 120
+				};
+			}
+		},
+		async fetchOne(uid, query, options) {
+			queries.push({ uid, query, options });
+			if (query.size) return { uid, size: 120 };
+			return {
+				uid,
+				size: 120,
+				envelope: { subject: "Fallback" },
+				flags: new Set(),
+				internalDate: new Date("2026-01-01T00:00:00Z"),
+				source: Buffer.from([
+					"From: Sender <sender@example.test>",
+					"To: reader@example.test",
+					"Subject: <script>alert(1)</script>",
+					"Date: Thu, 01 Jan 2026 00:00:00 +0000",
+					"Content-Type: text/html; charset=utf-8",
+					"",
+					"<p>Hello <b>reader</b></p>"
+				].join("\r\n"))
+			};
+		},
+		async logout() { this.usable = false; loggedOut++; },
+		close() { this.usable = false; }
+	};
+	const config = { host: "imap.example.test", user: "reader", password: "secret", secure: true };
+	const session = { placeholders: new Map([["@uid", "42"]]) };
+	const createClient = (options) => {
+		clientOptions = options;
+		return client;
+	};
+
+	const listed = await executeImapQuery(session, config, '{"action":"list","mailbox":"INBOX","limit":3}', { createClient });
+	assert.equal(clientOptions.secure, true);
+	assert.equal(clientOptions.auth.pass, "secret");
+	assert.deepEqual(listed.rows.map(({ uid }) => uid), ["3", "2", "1"]);
+	assert.match(listed.rows[0].subject, /&lt;subject 3&gt;/);
+	assert.equal(released, 1);
+	assert.equal(loggedOut, 1);
+
+	const message = await executeImapQuery(session, config, '{"action":"get","mailbox":"INBOX","uid":"@uid"}', { createClient });
+	assert.equal(queries[0].uid, 42);
+	assert.equal(queries[0].options.uid, true);
+	assert.match(message.rows[0].subject, /&lt;script&gt;/);
+	assert.match(message.rows[0].text, /Hello reader/);
+	assert.doesNotMatch(message.rows[0].text, /<script>/);
+	assert.deepEqual(message.fields.slice(0, 4), ["from", "to", "date", "text"]);
+	assert.equal(released, 2);
+	assert.equal(loggedOut, 2);
+
+	assert.throws(() => parseImapCommand('{"action":"delete","uid":"42"}'), /must be 'list' or 'get'/);
+	assert.throws(() => parseImapCommand('{"action":"list","limit":1000}'), /limit must be an integer/);
+	await assert.rejects(executeImapQuery(session, { ...config, secure: false }, '{"action":"list"}', { createClient }), /require TLS/);
+});
+
+test("SMTP connector sends constrained plain-text messages with configured identity", async () => {
+	let transportOptions;
+	let sent;
+	let closed = false;
+	const result = await executeSmtpAction({
+		host: "smtp.example.test",
+		port: 587,
+		secure: false,
+		user: "mailer",
+		password: "secret",
+		from: "noreply@example.test"
+	}, "send", {
+		to: "reader@example.test",
+		subject: "Hello",
+		text: "Message body"
+	}, {
+		createTransport(options) {
+			transportOptions = options;
+			return {
+				async sendMail(message) {
+					sent = message;
+					return { messageId: "message@example.test" };
+				},
+				close() { closed = true; }
+			};
+		}
+	});
+	assert.equal(transportOptions.secure, false);
+	assert.equal(transportOptions.requireTLS, true);
+	assert.equal(sent.from, "noreply@example.test");
+	assert.equal(sent.to, "reader@example.test");
+	assert.equal(sent.text, "Message body");
+	assert.equal("html" in sent, false);
+	assert.equal(result.rows[0].status, "sent");
+	assert.equal(closed, true);
+
+	await assert.rejects(executeSmtpAction({
+		host: "smtp.example.test", user: "mailer", password: "secret", from: "noreply@example.test"
+	}, "send", { to: "victim@example.test\r\nBcc: other@example.test", subject: "Hello", text: "Body" }), /single valid email address/);
+	await assert.rejects(executeSmtpAction({
+		host: "smtp.example.test", user: "mailer", password: "secret", from: "noreply@example.test"
+	}, "send", { to: "reader@example.test", subject: "Bad\r\nSubject", text: "Body" }), /no line breaks/);
+});
+
+test("Common WBOL mail interface renders a protected inbox, message view, and compose form", async () => {
+	const common = WBOL(await readFile("./webbaselets/stwCommon.wbol", "utf8"));
+	const page = common.children.find((child) => child.slug?.en === "mail");
+	assert.ok(page);
+	assert.equal(page.visibility.leaddeveloper, true);
+	assert.equal(page.visibility.root, true);
+	const inbox = page.children.find((child) => child.slug?.en === "inbox");
+	const message = page.children.find((child) => child.slug?.en === "message");
+	const compose = page.children.find((child) => child.slug?.en === "compose");
+	assert.equal(inbox.connector, "imapApi");
+	assert.equal(message.connector, "imapApi");
+	assert.equal(compose.connector, "json");
+	assert.match(inbox.query, /"action":"list"/);
+	assert.match(message.query, /"action":"get"/);
+	assert.match(compose.layout.en, /stwsubmit;smtpApi;send/);
+
+	const form = new STWForm(message);
+	const placeholders = new Map();
+	const rendered = await form.render(new Request("http://localhost/stwc/mail/message"), {
+		lang: "en",
+		sessionId: "mail-ui-session",
+		placeholders,
+		baseurl: "",
+		tz: "UTC"
+	}, {
+		fields: ["from", "to", "date", "text", "subject", "truncated", "flags"],
+		rows: [{
+			from: "Sender &lt;sender@example.test&gt;",
+			to: "Reader &lt;reader@example.test&gt;",
+			date: "2026-01-01",
+			text: "Hello &lt;reader&gt;",
+			subject: "Welcome",
+			truncated: false,
+			flags: ""
+		}]
+	});
+	assert.match(rendered, /Sender &lt;sender@example.test&gt;/);
+	assert.match(rendered, /Hello &lt;reader&gt;/);
 });
 
 test("CRUD actions use the connector capability instead of a MySQL type check", async () => {

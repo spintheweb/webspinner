@@ -12,10 +12,10 @@
  * @license Apache-2.0
  */
 const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-function newId() {
-	return uuidToBase62(crypto.randomUUID());
+function newId(type = "x") {
+	return uuidToBase62(crypto.randomUUID(), type);
 }
-function uuidToBase62(uuid) {
+function uuidToBase62(uuid, type) {
 	const hex = uuid.replace(/-/g, "");
 	let n = BigInt("0x" + hex);
 	if (n === 0n) return "0";
@@ -26,7 +26,7 @@ function uuidToBase62(uuid) {
 		out = ALPHABET[rem] + out;
 		n = n / base;
 	}
-	return "x" + out;
+	return type + out;
 }
 export {
 	newId

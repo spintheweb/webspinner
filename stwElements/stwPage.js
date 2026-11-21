@@ -46,13 +46,13 @@ class STWPage extends STWElement {
     */
 	contents(session, recurse = true) {
 		if (!(this.isVisible(session) & 1)) return [];
-		const contents = this.children.filter((content) => !/(stwOpenModal|stwOpen)/.test(content.section) && content.isVisible(session) & 1).map((content) => content.uuid);
+		const contents = this.children.filter((content) => !/(modal|modeless)/.test(content.section) && content.isVisible(session) & 1).map((content) => content.uuid);
 		if (recurse)
 			climb(this.parent, contents, recurse);
 		return contents;
 		function climb(element, contents2, recurse2) {
 			if (element) {
-				element.children.filter((content) => content.section && !/(stwOpenModal|stwOpen)/.test(content.section) && content.isVisible(session) & 1).map((content) => contents2.push(content.uuid));
+				element.children.filter((content) => content.section && !/(modal|modeless)/.test(content.section) && content.isVisible(session) & 1).map((content) => contents2.push(content.uuid));
 				if (element.inheritContents !== false)
 					climb(element.parent, contents2, recurse2);
 			}

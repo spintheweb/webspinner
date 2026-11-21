@@ -109,6 +109,7 @@ function contentType(filePath) {
 		case ".css": return "text/css; charset=utf-8";
 		case ".js": return "application/javascript; charset=utf-8";
 		case ".json": return "application/json; charset=utf-8";
+		case ".xsd": return "application/xml; charset=utf-8";
 		case ".svg": return "image/svg+xml";
 		case ".png": return "image/png";
 		case ".jpg": case ".jpeg": return "image/jpeg";

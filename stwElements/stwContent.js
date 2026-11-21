@@ -130,12 +130,9 @@ class STWContent extends STWElement {
 				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type}@${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
-		let settings, HTML, records, dev = "";
+		let settings, HTML, records;
 		const layout = this.getLayout(session);
 		try {
-			if (session.dev && (this.isVisible(session, "developer") & 1))
-				dev = `<span class="stwProperties"><i class="fa-solid fa-fw fa-2x fa-cog" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stwc/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i></span>`;
-
 			records = await STWConnectors.command(session, this);
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
 			const placeholders = new Map(session.placeholders);
@@ -149,9 +146,9 @@ class STWContent extends STWElement {
 				HTML = `<form id="stwFA${this.uuid}"><input type="hidden" name="stwOrigin" value="${this.uuid}"></form>${HTML}`;
 			}
 			if (!HTML) {
-				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${dev}${settings.get("nodata") || ""}</article>` : "";
+				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
-				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">${dev}\n${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption") || ""}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n${HTML}\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
+				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">\n${this.develop(session, ref)}${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption")}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n${HTML}\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
 			}
 		} catch (error) {
 			const safeStringify = (obj) => {
@@ -162,6 +159,10 @@ class STWContent extends STWElement {
 				}
 				return JSON.stringify(filtered, null, 2);
 			};
+			let dev = "";
+			if (session.dev && (this.isVisible(session, "developer") & 1) && !this.pathname(session).startsWith("/stws"))
+				dev = `<i class="fa-solid fa-fw fa-ellipsis" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i>`;
+
 			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error</h1>\n<header>${error.message}</header>\n<pre>${safeStringify(this)}</pre>\n</article>`;
 		}
 		const data = {
@@ -176,7 +177,7 @@ class STWContent extends STWElement {
 			return settings.has("collapsible") ? ` class="stwExpanded" onclick="stwToggleCollapse(event)"` : "";
 		}
 		function closable(section) {
-			return section.startsWith("stwOpen") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
+			return section.startsWith("modeless") ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right"></i>` : "";
 		}
 	}
 
@@ -200,6 +201,16 @@ class STWContent extends STWElement {
 			this.layout ??= new Map();
 			this.layout.set(session.lang, layout);
 		}
+	}
+
+	// When the cookie _stwdevelop=true allow opening content editors
+	develop(session, content) {
+		content = content || this;
+		if (session.dev && content.pathname(session).startsWith("/stws") && session.user != "root")
+			return "";
+		if (session.dev && (content.isVisible(session, "developer") & 1))
+			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit-content", search: { uuid: "${content.uuid}" }, options: { recurse: false } }))'><i class="fa-solid fa-pen-to-square"></i></span>`;
+		return "";
 	}
 }
 

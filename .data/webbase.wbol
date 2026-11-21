@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<webbase xmlns="https://spintheweb.org/schemas/wbol.xsd" uuid="wGGpiW7IjjrFqapqVuZopW"
+<webbase xmlns="https://spintheweb.org/schemas/wbol.xsd"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://spintheweb.org/schemas/wbol.xsd ../public/schemas/wbol.xsd
+							  https://spintheweb.org/schemas/wbol.xsd /schemas/wbol.xsd"
+	uuid="wGGpiW7IjjrFqapqVuZopW"
 	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
 	<visibility>
 		<role id="root" />
@@ -36,11 +40,13 @@
 					</options>
 				</option>
 				<option ref="/stwc/users"></option>
+				<option ref="/stwc/mail"></option>
 				<option ref="/stwc/configuration"></option>
 				<option></option>
 				<option>
-					<text xml:lang="en"><![CDATA[User: @@stwloginname]]></text>
+					<text xml:lang="en"><![CDATA[<i class="fa-solid fa-fw fa-user"></i> @@stwloginname]]></text>
 				</option>
+				<option ref="c3gJOg8rVapMR0eiVIizt6c" />
 			</options>
 		</content>
 		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
@@ -53,6 +59,7 @@
 			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
+				<role id="user" visibility="true" />
 			</visibility>
 		</content>
 		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="languages"
@@ -62,25 +69,17 @@
 			</name>
 			<visibility>
 				<role id="guest" visibility="true" />
-				<role id="users" visibility="true" />
+				<role id="user" visibility="true" />
 			</visibility>
 		</content>
-		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD" type="shortcut"
+		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD" origin="wGGpiW7IjjrFqapqVuZopW" type="shortcut"
 			section="leftPanel" sequence="0">
 			<name>
 				<text xml:lang="en" slug="log-on"><![CDATA[Log on]]></text>
 			</name>
 			<visibility>
 				<role id="guest" visibility="true" />
-			</visibility>
-		</content>
-		<content uuid="c7be7AxZ04EpUSHsMrsVMPD" ref="c3gJOg8rVapMR0eiVIizt6c" type="shortcut"
-			section="leftPanel" sequence="0">
-			<name>
-				<text xml:lang="en" slug="log-off"><![CDATA[Log off]]></text>
-			</name>
-			<visibility>
-				<role id="user" visibility="true" />
+				<role id="root" visibility="true" />
 			</visibility>
 		</content>
 		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">

@@ -52,7 +52,7 @@ class STWTabs extends STWContent {
 		}
 		if (!id)
 			return "";
-		body += `</div><dd><article id="${newId()}" href="${href}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
+		body += `</div><dd><article id="${newId("c")}" href="${href}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
 		const mode = settings.get("mode") || "horizontal";
 		return `<dl class="stw${String(mode)[0].toUpperCase()}Tabs">${body}</dl>
 <script name="STWTabs" onload="fnSTWTabs('${this.uuid}')">

@@ -1,24 +1,50 @@
 .stwForm form,
 .stwFormCompact form {
-	padding: var(--padding) !important;
+	padding: var(--padding);
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	gap: 0.2rem 1rem;
+}
+.stwFormCompact form {
+	flex-wrap: wrap;
 }
 
 .stwForm label {
 	font-size: small;
 	font-weight: bolder;
+	display: flex;
+	flex-direction: column;
 }
 
-.stwForm input, .stwForm select, .stwForm textarea, .stwForm button {
+.stwForm input,
+.stwForm textarea,
+.stwForm select,
+.stwForm button {
+	margin: var(--padding) 0 0;
 	padding: var(--padding);
-	margin: var(--padding) var(--padding) var(--padding) 0;
+}
+
+.stwForm label:has(> input[type="text"]),
+.stwForm label:has(> input:not([type])),
+.stwForm label:has(> textarea) {
+    flex: 1 1 12rem;
+}
+
+.stwForm input[type="text"] {
+	width: 100%;
+}
+.stwForm textarea {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 5rem;
 }
 
 .stwForm button {
-	padding: var(--padding);
 	min-width: 7rem;
-	margin: var(--padding) 0;
 }
 
+/*
 .stwFormCompact input:not([type=number]),
 .stwFormCompact button,
 .stwFormCompact textarea,
@@ -27,7 +53,7 @@
 	margin: var(--padding-compact) var(--padding-compact) var(--padding-compact) 0;
 	width: -webkit-fill-available;
 }
-
+*/
 .stwFormCompact label {
 	display: block;
 	font-size: smaller;

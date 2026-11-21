@@ -11,7 +11,10 @@
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { transform } from "esbuild";
-const inputJs = await readFile("./public/scripts/stwClient.js", "utf8");
-const result = await transform(inputJs, { minify: true, loader: "js" });
-await writeFile("./public/scripts/stwClient.min.js", result.code);
+
+for (const name of ["stwClient", "stwClientStudio", "client"]) {
+	const inputJs = await readFile(`./public/scripts/${name}.js`, "utf8");
+	const result = await transform(inputJs, { minify: true, loader: "js" });
+	await writeFile(`./public/scripts/${name}.min.js`, result.code);
+}
 console.log("Client-side JS minified successfully!");

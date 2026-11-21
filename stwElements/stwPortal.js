@@ -70,8 +70,8 @@ class STWPortal extends STWElement {
 				throw new Error(
 					`Webbase '${webbase}' not found. Set WEBBASE="<path>" in the .env file or place the webbase in ${webbase}.`
 				);
-			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol");
-			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASE") || "./webbaselets/stwStudio.wbol");
+			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol");
+			STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol");
 			
 			if (isDebugging)
 				STWPortal.watchWebbases();
@@ -197,7 +197,8 @@ class STWPortal extends STWElement {
 		this.#watcherStarted = true;
 		const webbasePaths = [
 			envGet("WEBBASE") || "./.data/webbase.wbol",
-			envGet("COMMON_WEBBASE") || "./webbaselets/stwCommon.wbol"
+			envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol",
+			envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol",
 		];
 		let reloadTimeout;
 		for (const webbasePath of webbasePaths) {

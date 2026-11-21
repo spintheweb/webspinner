@@ -42,6 +42,9 @@ npm start
 
 The server listens on port 8000 by default. Set `PORT`, `HOST`, and optionally `CERTFILE` and `KEYFILE` in the environment or `.env` file to configure the listener.
 
+For local development, run `npm run dev:tasks` to watch and merge styles and
+sync `../schemas/wbol.xsd` to `public/schemas/wbol.xsd`.
+
 Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles. `ALLOW_AI` also defaults to `false`; set it to `true` to enable Studio assistant requests and proposal application.
 
 When Studio is enabled, its controls stay in the top-level page while the live

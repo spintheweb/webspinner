@@ -694,17 +694,18 @@ class EmbedSymbol extends BaseSymbol {
 	localContent;
 	constructor(args, tagName = "", runtime) {
 		super(args, tagName, runtime);
+
 		this.relativeUrl = !/^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/\/)/.test(this.args[0]);
 		const base = runtime.Session.baseurl ? `https://${runtime.Session.baseurl}` : "http://stw.invalid";
 		this.url = new URL(this.args[0] || ".", base);
 		this.localContent = this.relativeUrl || (runtime.Session.baseurl && this.url.host === new URL(base).host);
-		if (tagName === "embed") {
+		
+		if (tagName === "iframe") {
 			this.attrs.set("src", this.urlValue());
-			this.attrs.set("type", "text/html");
-			this.attrs.set("style", "display:block; width: 100%; height: 100%");
+			this.attrs.set("style", "display:block;width:100%;height:100%;border:none;");
 		} else if (this.localContent) {
 			this.tagName = "article";
-			this.attrs.set("id", newId());
+			this.attrs.set("id", newId("c"));
 			this.attrs.set("href", this.contentUrl());
 		}
 	}
@@ -714,7 +715,7 @@ class EmbedSymbol extends BaseSymbol {
 		const search = `${args};;`.split(";");
 		this.url.searchParams.set(search[0] ?? "", search[1] ?? "");
 		if (this.tagName)
-			this.attrs.set(this.tagName === "embed" ? "src" : "href", this.tagName === "embed" ? this.urlValue() : this.contentUrl());
+			this.attrs.set(this.tagName === "iframe" ? "src" : "href", this.tagName === "iframe" ? this.urlValue() : this.contentUrl());
 		return this;
 	}
 	q(args, index, runtime) {
@@ -726,7 +727,7 @@ class EmbedSymbol extends BaseSymbol {
 			for (const [k2, v2] of params.entries())
 				this.url.searchParams.set(k2, v2);
 			if (this.tagName)
-				this.attrs.set(this.tagName === "embed" ? "src" : "href", this.tagName === "embed" ? this.urlValue() : this.contentUrl());
+				this.attrs.set(this.tagName === "iframe" ? "src" : "href", this.tagName === "iframe" ? this.urlValue() : this.contentUrl());
 		} catch {
 		}
 		return this;
@@ -740,7 +741,7 @@ class EmbedSymbol extends BaseSymbol {
 				throw new EmbedFetchError(`Embedded content not found: ${this.contentUrl()}`);
 			this.runtime.HasEmbeddedContent = true;
 			this.runtime.HTML += super.toString();
-		} else if (this.tagName === "embed") {
+		} else if (this.tagName === "iframe") {
 			this.runtime.HTML += super.toString();
 		} else {
 			try {
@@ -900,7 +901,7 @@ function o(args, index, runtime) {
 function O(args, index, runtime) {
 	runtime.Index = index;
 	args = WBPL(args, runtime.Placeholders);
-	const symbol = new EmbedSymbol(args, "embed", runtime);
+	const symbol = new EmbedSymbol(args, "iframe", runtime);
 	return symbol;
 }
 function r(args, index, runtime) {

@@ -56,9 +56,11 @@ body {
 	font-size: inherit;
 	background: var(--bg);
 	color: var(--text);
+	margin: 0;
 }
 
 h1 {
+	font-size: larger;
 	color: var(--special);
 	margin: var(--padding);
 }
@@ -69,7 +71,7 @@ dialog[open] {
 	font-size: smaller;
 	border: thin solid var(--border);
 	z-index: 1000;
-	min-width: 50rem;
+	max-width: 40rem;
 }
 
 dialog h1 {

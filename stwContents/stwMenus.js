@@ -89,7 +89,7 @@ class STWMenus extends STWContent {
 				if (element instanceof STWContent) {
 					const search = new URL(request.url).search;
 					const contentSearch = parameters ? `${search}${search ? "&" : "?"}${parameters.replace(/^[?&]/, "")}` : search;
-					body += `<li class="stwNotOption"><article id="${newId()}" href="${element.uuid}${contentSearch}"></article>`;
+					body += `<li class="stwNotOption"><article id="${newId("c")}" href="${element.uuid}${contentSearch}"></article>`;
 				} else if (option.options?.length) {
 					body += `<li><div>${!option.options?.length && href ? `<a href="${href}">${name}</a>` : name} <i class="fa-light fa-angle-${iteration || settings.has("vertical") ? "right": "down"}"></i></div>`;
 					body += "<menu>", option.options.forEach((option2) => subrender(option2, true)), body += "</menu>";

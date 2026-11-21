@@ -599,7 +599,7 @@ function jsonResponse(body, status = 200, headers) {
 		headers: { "Content-Type": "application/json; charset=utf-8", ...Object.fromEntries(new Headers(headers)) }
 	});
 }
-const connectorTypes = new Set(["api", "mysql", "postgres", "mssql", "mongodb", "shell"]);
+const connectorTypes = new Set(["api", "imap", "mysql", "postgres", "mssql", "mongodb", "shell", "smtp"]);
 async function handleWbolAdminApi(request, session, segments) {
 	const [resource, rawId, action] = segments;
 	if (!["users", "roles", "connectors", "configuration"].includes(resource || "")) return null;
@@ -899,8 +899,12 @@ function validateConnector(value) {
 	}
 	if (!connectorTypes.has(type)) throw new AdminApiError(400, `Unsupported connector type: ${type}`);
 	const result = { name, type };
-	for (const key of ["host", "user", "password", "database", "contentType"]) {
+	for (const key of ["host", "user", "password", "passwordEnv", "database", "contentType", "from"]) {
 		if (value[key] !== void 0) result[key] = requireString(value[key], key);
+	}
+	if (value.secure !== void 0) {
+		if (typeof value.secure !== "boolean") throw new AdminApiError(400, "secure must be a boolean");
+		result.secure = value.secure;
 	}
 	if (value.port !== void 0) {
 		if (typeof value.port !== "number" || !Number.isInteger(value.port) || value.port < 1 || value.port > 65535) {
@@ -915,20 +919,37 @@ function validateConnector(value) {
 		throw new AdminApiError(400, "mongodb connector requires host and database");
 	}
 	if (type === "api" && !result.host) throw new AdminApiError(400, "api connector requires host");
+	if (["imap", "smtp"].includes(type)) {
+		if (!result.host || !result.user) throw new AdminApiError(400, `${type} connector requires host and user`);
+		if (Boolean(result.password) === Boolean(result.passwordEnv)) {
+			throw new AdminApiError(400, `${type} connector requires exactly one of password or passwordEnv`);
+		}
+		if (result.passwordEnv && !/^[A-Z_][A-Z0-9_]*$/.test(result.passwordEnv)) {
+			throw new AdminApiError(400, "passwordEnv must be an environment variable name");
+		}
+		result.port ??= type === "imap" ? 993 : 465;
+		result.secure ??= type === "imap" || result.port === 465;
+		if (type === "imap" && !result.secure) {
+			throw new AdminApiError(400, "imap connector requires TLS");
+		}
+		if (type === "smtp" && !result.from) {
+			throw new AdminApiError(400, "smtp connector requires a configured from address");
+		}
+	}
 	if (type === "shell" && !result.host && !result.name) {
 		throw new AdminApiError(400, "shell connector requires an executable in host");
 	}
 	return result;
 }
 function validateConnectorFields(value) {
-	const allowed = new Set(["name", "type", "host", "user", "password", "database", "contentType", "port"]);
+	const allowed = new Set(["name", "type", "host", "user", "password", "passwordEnv", "database", "contentType", "port", "secure", "from"]);
 	for (const key of Object.keys(value)) {
 		if (!allowed.has(key)) throw new AdminApiError(400, `Unsupported connector field: ${key}`);
 	}
 }
 function redactConnector(configuration) {
 	const { password, ...safe } = configuration;
-	return { ...safe, hasPassword: typeof password === "string" && password.length > 0 };
+	return { ...safe, hasPassword: typeof password === "string" && password.length > 0 || typeof configuration.passwordEnv === "string" };
 }
 async function readAdminJson(request) {
 	const text = await request.text();

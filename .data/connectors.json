@@ -18,5 +18,24 @@
 		"name": "bash",
 		"type": "shell",
 		"host": "C:/Program Files/Git/bin/bash.exe"
+	},
+	{
+		"name": "imapApi",
+		"type": "imap",
+		"host": "pop.securemail.pro",
+		"port": 993,
+		"secure": true,
+		"user": "info@spintheweb.org",
+		"password": "MAIL_PASSWORD"
+	},
+	{
+		"name": "smtpApi",
+		"type": "smtp",
+		"host": "authsmtp.securemail.pro",
+		"port": 465,
+		"secure": false,
+		"user": "info@spintheweb.org",
+		"password": "MAIL_PASSWORD",
+		"from": "info@spintheweb.org"
 	}
 ]

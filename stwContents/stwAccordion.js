@@ -43,7 +43,7 @@ class STWAccordion extends STWContent {
 			if (element instanceof STWContent && (element.isVisible(session) & 1)) {
 				const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
 				const contentSearch = option.parameters ? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}` : search;
-				body += `<dt data-ref="${element.uuid}"><i class="fa-light fa-angle-${i > 0 ? "right" : "down"}"></i>${name}</dt><dd><article id="${newId()}" href="${option.ref}${contentSearch}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
+				body += `<dt data-ref="${element.uuid}"><i class="fa-light fa-angle-${i > 0 ? "right" : "down"}"></i>${name}</dt><dd><article id="${newId("c")}" href="${option.ref}${contentSearch}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
 			}
 		});
 		if (body === "")

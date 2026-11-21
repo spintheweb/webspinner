@@ -37,7 +37,7 @@ class STWForm extends STWContent {
 			return "";
 		if (hasEmbeddedContent && !hasFormFields)
 			return body;
-		return `<form${this.section === "stwOpenModal" ? ` method="dialog"` : ""}>${body}<input type="hidden" name="stwOrigin" value="${this.uuid}"></form>`;
+		return `<form${this.section === "modal" ? ` method="dialog"` : ""}>${body}<input type="hidden" name="stwOrigin" value="${this.uuid}"></form>`;
 	}
 }
 

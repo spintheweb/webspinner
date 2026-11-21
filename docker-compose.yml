@@ -28,7 +28,7 @@ services:
       # Portal Configuration
       - PORTAL_ROOT=./public
       - WEBBASE=./.data/webbase.wbol
-      - COMMON_WEBBASE=./webbaselets/stwCommon.wbol
+      - COMMON_WEBBASELET=./webbaselets/stwCommon.wbol
       
       # Upload Configuration
       - MAX_UPLOADSIZE=200

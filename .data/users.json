@@ -15,8 +15,8 @@
     "disabled": false
   },
   {
-    "user": "admin",
-    "name": "Administrator",
+    "user": "john.a",
+    "name": "John Administrator",
     "password": "73960ca0c5751dbb15ab486171556b0d:0fa4dbb9bd36dd1f2a3c4c2605da3a7bda2b7fb628b07d88ea78c79101150e6e",
     "roles": "administrator",
     "email": "info@spintheweb.org",
@@ -33,10 +33,19 @@
     "disabled": false
   },
   {
-    "user": "john.d",
+    "user": "john",
     "name": "John Doe",
     "password": "6261dc91b006d4eb7364a066a069c1f5:c9de63afb43c131a692ffc4757b00417953ccdbde2dc9838d2b501db24476a1f",
     "roles": "user",
+    "email": "user@spintheweb.org",
+    "id": 1,
+    "disabled": false
+  },
+  {
+    "user": "john.d",
+    "name": "John Developer",
+    "password": "6261dc91b006d4eb7364a066a069c1f5:c9de63afb43c131a692ffc4757b00417953ccdbde2dc9838d2b501db24476a1f",
+    "roles": "developer",
     "email": "user@spintheweb.org",
     "id": 1,
     "disabled": false
