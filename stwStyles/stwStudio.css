@@ -29,8 +29,8 @@ body.stwStudioPage > #header {
 
 body.stwStudioPage #leftPanel,
 body.stwStudioPage #rightPanel {
-	width: 18rem;
 	min-width: 0;
+	max-width: 25rem;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;

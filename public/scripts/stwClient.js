@@ -38,7 +38,7 @@ document.addEventListener("submit", async (event) => {
 	const target = button.dataset.stwCurrentUrl === "true"
 		? new URL(window.location.href)
 		: new URL(button.formAction || form.action || window.location.href, window.location.href);
-		
+
 	try {
 		for (const [key, value] of JSON.parse(button.dataset.stwParams || "[]")) {
 			target.searchParams.set(key, value);
@@ -186,12 +186,13 @@ function stwStartWebsocket() {
 			}
 
 			if (data.section === "modal" || data.section === "modeless") {
-				document.body.insertAdjacentHTML("afterbegin", `<dialog onclose="this.remove()">${data.body}</dialog>`);
-				if (data.section === "modal") {
-					document.querySelector("dialog")?.showModal();
-				} else {
-					document.querySelector("dialog")?.show();
-				}
+				const topDocument = window.self !== window.top ? window.top.document : document;
+				
+				topDocument.body.insertAdjacentHTML("afterbegin", `<dialog onclose="this.remove()">${data.body}</dialog>`);
+				if (data.section === "modal")
+					topDocument.querySelector("dialog")?.showModal();
+				else
+					topDocument.querySelector("dialog")?.show();
 			} else {
 				let insertion = document.getElementById(data.section);
 				insertion?.querySelectorAll("article[data-sequence]").forEach((article) => {
@@ -233,6 +234,7 @@ function stwStartWebsocket() {
 		setTimeout(stwStartWebsocket, 5000);
 	};
 }
+
 // --- Lazy editor loader utilities ---
 const _stwLoaded = { jquery: false, summernote: false, ace: false };
 const _stwLoading = {};

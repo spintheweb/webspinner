@@ -19,7 +19,7 @@
 			</name>
 			<children>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal">
+					section="modal" class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="edit-site"><![CDATA[Edit Site]]></text>
 					</name>
@@ -29,7 +29,7 @@
 					</layout>
 				</content>
 				<content uuid="c5TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal">
+					section="modal" class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="edit-area"><![CDATA[Edit Area]]></text>
 					</name>
@@ -39,7 +39,7 @@
 					</layout>
 				</content>
 				<content uuid="c4TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal">
+					section="modal" class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="edit-page"><![CDATA[Edit Page]]></text>
 					</name>
@@ -49,7 +49,7 @@
 					</layout>
 				</content>
 				<content uuid="c3TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal">
+					section="modal" class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="edit-content"><![CDATA[Edit content]]></text>
 					</name>
@@ -81,7 +81,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorEdit01" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					class="stwFormCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="connector"><![CDATA[Edit connector]]></text>
 					</name>
@@ -98,7 +98,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorNew001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					class="stwFormCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="connector-new"><![CDATA[New connector]]></text>
 					</name>
@@ -119,7 +119,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7StudioRoleEdit000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					class="stwFormCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="role-details"><![CDATA[Edit role]]></text>
 					</name>
@@ -132,7 +132,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7StudioRoleNew0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					class="stwFormCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="role-new"><![CDATA[New role]]></text>
 					</name>
@@ -143,20 +143,7 @@ l('Host')f
 				</content>
 			</children>
 		</page>
-		<content uuid="c6TC0s1xSa7g1ciRv64FQ22" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion">
-			<name>
-				<text xml:lang="en" slug="structure"><![CDATA[Structure]]></text>
-			</name>
-			<layout>
-				<text xml:lang="en"><![CDATA[\s('header="&emsp;WEBBASE"')]]></text>
-			</layout>
-			<options>
-				<option ref="c6TC0s1xSa5NgDIgMyCbIhL">
-					<text xml:lang="en"><![CDATA[Structure <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>]]></text>
-				</option>
-			</options>
-		</content>
-		<content uuid="c7K3dAiAsstAccrd0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion">
+		<content uuid="c7K3dAiAsstAccrd0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion" section="rightPanel">
 			<name>
 				<text xml:lang="en" slug="assistant"><![CDATA[AI Assistant]]></text>
 			</name>
@@ -200,7 +187,7 @@ l('Host')f
 			</options>
 		</content>
 		<content uuid="c7NwX2qLm8RvJ4kTp6YsD3" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-			section="modal">
+			section="modal" class="stwForm stwCompact">
 			<name>
 				<text xml:lang="en" slug="edit-content"><![CDATA[Edit Content]]></text>
 			</name>
@@ -235,7 +222,7 @@ l('Host')f
 						<text xml:lang="en"><![CDATA[\s('mode="vertical"')]]></text>
 					</layout>
 					<options>
-						<option ref="c6TC0s1xSa7g1ciRv64FQ22">
+						<option ref="c6TC0s1xSa5NgDIgMyCbIhL">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sitemap" aria-label="Webbase"></i>]]></text>
 						</option>
 						<option ref="c64HscPpcM9pByUEWIVTocq">
@@ -243,9 +230,6 @@ l('Host')f
 						</option>
 						<option ref="c6TC0s1xSa5SWiCO4QcQf7T">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-copy" aria-label="Explorer"></i>]]></text>
-						</option>
-						<option ref="c7K3dAiAsstAccrd0000001">
-							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sparkles" aria-label="AI Assistant"></i>]]></text>
 						</option>
 						<option></option>
 						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
@@ -270,7 +254,7 @@ l('Host')f
 					}};
 					$tree($))]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[n('2;Site*;<i class="fa-light fa-globe"></i>;Area*;<i class="fa-light fa-folder"></i>;Page*;<i class="fa-light fa-file"></i>;Content*;<i class="fa-light fa-cloud"></i>;;<i class="fa-light fa-rectangle"></i>')apf\a('onclick="event.preventDefault();_stwOpenElementEditor(this)" data-stw-editor-type="@@type" data-stw-editor-uuid="@@uuid"')]]></text>
+						<text xml:lang="en"><![CDATA[\s('header='&emsp;WEBBASE <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>'')n('2;Site*;<i class="fa-light fa-globe"></i>;Area*;<i class="fa-light fa-folder"></i>;Page*;<i class="fa-light fa-file"></i>;Content*;<i class="fa-light fa-cloud"></i>;;<i class="fa-light fa-rectangle"></i>')apf\a('onclick="event.preventDefault();_stwOpenElementEditor(this)" data-stw-editor-type="@@type" data-stw-editor-uuid="@@uuid"')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5SWiCO4QcQf7T" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
@@ -283,7 +267,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7K3dAiAsstAsk000000002" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					class="stwFormCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="assistant-ask"><![CDATA[Ask]]></text>
 					</name>

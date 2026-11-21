@@ -44,7 +44,7 @@
 				<option ref="/stwc/configuration"></option>
 				<option></option>
 				<option>
-					<text xml:lang="en"><![CDATA[<i class="fa-solid fa-fw fa-user"></i> @@stwloginname]]></text>
+					<text xml:lang="en"><![CDATA[<i class="fa-light fa-fw fa-user"></i> @@stwloginname]]></text>
 				</option>
 				<option ref="c3gJOg8rVapMR0eiVIizt6c" />
 			</options>
@@ -119,7 +119,7 @@
 					</name>
 					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-solid fa-fw fa-user"></i> @@customerName' ')>>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-fw fa-user"></i> @@customerName' ')>>
 							l('Contact last name')\tf\n
 							l('Contact name')\tf\n
 							l\tf]]></text>
@@ -163,7 +163,7 @@
 						<text xml:lang="en" slug="map"><![CDATA[Map]]></text>
 					</name>
 					<visibility>
-						<role id="guest" visibility="true" />
+						<role id="user" visibility="false" />
 					</visibility>
 				</content>
 				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"

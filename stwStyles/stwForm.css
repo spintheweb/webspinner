@@ -1,12 +1,12 @@
-.stwForm form,
-.stwFormCompact form {
+.stwForm form {
 	padding: var(--padding);
 	display: flex;
 	flex-direction: column;
 	flex: 1 1 auto;
 	gap: 0.2rem 1rem;
 }
-.stwFormCompact form {
+.stwCompact form {
+	flex-direction: initial;
 	flex-wrap: wrap;
 }
 
@@ -42,20 +42,4 @@
 
 .stwForm button {
 	min-width: 7rem;
-}
-
-/*
-.stwFormCompact input:not([type=number]),
-.stwFormCompact button,
-.stwFormCompact textarea,
-.stwFormCompact select {
-	font-family: inherit;
-	margin: var(--padding-compact) var(--padding-compact) var(--padding-compact) 0;
-	width: -webkit-fill-available;
-}
-*/
-.stwFormCompact label {
-	display: block;
-	font-size: smaller;
-	font-weight: bolder;
 }
