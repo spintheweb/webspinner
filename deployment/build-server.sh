@@ -460,6 +460,7 @@ generate_nginx_config() {
     cat > "$output_file" << 'NGINXTLS'
 server {
   listen 80;
+  listen [::]:80;
   server_name $HOST;
   # Allow certbot challenges & redirect everything else to HTTPS
   location /.well-known/acme-challenge/ { root /var/www/html; }
@@ -469,6 +470,7 @@ server {
 
 server {
   listen 443 ssl http2;
+  listen [::]:443 ssl http2;
   server_name $HOST;
   ssl_certificate $CERTPATH/fullchain.pem;
   ssl_certificate_key $CERTPATH/privkey.pem;
@@ -515,6 +517,7 @@ NGINXTLS
     cat > "$output_file" << 'NGINXHTTP'
 server {
   listen 80;
+  listen [::]:80;
   server_name $HOST;
   location / {
     proxy_pass http://localhost:$WEBSPINNER_PORT;
