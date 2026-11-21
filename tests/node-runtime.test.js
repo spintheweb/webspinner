@@ -62,7 +62,8 @@ test("studio pages cannot be framed, including when requested by UUID", async ()
 });
 
 test("studio preview blocks studio navigation but permits other destinations", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
+		await readFile("./public/scripts/clientStudio.js", "utf8");
 	const frame = { isConnected: true, dataset: { url: "http://localhost/home" }, src: "http://localhost/home" };
 	const alerts = [];
 	const navigations = [];
@@ -90,7 +91,8 @@ test("studio preview blocks studio navigation but permits other destinations", a
 });
 
 test("Alt+F12 toggles studio and returns to the page it was opened from", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
+		await readFile("./public/scripts/clientStudio.js", "utf8");
 	const storage = new Map();
 	const createContext = (pathname, href, frame) => {
 		const listeners = {};
@@ -146,7 +148,8 @@ test("Alt+F12 toggles studio and returns to the page it was opened from", async 
 });
 
 test("studio links in its preview are sent to the parent instead of loading in the iframe", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
+		await readFile("./public/scripts/clientStudio.js", "utf8");
 	const messages = [];
 	const window = {
 		location: { href: "http://localhost/home", origin: "http://localhost", pathname: "/home" },
@@ -595,7 +598,7 @@ test("the built-in wbol connector reads and updates WBOL content in-process", as
 			children: [{ uuid: contentId, type: "Content", name: "Originale", slug: "originale" }]
 		}]);
 		const treeContent = new STWTree({
-			subtype: "Tree", connector: "wbol", params: "/", query: treeQuery,
+			uuid: "wbol-connector-tree", subtype: "Tree", connector: "wbol", params: "/", query: treeQuery,
 			layout: { it: "v(';;@@name')" }, visibility: { developer: true }
 		});
 		const { body: html } = await (await treeContent.serve(new Request("http://localhost/"), session)).json();
@@ -633,7 +636,7 @@ test("the built-in wbol connector reads and updates WBOL content in-process", as
 
 test("tree content renders path-based rows using the configured key", async () => {
 	const session = new STWSession("tree-path-session", {}, null);
-	const tree = new STWTree({ subtype: "Tree", layout: { en: "\\s('key=\"path\"')v(';;@@name')" } });
+	const tree = new STWTree({ uuid: "tree-path", subtype: "Tree", layout: { en: "\\s('key=\"path\"')v(';;@@name')" } });
 	const html = await tree.render(null, session, {
 		fields: ["path", "name"],
 		rows: [{ path: "parent", name: "Parent" }, { path: "parent/child", name: "Child" }]
@@ -677,7 +680,7 @@ test("Studio webbase tree maps elements to icons and editor routes", async () =>
 	});
 	assert.deepEqual(
 		[data.icon, data.url, data.name, data.type],
-		["Site*", "/stws/edit/edit-site", "Site", "Portal"]
+		["<span class='fa-light fa-fw fa-globe' aria-hidden='true'></span>", "/stws/edit/edit-portal", "Site", "Portal"]
 	);
 	assert.equal(Array.isArray(data.children), true);
 	assert.deepEqual([
@@ -693,8 +696,8 @@ test("Studio webbase tree maps elements to icons and editor routes", async () =>
 		tz: "UTC",
 		placeholders: new Map()
 	}, { fields: Object.keys(data), rows: [data] });
-	assert.match(html, /data-stw-editor-type="Portal"/);
-	assert.match(html, /data-stw-editor-uuid="site-id"/);
+	assert.match(html, /data-url="\/stws\/edit\/edit-portal"/);
+	assert.match(html, /data-uuid="site-id"/);
 	assert.match(html, /People/);
 });
 
@@ -790,10 +793,13 @@ test("checkboxes, radios and multi-selects use connector choice records", async 
 	}
 });
 
-test("the Common content editor submits and updates the selected content", async () => {
-	const definition = WBOL(await readFile("./webbaselets/stwCommon.wbol", "utf8"))
-		.children.find((child) => child.slug?.en === "edit-content");
+test("the Studio content editor submits and updates the selected content", async () => {
+	const studio = WBOL(await readFile("./webbaselets/stwStudio.wbol", "utf8"));
+	const find = (element) => element.slug?.en === "edit-content"
+		? element : (element.children || []).map(find).find(Boolean);
+	const definition = find(studio);
 	const editor = new STWForm(definition);
+	editor.visibility.set("developer", true);
 	const portal = new STWPortal({ uuid: "editor-test-portal", langs: ["en", "it"] });
 	const originalLayout = '<p>First; second &amp; third</p>';
 	const content = new STWText({
@@ -1085,14 +1091,14 @@ test("WBOL parser reads connector definitions from the webbase", () => {
 });
 
 test("the reserved wbol slug is rejected when elements are created or updated", () => {
-	assert.throws(() => new STWElement({ slug: { en: "wbol" } }), /slug 'wbol' is reserved/i);
-	assert.throws(() => new STWElement({ slug: { en: "W-BOL" } }), /slug 'wbol' is reserved/i);
+	assert.throws(() => new STWElement({ uuid: "reserved-one", slug: { en: "wbol" } }), /slug 'wbol' is reserved/i);
+	assert.throws(() => new STWElement({ uuid: "reserved-two", slug: { en: "W-BOL" } }), /slug 'wbol' is reserved/i);
 
-	const element = new STWElement({ slug: { en: "home" } });
+	const element = new STWElement({ uuid: "reserved-element", slug: { en: "home" } });
 	assert.throws(() => element.updateLocalizedField({}, "slug", { en: "wbol" }), /slug 'wbol' is reserved/i);
 	assert.equal(element.slug.get("en"), "home");
 
-	const content = new STWContent({ subtype: "Text", slug: { en: "home" } });
+	const content = new STWContent({ uuid: "reserved-content", subtype: "Text", slug: { en: "home" } });
 	assert.throws(() => content.localize({ lang: "en" }, "slug", "wbol"), /slug 'wbol' is reserved/i);
 	assert.equal(content.slug.get("en"), "home");
 });
@@ -1163,19 +1169,16 @@ test("changePassword verifies the current password and persists the replacement"
 	}
 });
 
-test("default users replace placeholder passwords with valid verifiers", async () => {
+test("placeholder user passwords can be replaced with valid verifiers", async () => {
 	const usersPath = new URL("../.data/users.json", import.meta.url);
 	const users = JSON.parse(await readFile(usersPath, "utf8"));
-	let updated = false;
 
 	for (const user of users) {
 		if (user.password === "salt:hash") {
 			user.password = await STWSecurity.hashPassword("password");
-			updated = true;
 		}
 	}
 
-	if (updated) await writeFile(usersPath, JSON.stringify(users, null, 2));
 	assert.ok(users.every((user) => user.password !== "salt:hash"));
 });
 
@@ -1203,18 +1206,18 @@ test("authentication resolves role inheritance and filters privileged roles usin
 			return session;
 		};
 		let session = await authenticate();
-		assert.deepEqual(session.roles, ["user"], "unset flags must disable privileged roles");
+		assert.deepEqual(session.roles, ["user", "administrator"], "unset flags must disable root and development roles");
 		assert.equal(session.dev, false);
 
 		process.env.ALLOW_DEV = "true";
 		session = await authenticate();
-		assert.deepEqual(session.roles, ["user"], "root must not grant development access");
-		assert.equal(session.dev, false);
+		assert.deepEqual(session.roles, ["user", "leaddeveloper", "administrator", "developer", "seo"]);
+		assert.equal(session.dev, true);
 
 		process.env.ALLOW_DEV = "false";
 		process.env.ALLOW_ROOT = "true";
 		session = await authenticate();
-		assert.deepEqual(session.roles, ["root", "user"]);
+		assert.deepEqual(session.roles, ["root", "user", "administrator"]);
 		assert.equal(session.dev, false);
 
 		process.env.ALLOW_ROOT = "false";

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<webbase xmlns="https://spintheweb.org/schemas/wbol.xsd"
+    uuid="wDefaultWebbase00000001" mainpage="pDefaultHome00000000001" langs="en">
+  <name><text xml:lang="en" slug="home">Webspinner</text></name>
+  <children>
+    <content uuid="cDefaultMenu00000000001" origin="wDefaultWebbase00000001" type="menus" section="header">
+      <name><text xml:lang="en" slug="menu">Menu</text></name>
+      <visibility><role id="guest" visibility="true" /><role id="user" visibility="true" /></visibility>
+      <options>
+        <option ref="/home" />
+        <option ref="/stwc/users" />
+      </options>
+    </content>
+    <content uuid="cDefaultLogin0000000001" ref="c2hvVEcjC57XCDxmovj54PD" origin="wDefaultWebbase00000001" type="shortcut" section="leftPanel">
+      <name><text xml:lang="en" slug="log-on">Log on</text></name>
+      <visibility><role id="guest" visibility="true" /></visibility>
+    </content>
+    <content uuid="cDefaultLogout000000001" ref="c3gJOg8rVapMR0eiVIizt6c" origin="wDefaultWebbase00000001" type="shortcut" section="leftPanel">
+      <name><text xml:lang="en" slug="log-off">Log off</text></name>
+      <visibility><role id="user" visibility="true" /></visibility>
+    </content>
+    <page uuid="pDefaultHome00000000001" origin="wDefaultWebbase00000001">
+      <name><text xml:lang="en" slug="home">Home</text></name>
+      <visibility><role id="guest" visibility="true" /></visibility>
+      <children>
+        <content uuid="cDefaultWelcome0000001" origin="wDefaultWebbase00000001" type="text" section="main">
+          <name><text xml:lang="en" slug="welcome">Welcome</text></name>
+          <visibility><role id="guest" visibility="true" /></visibility>
+          <layout><text xml:lang="en"><![CDATA[
+            <h1>Welcome to Webspinner</h1>
+            <p>Example users: john (user), john.a (administrator), john.d (developer), and john.h (lead developer). Their password is <strong>password</strong>. Guest access does not require a password. Root uses the password chosen during installation, or <strong>password</strong> when using the seed directly.</p>
+            <p><strong>Before exposing this installation, change or remove the example accounts.</strong> Sign in as an administrator or root and choose Users to edit them. Accounts can also be removed through the WBOL users API.</p>
+            <p>To open or close Studio, sign in as a developer or lead developer and press Alt+F12. Studio is enabled on fresh installs; if disabled, set ALLOW_DEV=true in the installed .env file and restart Webspinner. Root access also requires ALLOW_ROOT=true.</p>
+          ]]></text></layout>
+        </content>
+      </children>
+    </page>
+  </children>
+</webbase>

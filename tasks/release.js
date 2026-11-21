@@ -13,27 +13,28 @@
  * @module tasks/release
  * @note Copilot-assisted
  * @license Apache-2.0
- */
  * Common options:
  *   --version vX.Y.Z     Set the release version explicitly (without the v prefix also works)
  *   --publish            Run Docker + Git + GitHub publishing steps
  *   --git                Push the tag and version bump to git
- *   --gh                 Create or update the GitHub release
+ *   --gh                 Create the GitHub release for the matching pushed tag
  *   --docker             Build and push Docker images
  *   --docker-buildx      Use docker buildx with linux/amd64 and linux/arm64
  *   --skip-git-tag       Skip tag creation while still allowing other git operations
  *   --docker-repo <repo> Override the Docker repository (default: spintheweb/webspinner)
  *   --no-bump            Do not auto-bump the patch version
  *   --dry-run            Print the commands that would run without executing them
- *   --keep-artifacts     Keep the generated files in deployment/release instead of deleting them
+ *   --output-dir <path>  Write the installer and checksum to this directory
+ *   --keep-artifacts     Retain generated files (the default)
  *
  * Examples:
  *   node tasks/release.js --version v0.3.6 --dry-run
  *   node tasks/release.js --publish --docker-repo myorg/webspinner
  *   node tasks/release.js --gh --git --version 0.3.6 --keep-artifacts
  */
-import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { resolve } from "node:path";
 import { runCommand } from "../stwComponents/stwNode.js";
 
 // Lightweight path helpers
@@ -45,9 +46,9 @@ function getArg(name, def) { const i = args.findIndex(a => a === `--${name}`); r
 function getFlag(name) { return args.includes(`--${name}`); }
 const cwd = process.cwd();
 const dryRun = getFlag("dry-run");
-const keepArtifacts = getFlag("keep-artifacts");
-const outDir = join(cwd, "deployment", "release");
-await mkdir(outDir, { recursive: true });
+const outDir = resolve(getArg("output-dir", join(cwd, "deployment", "release")));
+const doGit = getFlag("git") || getFlag("publish");
+const doGh = getFlag("gh") || getFlag("publish");
 
 async function exists(path) {
 	try {
@@ -86,59 +87,38 @@ async function writePackageVersion(next) {
 }
 
 async function readPackageVersion() {
-	try {
-		const txt = await readFile(join(cwd, "package.json"), "utf8");
-		const json = JSON.parse(txt);
-		const v = json?.version ?? "0.0.0";
-		return typeof v === "string" ? v : "0.0.0";
-	}
-	catch {
-		return "0.0.0";
-	}
+	const json = JSON.parse(await readFile(join(cwd, "package.json"), "utf8"));
+	if (typeof json.version !== "string") throw new TypeError("package.json must contain a version");
+	return json.version;
 }
 
 function ensureV(v) { return v.startsWith("v") ? v : `v${v}`; }
 
-// Auto-bump patch unless overridden
-async function bumpPatchInPackageJson() {
-	try {
-		const packagePath = join(cwd, "package.json");
-		const txt = await readFile(packagePath, "utf8");
-		const json = JSON.parse(txt);
-		const cur = typeof json.version === "string" ? json.version : "0.0.0";
-		const m = cur.match(/^(\d+)\.(\d+)\.(\d+)(.*)?$/);
-		if (!m)
-			return null;
-		const next = `${Number(m[1])}.${Number(m[2])}.${Number(m[3]) + 1}${m[4] ?? ""}`;
-		json.version = next;
-		await writePackageVersion(next);
-		console.log(`Version bumped in package.json: ${cur} -> ${next}`);
-		return next;
-	}
-	catch (e) {
-		console.warn("Skipping version bump (error):", e instanceof Error ? e.message : String(e));
-		return null;
-	}
-}
-
 await ensurePackageFiles();
 
-// Resolve final version and sync package metadata before tagging
+if (doGit || doGh) {
+	const status = await runCommand("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd });
+	if (status.code !== 0) throw new Error(`git status failed: ${status.stderr}`);
+	if (status.stdout.trim()) throw new Error("Publishing requires a clean working tree");
+}
+
 const cliVersion = getArg("version");
 let bumpedTo = null;
 const currentVersion = await readPackageVersion();
-if (cliVersion) {
-	const vNoV = cliVersion.replace(/^v/, "");
-	if (!dryRun && vNoV !== currentVersion) {
-		await writePackageVersion(vNoV);
-		console.log(`Version set in package.json: ${currentVersion} -> ${vNoV}`);
-		bumpedTo = vNoV;
-	}
-} else if (!getFlag("no-bump") && !dryRun) {
-	bumpedTo = await bumpPatchInPackageJson();
+const match = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(currentVersion);
+if (!match) throw new TypeError(`Invalid package version: ${currentVersion}`);
+const nextVersion = cliVersion ? cliVersion.replace(/^v/, "") : getFlag("no-bump") ? currentVersion :
+	`${match[1]}.${match[2]}.${Number(match[3]) + 1}${match[4]}`;
+if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(nextVersion)) {
+	throw new TypeError(`Invalid release version: ${nextVersion}`);
+}
+if (!dryRun && nextVersion !== currentVersion) {
+	await writePackageVersion(nextVersion);
+	console.log(`Version set in package.json: ${currentVersion} -> ${nextVersion}`);
+	bumpedTo = nextVersion;
 }
 
-const version = ensureV(bumpedTo ?? (await readPackageVersion())); // re-read after bump
+const version = ensureV(nextVersion);
 async function commandExists(cmd) {
 	try {
 		return (await runCommand(cmd, ["--version"])).code === 0;
@@ -149,81 +129,60 @@ async function commandExists(cmd) {
 }
 
 async function run(cmd, args, opts) {
-	const res = await runCommand(cmd, args, { cwd: opts?.cwd ?? cwd });
+	const res = await runCommand(cmd, args, { cwd: opts?.cwd ?? cwd, env: opts?.env });
 	return { code: res.code ?? 1, out: res.stdout.trim(), err: res.stderr.trim() };
 }
 
 // Bash runner (Git Bash, WSL, sh)
 async function tryRunBashLine(line) {
 	const candidates = [
-		{ cmd: "C:\\Program Files\\Git\\bin\\bash.exe", args: ["-lc", line] },
-		{ cmd: "C:\\Program Files\\Git\\usr\\bin\\bash.exe", args: ["-lc", line] },
-		{ cmd: "bash", args: ["-lc", line] },
-		{ cmd: "wsl.exe", args: ["bash", "-lc", line] },
+		{ cmd: "C:\\Program Files\\Git\\bin\\bash.exe", args: ["-c", line] },
+		{ cmd: "C:\\Program Files\\Git\\usr\\bin\\bash.exe", args: ["-c", line] },
+		{ cmd: "bash", args: ["-c", line] },
 		{ cmd: "sh", args: ["-c", line] },
 	];
 	for (const c of candidates) {
 		try {
-			const r = await run(c.cmd, c.args);
-			if (r.code === 0)
-				return { ok: true, out: r.out, err: r.err };
+			const r = await run(c.cmd, c.args, { env: { ...process.env, STW_RELEASE_DIR: outDir } });
+			if (r.code !== 0) throw new Error(`Installer build failed: ${r.err || r.out}`);
+			return r;
 		}
-		catch { /* try next */ }
+		catch (error) {
+			if (error.code !== "ENOENT") throw error;
+		}
 	}
-	return { ok: false, out: "", err: "no bash/sh available" };
+	throw new Error("No bash/sh executable available");
 }
 
 async function buildServerInstaller() {
 	await mkdir(outDir, { recursive: true });
-	// Always rebuild
-	const line = `./deployment/build-server.sh --non-interactive`;
-	const res = await tryRunBashLine(line);
-	if (!res.ok) {
-		console.warn(`Server installer generation failed: ${res.err}`);
-		return null;
+	if (await exists(join(outDir, "server.sh")) || await exists(join(outDir, "server.sh.sha256"))) {
+		throw new Error(`Release artifacts already exist in ${outDir}; choose another output directory`);
 	}
-	// Locate the generated installer.
+	const line = `./deployment/build-server.sh --non-interactive`;
+	await tryRunBashLine(line);
 	const preferred = join(outDir, "server.sh");
 	if (await exists(preferred))
 		return preferred;
-	console.warn("Server installer not found after build.");
-	return null;
+	throw new Error("Server installer not found after build");
 }
 
 async function writeChecksumIfExists(path) {
 	if (!path || !(await exists(path)))
 		return;
-	try {
-		const data = await readFile(path);
-		const hex = createHash("sha256").update(data).digest("hex");
-		await writeFile(`${path}.sha256`, `${hex}  ${basename(path)}\n`);
-		console.log(`Checksum written: ${path}.sha256`);
-	}
-	catch (e) {
-		console.warn(`Checksum failed for ${path}:`, e instanceof Error ? e.message : String(e));
-	}
+	const data = await readFile(path);
+	const hex = createHash("sha256").update(data).digest("hex");
+	await writeFile(`${path}.sha256`, `${hex}  ${basename(path)}\n`);
+	console.log(`Checksum written: ${path}.sha256`);
 }
 
-// Rebuild server.sh and prepare docker.sh
-console.log("Generating server installer (non-interactive)...");
-const serverPath = await buildServerInstaller();
-await writeChecksumIfExists(serverPath);
-let dockerPath = null;
-try {
-	const src = join(cwd, "deployment", "docker.sh");
-	const dst = join(outDir, "docker.sh");
-	if (await exists(src)) {
-		await copyFile(src, dst);
-		dockerPath = dst;
-		console.log(`Docker script prepared: ${dst}`);
-	} else {
-		console.warn("Docker script missing:", src);
-	}
+if (dryRun) {
+	console.log(`[dry-run] Build installer ${join(outDir, "server.sh")}`);
+} else {
+	console.log("Generating server installer (non-interactive)...");
+	const serverPath = await buildServerInstaller();
+	await writeChecksumIfExists(serverPath);
 }
-catch (e) {
-	console.warn(`Docker script copy failed:`, e instanceof Error ? e.message : String(e));
-}
-await writeChecksumIfExists(dockerPath);
 
 // Docker
 function sanitizeDockerTag(t) { return t.replace(/^v/, "").replace(/[^a-zA-Z0-9_.-]/g, "-"); }
@@ -293,8 +252,6 @@ async function publishDockerImage() {
 }
 
 // Git/GitHub
-const doGit = getFlag("git") || getFlag("publish");
-const doGh = getFlag("gh") || getFlag("publish");
 const skipGitTag = getFlag("skip-git-tag");
 async function publishGitAndGithub() {
 	const tag = version;
@@ -307,8 +264,10 @@ async function publishGitAndGithub() {
 		if (bumpedTo) {
 			console.log(`Committing version bump: ${bumpedTo}`);
 			if (!dryRun) {
-				await run("git", ["add", "package.json", "package-lock.json"]);
-				await run("git", ["commit", "-m", `chore(release): ${tag}`]);
+				const add = await run("git", ["add", "package.json", "package-lock.json"]);
+				if (add.code !== 0) throw new Error(`git add failed: ${add.err || add.out}`);
+				const commit = await run("git", ["commit", "-m", `chore(release): ${tag}\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`]);
+				if (commit.code !== 0) throw new Error(`git commit failed: ${commit.err || commit.out}`);
 			} else {
 				console.log(`[dry-run] git add package.json package-lock.json && git commit -m "chore(release): ${tag}"`);
 			}
@@ -316,81 +275,96 @@ async function publishGitAndGithub() {
 		const hasTag = await run("git", ["tag", "-l", tag]);
 		if (!hasTag.out.split(/\r?\n/).includes(tag)) {
 			console.log(`Creating git tag ${tag}`);
-			if (!dryRun)
-				await run("git", ["tag", "-a", tag, "-m", `Release ${tag}`]);
+			if (!dryRun) {
+				const result = await run("git", ["tag", "-a", tag, "-m", `Release ${tag}`]);
+				if (result.code !== 0) throw new Error(`git tag failed: ${result.err || result.out}`);
+			}
 			else
 				console.log(`[dry-run] git tag -a ${tag} -m "Release ${tag}"`);
 		} else {
-			console.log(`Tag ${tag} already exists locally`);
+			const target = await run("git", ["rev-list", "-n", "1", tag]);
+			const head = await run("git", ["rev-parse", "HEAD"]);
+			if (target.code !== 0 || head.code !== 0 || target.out !== head.out) {
+				throw new Error(`Existing tag ${tag} does not point to HEAD`);
+			}
 		}
 		if (!dryRun) {
-			await run("git", ["push"]);
-			await run("git", ["push", "origin", tag]);
+			const push = await run("git", ["push"]);
+			if (push.code !== 0) throw new Error(`git push failed: ${push.err || push.out}`);
+			const pushTag = await run("git", ["push", "origin", tag]);
+			if (pushTag.code !== 0) throw new Error(`git push tag failed: ${pushTag.err || pushTag.out}`);
 		} else
 			console.log(`[dry-run] git push && git push origin ${tag}`);
 	}
 	if (doGh) {
 		if (!(await commandExists("gh")))
 			throw new Error("GitHub release requested but gh is not installed or not on PATH");
+		if (!dryRun) {
+			const head = await run("git", ["rev-parse", "HEAD"]);
+			const target = await run("git", ["rev-list", "-n", "1", `refs/tags/${tag}`]);
+			const localTag = await run("git", ["rev-parse", `refs/tags/${tag}`]);
+			const remoteTag = await run("git", ["ls-remote", "--refs", "origin", `refs/tags/${tag}`]);
+			if (head.code !== 0 || target.code !== 0 || localTag.code !== 0 || remoteTag.code !== 0 ||
+				target.out !== head.out || remoteTag.out.split(/\s+/)[0] !== localTag.out) {
+				throw new Error(`Tag ${tag} must point to HEAD and match the pushed origin tag`);
+			}
+		}
 		const serverShPath = join(outDir, "server.sh");
 		const serverShShaPath = `${serverShPath}.sha256`;
-		const dockerShPath = join(outDir, "docker.sh");
-		const dockerShShaPath = `${dockerShPath}.sha256`;
-		const assets = [];
-		if (await exists(serverShPath))
-			assets.push(serverShPath);
-		if (await exists(serverShShaPath))
-			assets.push(serverShShaPath);
-		if (await exists(dockerShPath))
-			assets.push(dockerShPath);
-		if (await exists(dockerShShaPath))
-			assets.push(dockerShShaPath);
-		const title = `Webspinner ${tag}`;
-		const releaseNotes = [`Release ${tag}`, "\nIncluded assets:"];
-		if (await exists(serverShPath))
-			releaseNotes.push(`- ${basename(serverShPath)} (+ .sha256)`);
-		if (await exists(dockerShPath))
-			releaseNotes.push(`- ${basename(dockerShPath)} (+ .sha256)`);
-		if (await exists(serverShPath) || await exists(dockerShPath)) {
-			releaseNotes.push("\nHow to use on the destination server:");
-			if (await exists(serverShPath)) {
-				releaseNotes.push("1) Linux server install:");
-				releaseNotes.push(`   Download ${basename(serverShPath)} and run:`);
-				releaseNotes.push(`   \`\`\`sudo bash ${basename(serverShPath)}\`\`\``);
-			}
-			if (await exists(dockerShPath)) {
-				releaseNotes.push("2) Docker setup:");
-				releaseNotes.push(`   Download ${basename(dockerShPath)} and run:`);
-				releaseNotes.push(`   \`\`\`bash ${basename(dockerShPath)}\`\`\``);
-				releaseNotes.push("   - Maps host 8080 -> container 8080");
-				releaseNotes.push("   - Persists data: ./webspinner-data -> /app/.data");
-				releaseNotes.push("   - Env: PORT, PORTAL_ROOT, WEBBASE, COMMON_WEBBASELET");
-			}
-			releaseNotes.push("3) (Optional) Verify checksums via the .sha256 files\n");
+		if (!dryRun && (!(await exists(serverShPath)) || !(await exists(serverShShaPath)))) {
+			throw new Error("Server installer and checksum are required for a release");
 		}
-		if (dockerNotesSection)
-			releaseNotes.push(dockerNotesSection);
-		const notes = releaseNotes.filter(Boolean).join("\n");
+		const assets = [serverShPath, serverShShaPath];
+		const title = `Release ${tag} (Server Installer)`;
+		const notes = `### Overview
+
+Self-extracting installer for Linux systems. Includes the runtime, automated dependency installation, and configuration.
+
+### Components
+
+- Spin the Web framework and public directory
+- Node.js runtime
+- nginx reverse proxy and Let's Encrypt SSL/TLS
+- PostgreSQL database and connector
+- systemd service
+
+### Installation
+
+\`\`\`bash
+sudo ./server.sh
+\`\`\`
+
+### Upgrade
+
+Run the installer on an existing installation to upgrade. Configuration, user data, certificates, and webbase are preserved by default.
+
+### Requirements
+
+- Linux (Ubuntu, Debian, RHEL, CentOS, Fedora, Arch)
+- Root privileges
+- Ports 80/443 accessible
+- DNS configured
+
+### Verification
+
+\`\`\`bash
+sha256sum -c server.sh.sha256
+\`\`\`
+
+### Service Management
+
+\`\`\`bash
+systemctl status webspinner
+systemctl restart webspinner
+journalctl -u webspinner -f
+\`\`\`
+
+For documentation, see the [project wiki](https://github.com/spintheweb/webspinner/wiki).${dockerNotesSection}`;
 		const args = ["release", "create", tag, ...assets, "--title", title, "--notes", notes];
 		if (!dryRun) {
 			const r = await run("gh", args);
-			if (r.code !== 0) {
-				const msg = r.err || r.out;
-				console.warn("gh release create failed:", msg);
-				if (/already exists/i.test(msg)) {
-					console.log("Release exists; uploading assets and updating notes...");
-					const upload = await run("gh", ["release", "upload", tag, ...assets, "--clobber"]);
-					if (upload.code !== 0)
-						throw new Error(`gh release upload failed: ${upload.err || upload.out}`);
-					const edit = await run("gh", ["release", "edit", tag, "--title", title, "--notes", notes]);
-					if (edit.code !== 0)
-						throw new Error(`gh release edit failed: ${edit.err || edit.out}`);
-				} else {
-					throw new Error(`gh release create failed: ${msg}`);
-				}
-			} else {
-				console.log("GitHub release created for", tag);
-			}
+			if (r.code !== 0) throw new Error(`gh release create failed: ${r.err || r.out}`);
+			console.log("GitHub release created for", tag);
 		} else {
 			console.log(`[dry-run] gh ${args.join(" ")}`);
 		}
@@ -412,18 +386,4 @@ if (doGit)
 	console.log(`- Git: tag ${version}`);
 if (doGh)
 	console.log(`- GitHub: release ${version}`);
-if (keepArtifacts)
-	console.log(`- Artifacts retained in ${outDir}`);
-
-// Cleanup local artifacts
-if (!dryRun && !keepArtifacts) {
-	try {
-		await rm(outDir, { recursive: true });
-		console.log("Cleaned release artifacts:", outDir);
-	}
-	catch (e) {
-		console.warn("Cleanup failed for", outDir, "-", e instanceof Error ? e.message : String(e));
-	}
-} else {
-	console.log("[dry-run] Skipping cleanup of", outDir);
-}
+console.log(`- Artifacts: ${outDir}`);

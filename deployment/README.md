@@ -105,6 +105,18 @@ sudo bash deployment/release/server.sh
 ```
 
 `build-server.sh` produces a self-extracting installer in the `release/` directory.
+The installer creates a PostgreSQL database and a `postgres` connector, and asks
+for an initial root password. Fresh installs set `ALLOW_DEV=true` and
+`ALLOW_ROOT=false`; enable root access in the installed `.env` if needed.
+The installer refuses to reuse an existing `webspinner` database or role.
+The installer includes example user accounts whose password is `password`.
+Change their passwords or remove the accounts before exposing the server; the
+root account instead uses the password entered during installation. Administrators
+and root can manage example users from the Users page.
+If a fresh installation fails after files have been copied, the installer marks
+it as incomplete and refuses to treat it as an upgrade. Inspect the installation
+and PostgreSQL resources before removing the incomplete installation and
+resolving any database or role conflicts for a retry.
 
 ## Maintainers: build (and optionally push) the Docker image
 
@@ -128,20 +140,18 @@ bash deployment/build-docker.sh --tag v2.0.0 --node 26
 
 Buildx is required. Docker Desktop includes Buildx; otherwise install and create a builder.
 
-## Build the release bundle (maintainers)
+## Build the server release (maintainers)
 
-Create a single-stack ZIP bundle:
+Build the installer and its SHA-256 checksum:
 
 ```bash
-npm run release
+npm run release -- --no-bump
 ```
 
-Output: `deployment/release/webspinner-stack-<version>.zip` (+ `.sha256`)
-
-Bundle contents:
-- `deployment/Dockerfile`, `docker-compose.yml`
-- `deployment/release/server.sh` (generated installer)
-- `deployment/build-docker.sh` (and wrapper `deployment/docker.sh`)
+Output: `deployment/release/server.sh` and `server.sh.sha256`. Use
+`--output-dir <path>` to build elsewhere. The installer embeds only the
+seed data in `deployment/seed`, not the local `.data` directory.
+`--dry-run` prints the planned steps without building or publishing.
 
 ## Repository links
 

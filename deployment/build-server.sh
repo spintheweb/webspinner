@@ -83,6 +83,16 @@ VERSION=$(ensure_v "$VERSION")
 echo -e "${GREEN}Creating server installer for version: $VERSION${NC}"
 echo ""
 
+OUTPUT_DIR="${STW_RELEASE_DIR:-$REPO_ROOT/deployment/release}"
+if command -v cygpath >/dev/null 2>&1; then
+  OUTPUT_DIR="$(cygpath -u "$OUTPUT_DIR")"
+fi
+INSTALLER_FILE="$OUTPUT_DIR/server.sh"
+if [ -e "$INSTALLER_FILE" ] || [ -e "$INSTALLER_FILE.sha256" ]; then
+  echo -e "${RED}Error: Release artifacts already exist in $OUTPUT_DIR.${NC}" >&2
+  exit 1
+fi
+
 # Create temporary directory for building
 TEMP_DIR=$(mktemp -d)
 PAYLOAD_DIR="$TEMP_DIR/webspinner-payload"
@@ -96,10 +106,8 @@ cp -r stwComponents stwContents stwElements "$PAYLOAD_DIR/"
 cp -r stwStyles "$PAYLOAD_DIR/"
 cp -r webbaselets "$PAYLOAD_DIR/"
 cp -r public "$PAYLOAD_DIR/"
-# Include seed data for bare-metal installs
-if [ -d ".data" ]; then
-  cp -r .data "$PAYLOAD_DIR/"
-fi
+mkdir -p "$PAYLOAD_DIR/.data"
+cp deployment/seed/connectors.json deployment/seed/users.json deployment/seed/webbase.wbol "$PAYLOAD_DIR/.data/"
 cp package.json package-lock.json "$PAYLOAD_DIR/"
 cp LICENSE "$PAYLOAD_DIR/"
 cp README.md "$PAYLOAD_DIR/"
@@ -119,9 +127,7 @@ tar -czf "$PAYLOAD_TAR" -C "$TEMP_DIR" webspinner-payload
 echo -e "${GREEN}Payload archive created: $(du -h "$PAYLOAD_TAR" | cut -f1)${NC}"
 
 # Create the installer script
-OUTPUT_DIR="$REPO_ROOT/deployment/release"
 mkdir -p "$OUTPUT_DIR"
-INSTALLER_FILE="$OUTPUT_DIR/server.sh"
 
 echo -e "${BLUE}Step 2: Generating self-extracting installer...${NC}"
 
@@ -137,6 +143,7 @@ set -e
 # Colors for output (only for errors)
 RED='\033[0;31m'
 NC='\033[0m'
+umask 077
 
 # Must run as root
 if [ "$EUID" -ne 0 ]; then
@@ -170,9 +177,9 @@ echo "Updating package lists..."
 if command -v apt-get &> /dev/null; then
   apt-get update -qq
 elif command -v yum &> /dev/null; then
-  yum check-update -q
+  yum check-update -q || [ "$?" -eq 100 ]
 elif command -v dnf &> /dev/null; then
-  dnf check-update -q
+  dnf check-update -q || [ "$?" -eq 100 ]
 elif command -v pacman &> /dev/null; then
   pacman -Sy --noconfirm
 fi
@@ -302,11 +309,17 @@ fi
 if su - postgres -c "psql -Atqc 'SELECT 1;'" >/dev/null 2>&1; then
   echo "PostgreSQL cluster ready."
 else
-  echo "WARNING: PostgreSQL cluster initialization may have failed. Check service logs (journalctl -u postgresql)." >&2
+  echo "Error: PostgreSQL is not responding. Check service logs (journalctl -u postgresql)." >&2
+  exit 1
 fi
 
 # Check if this is an upgrade
 UPGRADE_MODE=false
+if [ -f "$INSTALL_DIR/.install-incomplete" ]; then
+  echo -e "${RED}Error: A previous fresh installation did not complete.${NC}" >&2
+  echo "Inspect $INSTALL_DIR and PostgreSQL before removing the incomplete installation and retrying." >&2
+  exit 1
+fi
 if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/stwSpinner.js" ]; then
   UPGRADE_MODE=true
   echo ""
@@ -334,8 +347,31 @@ if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/stwSpinner.js" ]; then
   fi
 fi
 
+if [ "$UPGRADE_MODE" = false ]; then
+  DB_NAME="webspinner"
+  DB_USER="webspinner"
+  EXISTING_ROLE=$(su - postgres -c "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'\"")
+  EXISTING_DATABASE=$(su - postgres -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='$DB_NAME'\"")
+  if [ -n "$EXISTING_ROLE" ] || [ -n "$EXISTING_DATABASE" ]; then
+    echo -e "${RED}Error: PostgreSQL role or database '$DB_NAME' already exists; resolve the conflict before installation.${NC}" >&2
+    exit 1
+  fi
+  echo "Choose the initial root password:"
+  read -r -s -p "Password: " ROOT_PASSWORD
+  echo
+  read -r -s -p "Confirm password: " ROOT_PASSWORD_CONFIRM
+  echo
+  if [ -z "$ROOT_PASSWORD" ] || [ "$ROOT_PASSWORD" != "$ROOT_PASSWORD_CONFIRM" ]; then
+    echo -e "${RED}Error: Root passwords must be non-empty and match.${NC}" >&2
+    exit 1
+  fi
+fi
+
 # Create installation directory
 mkdir -p "$INSTALL_DIR"
+if [ "$UPGRADE_MODE" = false ]; then
+  touch "$INSTALL_DIR/.install-incomplete"
+fi
 
 # Extract payload
 ARCHIVE_LINE=$(awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0;}' "$0")
@@ -527,7 +563,7 @@ KEYFILE=""
 SESSION_TIMEOUT=24
 MAX_USERS=0
 MAX_UPLOADSIZE=200
-ALLOW_DEV="false"
+ALLOW_DEV="true"
 ALLOW_ROOT="false"
 
 # Create .env file
@@ -552,26 +588,37 @@ EOF
 
 # Setup PostgreSQL database
 echo "Setting up PostgreSQL database..."
-DB_NAME="webspinner"
-DB_USER="webspinner"
-DB_PASS=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+DB_PASS=$(openssl rand -hex 24)
+su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';\""
+su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE $DB_NAME OWNER $DB_USER;\""
 
-# Create database and user
-su - postgres -c "psql -c \"CREATE DATABASE $DB_NAME;\"" 2>/dev/null || true
-su - postgres -c "psql -c \"CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';\"" 2>/dev/null || true
-su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;\"" 2>/dev/null
+# Register the generated database credentials in the connector configuration.
+STW_CONNECTORS_FILE="$INSTALL_DIR/.data/connectors.json" STW_DB_PASSWORD="$DB_PASS" node --input-type=module <<'NODE'
+import { readFileSync, writeFileSync } from "node:fs";
+const path = process.env.STW_CONNECTORS_FILE;
+const connectors = JSON.parse(readFileSync(path, "utf8"));
+if (!Array.isArray(connectors) || connectors.some((connector) => connector.id === "postgres")) {
+  throw new Error("Cannot add PostgreSQL connector: invalid configuration or duplicate ID");
+}
+connectors.push({
+  id: "postgres", name: "postgres", type: "postgres",
+  host: "localhost", port: 5432, database: "webspinner",
+  user: "webspinner", password: process.env.STW_DB_PASSWORD
+});
+writeFileSync(path, JSON.stringify(connectors, null, 2) + "\n", { mode: 0o600 });
+NODE
+unset DB_PASS
+chmod 600 "$INSTALL_DIR/.data/connectors.json" "$INSTALL_DIR/.env"
 
-# Update .env with database connection
-cat >> "$INSTALL_DIR/.env" << EOF
-
-# Database Configuration
-DB_TYPE=postgresql
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=$DB_NAME
-DB_USER=$DB_USER
-DB_PASS=$DB_PASS
-EOF
+(
+cd "$INSTALL_DIR"
+USERS="$INSTALL_DIR/.data/users.json" STW_INITIAL_ROOT_PASSWORD="$ROOT_PASSWORD" node --input-type=module <<'NODE'
+import { STWSecurity } from "./stwComponents/stwSecurity.js";
+await STWSecurity.updateUser("root", { password: process.env.STW_INITIAL_ROOT_PASSWORD });
+NODE
+)
+unset ROOT_PASSWORD ROOT_PASSWORD_CONFIRM
+chmod 600 "$INSTALL_DIR/.data/users.json"
 
 # Setup nginx reverse proxy
 NGINX_CONF="/etc/nginx/sites-available/webspinner"
@@ -593,6 +640,7 @@ if nginx -t 2>/dev/null; then
   fi
 else
   echo -e "${RED}Error: Nginx configuration test failed${NC}"
+  exit 1
 fi
 
 # Close the upgrade mode conditional (configuration wizard was skipped if upgrade)
@@ -626,33 +674,12 @@ fi
 # Create default data files if they don't exist
 mkdir -p "$INSTALL_DIR/.data"
 
-if [ ! -f "$INSTALL_DIR/.data/users.json" ]; then
-  cat > "$INSTALL_DIR/.data/users.json" << 'EOF'
-[
-    {
-        "user": "guest",
-        "name": "Guest",
-        "roles": "guest"
-    },
-    {
-        "user": "root",
-        "name": "Root",
-        "password": "root",
-        "roles": "administrator,developer",
-        "email": "security@spintheweb.org"
-    }
-]
-EOF
-fi
-
-if [ ! -f "$INSTALL_DIR/.data/connectors.json" ]; then
-  cat > "$INSTALL_DIR/.data/connectors.json" << 'EOF'
-[]
-EOF
-fi
-
 # Install systemd service automatically (if root)
 if [ "$SERVICE_INSTALL" = true ]; then
+  SERVICE_USER="${SUDO_USER:-root}"
+  if [ "$UPGRADE_MODE" = false ]; then
+    chown -R "$SERVICE_USER" "$INSTALL_DIR"
+  fi
   cat > /etc/systemd/system/webspinner.service << EOF
 [Unit]
 Description=Webspinner (WBOL interpreter)
@@ -660,7 +687,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=$SUDO_USER
+User=$SERVICE_USER
 WorkingDirectory=$INSTALL_DIR
 ExecStart=/usr/bin/env node stwSpinner.js
 Restart=always
@@ -701,6 +728,7 @@ if [ "$UPGRADE_MODE" = true ]; then
     fi
   fi
 else
+  rm "$INSTALL_DIR/.install-incomplete"
   echo "Installation complete!"
   echo "Access your site at: https://$HOST"
 fi
@@ -735,6 +763,11 @@ echo -e "${BLUE}Installer size: $INSTALLER_SIZE${NC}"
 # Clean up temporary directory
 rm -rf "$TEMP_DIR"
 echo -e "${GREEN}✓ Cleaned up temporary files${NC}"
+
+if [ "$NON_INTERACTIVE" = true ]; then
+  echo "Non-interactive build complete; no tag or release was created."
+  exit 0
+fi
 
 # Git tag and GitHub release
 echo ""
