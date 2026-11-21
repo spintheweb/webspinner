@@ -159,7 +159,7 @@ async function buildServerInstaller() {
 	if (await exists(join(outDir, "server.sh")) || await exists(join(outDir, "server.sh.sha256"))) {
 		throw new Error(`Release artifacts already exist in ${outDir}; choose another output directory`);
 	}
-	const line = `./deployment/build-server.sh --non-interactive`;
+	const line = `bash ./deployment/build-server.sh --non-interactive`;
 	await tryRunBashLine(line);
 	const preferred = join(outDir, "server.sh");
 	if (await exists(preferred))
