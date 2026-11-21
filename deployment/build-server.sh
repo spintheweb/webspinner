@@ -229,10 +229,11 @@ if ! command -v nginx &> /dev/null; then
     exit 1
   fi
     
-  # Enable and start nginx
-  systemctl enable nginx >/dev/null 2>&1
-  systemctl start nginx
 fi
+
+# Ensure nginx is running even when it was already installed.
+systemctl enable nginx >/dev/null 2>&1
+systemctl start nginx
 
 # Auto-install certbot if missing
 if ! command -v certbot &> /dev/null; then
