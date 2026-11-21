@@ -451,7 +451,16 @@ async function handleOptionsRoute(request, element, session) {
 				Object.keys(patch).some((key) => !["path", "name"].includes(key))) {
 				throw new TypeError("Expected { path: number[], name: string }");
 			}
-			const option = getOptionAtPath(element.options, patch.path);
+			let options = element.options;
+			let option;
+			for (let depth = 0; depth < patch.path.length; depth++) {
+				option = options[patch.path[depth]];
+				if (!option) return jsonResponse({ error: "Option path not found" }, 404);
+				if (depth < patch.path.length - 1) {
+					if (!Array.isArray(option.options)) return jsonResponse({ error: "Option path not found" }, 404);
+					options = option.options;
+				}
+			}
 			if (!option) return jsonResponse({ error: "Option path not found" }, 404);
 			if (!(option.name instanceof Map)) option.name = new Map(Object.entries(option.name || {}));
 			option.name.set(locale, patch.name);
@@ -465,21 +474,6 @@ async function handleOptionsRoute(request, element, session) {
 	} catch (error) {
 		return apiErrorResponse(error, "WBOL options update failed:");
 	}
-}
-
-function getOptionAtPath(options, path) {
-	let currentOptions = options;
-	let option;
-	for (let depth = 0; depth < path.length; depth++) {
-		const index = path[depth];
-		option = currentOptions[index];
-		if (!option) return null;
-		if (depth < path.length - 1) {
-			if (!Array.isArray(option.options)) return null;
-			currentOptions = option.options;
-		}
-	}
-	return option;
 }
 
 async function handlePortalConnectorsRoute(request, portal) {
@@ -745,7 +739,7 @@ async function usersRoute(request, method, id, session) {
 	if (method === "GET" && !id) return jsonResponse(await STWSecurity.listUsers());
 	if (method === "POST" && !id) {
 		const body = await readAdminJson(request);
-		if (!isRecord(body) || !isNonEmptyString(body.password)) {
+		if (!isRecord(body) || typeof body.password !== "string" || !body.password.trim()) {
 			throw new AdminApiError(400, "Expected user and password");
 		}
 		const user = requireNonEmptyString(body.user, "user");
@@ -1039,9 +1033,6 @@ function requireNonEmptyString(value, name) {
 }
 function optionalString(value, name) {
 	return value === void 0 ? void 0 : requireString(value, name);
-}
-function isNonEmptyString(value) {
-	return typeof value === "string" && value.trim().length > 0;
 }
 function methodNotAllowed(allow) {
 	return jsonResponse({ error: "Method not allowed" }, 405, { Allow: allow });

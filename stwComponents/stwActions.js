@@ -165,9 +165,20 @@ class STWActionRouter {
 		try {
 			const fields = submittedFields(formData);
 			const session = actionSession(ctx.session, formData);
-			const result = await STWConnectors.supportsCrud(connector)
-				? await STWConnectors.executeCrud(session, { connector, query }, operation, fields, content?.key || getKeyField(content, ctx.session) || getKeyFieldFromQuery(query))
-				: await STWConnectors.executeAction(session, connector, query, operationMethod(operation), fields);
+			let result;
+			if (await STWConnectors.supportsCrud(connector)) {
+				let key = content?.key;
+				if (!key) {
+					const wbll = content?.layout?.get(ctx.session.lang)?.wbll || "";
+					const settings = /\\s\('([^']*)'\)/.exec(wbll)?.[1] || "";
+					key = /\bkey="([^"]+)"/.exec(settings)?.[1] ||
+						/\bWHERE\s+(?:[A-Za-z0-9_$]+\s*\.\s*)?`?([A-Za-z0-9_$]+)`?\s*=/i.exec(query)?.[1];
+				}
+				result = await STWConnectors.executeCrud(session, { connector, query }, operation, fields, key);
+			} else {
+				const method = operation === "insert" ? "PUT" : operation === "update" ? "PATCH" : "DELETE";
+				result = await STWConnectors.executeAction(session, connector, query, method, fields);
+			}
 			ctx.session.placeholders.set("@@stwKeyValue", result.keyValue ?? "");
 			const data = operation === "insert"
 				? { inserted: result.fields, affectedRows: result.affectedRows }
@@ -370,51 +381,6 @@ export {
 };
 
 /**
- * Extracts the single table name from a SELECT query used for CUD operations.
- *
- * @param {string} query Connector query.
- * @returns {string} Table name, optionally schema-qualified.
- * @throws {TypeError} If the query is not a single-table SELECT.
- */
-function getTableFromQuery(query) {
-	const match = /^\s*SELECT\b[\s\S]*?\bFROM\s+((?:`[^`]+`|[A-Za-z0-9_$]+)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z0-9_$]+))?)([\s\S]*)$/i.exec(query ?? "");
-	if (!match) {
-		throw new TypeError("CUD actions require a SELECT query with a single table source");
-	}
-	const table = match[1].replaceAll("`", "").replace(/\s*\.\s*/g, ".");
-	if (!/^[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)?$/.test(table)) {
-		throw new TypeError("The SELECT query contains an unsupported table identifier");
-	}
-	if (/^\s*(?:(?:AS\s+)?[A-Za-z0-9_$]+)?\s*(?:,|\bJOIN\b)/i.test(match[2])) {
-		throw new TypeError("CUD actions require a SELECT query with a single table source");
-	}
-	return table;
-}
-
-/**
- * Reads a key-field setting from the content's localized WBLL layout.
- *
- * @param {object} content Originating content.
- * @param {object} session Current session.
- * @returns {string|undefined} Configured key field.
- */
-function getKeyField(content, session) {
-	const wbll = content?.layout?.get(session.lang)?.wbll || "";
-	const settings = /\\s\('([^']*)'\)/.exec(wbll)?.[1] || "";
-	return /\bkey="([^"]+)"/.exec(settings)?.[1];
-}
-
-/**
- * Infers a key field from a simple equality predicate in a SELECT query.
- *
- * @param {string} query Connector query.
- * @returns {string|undefined} Inferred key field.
- */
-function getKeyFieldFromQuery(query) {
-	return /\bWHERE\s+(?:[A-Za-z0-9_$]+\s*\.\s*)?`?([A-Za-z0-9_$]+)`?\s*=/i.exec(query)?.[1];
-}
-
-/**
  * Returns submitted data fields, excluding framework metadata.
  *
  * @param {FormData} formData Submitted form data.
@@ -463,14 +429,4 @@ function actionValue(argument, fallbackName, formData, session) {
 		return formData.get(match[1])?.toString() ?? session.placeholders.get(value)?.toString() ?? "";
 	}
 	return value;
-}
-
-/**
- * Maps a CRUD operation to its connector HTTP method.
- *
- * @param {"insert"|"update"|"delete"} operation CRUD operation.
- * @returns {"PUT"|"PATCH"|"DELETE"} Connector HTTP method.
- */
-function operationMethod(operation) {
-	return operation === "insert" ? "PUT" : operation === "update" ? "PATCH" : "DELETE";
 }

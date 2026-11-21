@@ -105,7 +105,11 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 				if (!payload || payload.action !== actionValue || !Array.isArray(payload.args)) {
 					return secureResponse("Invalid action token", { status: 400 });
 				}
-				if (payload && actionMethod(payload.action) !== request.method) {
+				const method = payload.action === "stwsearch" || payload.action === "stwfilter" ? "GET" :
+					payload.action === "stwinsert" ? "PUT" :
+						payload.action === "stwupdate" ? "PATCH" :
+							payload.action === "stwdelete" ? "DELETE" : "POST";
+				if (method !== request.method) {
 					return secureResponse("Action method does not match the button", { status: 405 });
 				}
 				const originId = payload?.origin || records.stwOrigin || "";
@@ -175,21 +179,6 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 		}
 	}
 	return response;
-}
-function actionMethod(action) {
-	switch (action) {
-		case "stwsearch":
-		case "stwfilter":
-			return "GET";
-		case "stwinsert":
-			return "PUT";
-		case "stwupdate":
-			return "PATCH";
-		case "stwdelete":
-			return "DELETE";
-		default:
-			return "POST";
-	}
 }
 export {
 	handleHttp

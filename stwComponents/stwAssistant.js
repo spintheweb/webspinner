@@ -15,12 +15,6 @@ import { canDevelopElement } from "./stwWebbaselets.js";
 const proposalKey = "stwAssistantProposal";
 const historyKey = "stwAssistantHistory";
 
-function aiEnabled() {
-	const value = envGet("ALLOW_AI", "false").trim().toLowerCase();
-	if (value !== "true" && value !== "false") throw new TypeError('ALLOW_AI must be "true" or "false"');
-	return value === "true";
-}
-
 function history(session) {
 	let state = session.states.get(historyKey);
 	if (!state) session.states.set(historyKey, state = { uuid: "", messages: [] });
@@ -110,7 +104,9 @@ function apply(session) {
  */
 async function executeAssistant(session, resource, method, fields = {}, fetchImpl = fetch) {
 	if (!session.roles.includes("developer")) throw new Error("Developer access required");
-	if (!aiEnabled()) throw new Error("AI assistant is disabled; set ALLOW_AI=true to enable it");
+	const allowAi = envGet("ALLOW_AI", "false").trim().toLowerCase();
+	if (allowAi !== "true" && allowAi !== "false") throw new TypeError('ALLOW_AI must be "true" or "false"');
+	if (allowAi !== "true") throw new Error("AI assistant is disabled; set ALLOW_AI=true to enable it");
 	const route = `${method} ${resource}`;
 	if (route === "GET /state") return [{ uuid: history(session).uuid }];
 	if (route === "GET /history") {

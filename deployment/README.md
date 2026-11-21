@@ -48,7 +48,7 @@ Root or administrator sessions can manage accounts; root or LeadDeveloper can ma
 
 With `DEPLOYED=false`, Node connector scripts run directly as Webspinner with its full environment and no timeout; a configured launcher is ignored. This exposes Webspinner's permissions and credentials to those scripts and is suitable only for trusted development. With `DEPLOYED=true`, an administrator-provisioned restricted launcher is required and the connector uses a minimal environment and a 30-second timeout.
 
-Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits are in memory only and are not persisted to WBOL files. Connector passwords may be supplied when creating or updating a connector, but are never returned by the connector API. The `developer` role is required for element edits; it does not grant account administration or RBV management. LeadDeveloper and root manage RBV and custom roles; root and LeadDeveloper manage connectors, except Node connectors, which are root-only. Account routes require `root` or `administrator`.
+Responses are JSON. Account-role changes affect new authentications; existing sessions keep their current roles until re-authenticated. Webbase edits through these routes are in memory only and are not persisted to WBOL files. Connector passwords may be supplied when creating or updating a connector, but are never returned by the connector API.
 - For TLS and reverse proxy, place this behind nginx/Traefik/Caddy.
 
 ## Mail connector setup

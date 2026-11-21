@@ -1,11 +1,6 @@
 # Webspinner
 
-Webspinner is the runtime that reads a Webbase (a WBOL model) and renders a working web portal from it.
-
-- It interprets WBOL (Webbase Ontology Language) to build pages, navigation, layout, and behaviors at runtime.
-- It maps connectors (databases, APIs, services) to UI elements (forms, tables, trees, calendars, etc.) to deliver a consistent UX across heterogeneous backends.
-- It supports modular extensions called Webbaselets—self-contained features (e.g., mail, ERP, BPMS) that plug into a Webbase.
-- In short: you describe the portal declaratively in WBOL, and Webspinner “spins” it into a live application.
+Webspinner reads a Webbase (a WBOL model) and renders it as a web portal.
 
 
 *Figure 1*: Webspinner driven portal with Spin the Web Studio enabled.
@@ -13,9 +8,9 @@ Webspinner is the runtime that reads a Webbase (a WBOL model) and renders a work
 ![Webspinner Studio screenshot](./public/media/stwStudio.png)
 
 ## What is a Webbase?
-A Webbase is a declarative WBOL model that defines a portal’s structure, navigation, layout, components, data bindings, and behaviors. It maps connectors (databases, APIs, services) to UI elements (forms, tables, text, menus, trees, calendars, etc.), enabling the runtime to render a consistent user experience across heterogeneous backends. Webbases can be extended modularly with Webbaselets.
+A Webbase is a declarative WBOL model defining a portal's structure, navigation, layout, data bindings, and behaviors. Connectors link components such as forms and tables to databases, APIs, and other services.
 
-A Webbaselet is a standalone module that describes a functionality—e.g., a webmail client (POP3/SMTP), an ERP client, or a BPMS client—that can be linked to a Webbase. Each integrates with its backend while presenting a uniform UX within the portal.
+A Webbaselet is a reusable module, such as a mail or ERP client, that can be linked to a Webbase.
 
 ## Database connectors and data actions
 
@@ -70,8 +65,7 @@ Enter an element UUID, confirm local context sharing, and send a question or edi
 The conversation is stored in the session and shown by the Conversation content.
 Review the Proposed changes content before selecting **Apply proposal**.
 
-The first
-version edits one existing element's name or slug, a page's keywords or
+The assistant edits one existing element's name or slug, a page's keywords or
 description, or a content's query or localized layout. It writes only a uniquely identified element in the
 configured local Webbase, Common or Studio WBOL sources; remote, downloaded
 and ambiguous sources cannot be saved. If the running element or source changed since the

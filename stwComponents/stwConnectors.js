@@ -143,7 +143,7 @@ class STWConnectors {
 				const initializationErrors = [];
 				for (const settings of connectors) {
 					try {
-						if (isDatabaseType(settings.type)) {
+						if (SQL_CONNECTOR_TYPES.has(settings.type) || settings.type === "mongodb") {
 							this.connectorConfigs.set(settings.id, settings);
 						}
 						switch (settings.type) {
@@ -224,13 +224,6 @@ class STWConnectors {
 	static async command(session, content) {
 		return await this.execute(session, content);
 	}
-	static async executeCommand(session, connector, query, values = []) {
-		if (!connector) throw new TypeError("Connector ID is required");
-		await this.initialize();
-		const connection = requireSqlConnection(connector, this.connectors.get(connector));
-		const sql = WBPL(query, session.placeholders);
-		return await this.executeSqlCommand(connector, connection, sql, values);
-	}
 	static async executeBoundCommand(connector, query, values = []) {
 		if (!connector) throw new TypeError("Connector ID is required");
 		await this.initialize();
@@ -293,7 +286,13 @@ class STWConnectors {
 			if (configuration.type === "mongodb") {
 				throw new TypeError("MongoDB writes must use stwinsert, stwupdate, or stwdelete");
 			}
-			const { query, values } = bindSqlPlaceholders(command, session.placeholders, configuration.type);
+			const values = [];
+			const query = command.replace(/(['"])(@@[A-Za-z0-9_$.]+)\1|(@@[A-Za-z0-9_$.]+)/g, (match, quote, quoted, plain) => {
+				const name = quoted || plain;
+				if (!session.placeholders.has(name)) return match;
+				values.push(session.placeholders.get(name));
+				return sqlPlaceholder(configuration.type, values.length - 1);
+			});
 			return await this.executeBoundCommand(connector, query, values);
 		}
 		if (!configuration) throw new TypeError(`Connector "${connector}" is not configured`);
@@ -446,20 +445,7 @@ async function executeNodeConnector(configuration, script) {
 		.map((row) => row !== null && typeof row === "object" && !Array.isArray(row) ? row : { value: row });
 	return { affectedRows: rows.length, fields: rows.length ? Object.keys(rows[0]) : [], rows };
 }
-function bindSqlPlaceholders(query, placeholders, type) {
-	const values = [];
-	const sql = query.replace(/(['"])(@@[A-Za-z0-9_$.]+)\1|(@@[A-Za-z0-9_$.]+)/g, (match, quote, quoted, plain) => {
-		const name = quoted || plain;
-		if (!placeholders.has(name)) return match;
-		values.push(placeholders.get(name));
-		return sqlPlaceholder(type, values.length - 1);
-	});
-	return { query: sql, values };
-}
 const SQL_CONNECTOR_TYPES = new Set(["mysql", "postgres", "mssql"]);
-function isDatabaseType(type) {
-	return SQL_CONNECTOR_TYPES.has(type) || type === "mongodb";
-}
 function isDatabaseConnection(value) {
 	return value !== null && typeof value === "object" && (SQL_CONNECTOR_TYPES.has(value.type) || value.type === "mongodb");
 }
@@ -626,7 +612,8 @@ async function executeMongoCrud(connection, command, operation, submittedFields,
 		};
 	}
 	if (recordKey === void 0 || recordKey === "") throw new TypeError(`Missing key field: ${keyField}`);
-	const filter = { ...specification.filter, [keyField]: mongoKeyValue(keyField, recordKey) };
+	const keyValue = keyField === "_id" && /^[a-f\d]{24}$/i.test(recordKey) ? new ObjectId(recordKey) : recordKey;
+	const filter = { ...specification.filter, [keyField]: keyValue };
 	if (operation === "update") {
 		delete fields[keyField];
 		if (!Object.keys(fields).length) throw new TypeError("No submitted fields to update");
@@ -678,9 +665,6 @@ function parseMongoCommand(command) {
 		sort: specification.sort,
 		limit: specification.limit
 	};
-}
-function mongoKeyValue(keyField, value) {
-	return keyField === "_id" && /^[a-f\d]{24}$/i.test(value) ? new ObjectId(value) : value;
 }
 function sqlPlaceholder(type, index) {
 	return type === "postgres" ? `$${index + 1}` : type === "mssql" ? `@p${index}` : "?";

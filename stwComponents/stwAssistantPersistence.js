@@ -21,24 +21,6 @@ const hash = (value) => createHash("sha256").update(value).digest("hex");
 
 class AssistantConflictError extends Error {}
 
-function sourcePaths() {
-	return [...new Set([
-		envGet("WEBBASE") || "./.data/webbase.wbol",
-		envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol",
-		envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol"
-	].filter((path) => !/^https?:\/\//i.test(path)).map((path) => resolve(path)))].filter(existsSync);
-}
-
-function parseDocument(source) {
-	return new DOMParser({
-		errorHandler: {
-			warning: (message) => { throw new Error(message); },
-			error: (message) => { throw new Error(message); },
-			fatalError: (message) => { throw new Error(message); }
-		}
-	}).parseFromString(source, "application/xml");
-}
-
 function children(element, name) {
 	return Array.from(element.childNodes).filter((child) =>
 		child.nodeType === 1 && (child.localName || child.tagName) === name);
@@ -53,9 +35,20 @@ function locate(element, uuid, matches) {
 
 function sourceFor(uuid) {
 	const matches = [];
-	for (const path of sourcePaths()) {
+	const paths = [...new Set([
+		envGet("WEBBASE") || "./.data/webbase.wbol",
+		envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol",
+		envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol"
+	].filter((path) => !/^https?:\/\//i.test(path)).map((path) => resolve(path)))].filter(existsSync);
+	for (const path of paths) {
 		const source = readFileSync(path, "utf8");
-		const document = parseDocument(source);
+		const document = new DOMParser({
+			errorHandler: {
+				warning: (message) => { throw new Error(message); },
+				error: (message) => { throw new Error(message); },
+				fatalError: (message) => { throw new Error(message); }
+			}
+		}).parseFromString(source, "application/xml");
 		const nodes = [];
 		locate(document.documentElement, uuid, nodes);
 		for (const node of nodes) matches.push({ path, source, document, node });
@@ -76,12 +69,6 @@ function findDefinition(element, uuid) {
 		if (found) return found;
 	}
 	return null;
-}
-
-function currentValue(element, field, locale) {
-	if (field === "query") return element.query || "";
-	const value = element[field]?.get(locale);
-	return typeof value === "string" ? value : value?.wbll || "";
 }
 
 function definitionValue(definition, field, locale) {
@@ -156,7 +143,9 @@ function applyPersistentChanges(element, locale, changes, revision) {
 	const definition = findDefinition(WBOL(source.source), element.uuid);
 	if (!definition) throw new Error("Element not found in WBOL source");
 	for (const field of Object.keys(changes)) {
-		if (definitionValue(definition, field, locale) !== currentValue(element, field, locale)) {
+		const value = field === "query" ? element.query : element[field]?.get(locale);
+		const current = field === "query" ? value || "" : typeof value === "string" ? value : value?.wbll || "";
+		if (definitionValue(definition, field, locale) !== current) {
 			throw new AssistantConflictError(`The running ${field} differs from its WBOL source; save or reload first`);
 		}
 	}

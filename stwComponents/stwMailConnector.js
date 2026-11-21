@@ -63,8 +63,14 @@ async function executeImapQuery(session, configuration, query, { createClient = 
 async function executeSmtpAction(configuration, command, fields, { createTransport = (options) => nodemailer.createTransport(options) } = {}) {
 	if (command !== "send") throw new TypeError(`Unsupported SMTP action: ${command}`);
 	const to = requireEmail(fields.to, "to");
-	const subject = requireHeader(fields.subject, "subject", 200);
-	const text = requireText(fields.text, "text");
+	if (typeof fields.subject !== "string" || !fields.subject.trim() || fields.subject.length > 200 || /[\r\n]/.test(fields.subject)) {
+		throw new TypeError("subject must be non-empty, at most 200 characters, and contain no line breaks");
+	}
+	const subject = fields.subject.trim();
+	if (typeof fields.text !== "string" || !fields.text.trim() || fields.text.length > MAX_MESSAGE_TEXT) {
+		throw new TypeError(`text must be non-empty and at most ${MAX_MESSAGE_TEXT} characters`);
+	}
+	const text = fields.text;
 	const from = requireEmail(configuration.from, "configured from");
 	const secure = configuration.secure ?? (configuration.port ?? 465) === 465;
 	const transporter = createTransport({
@@ -198,20 +204,6 @@ function requireEmail(value, name) {
 	if (typeof value !== "string" || value.length > 254 || /[\r\n,;]/.test(value) ||
 		!/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(value)) {
 		throw new TypeError(`${name} must be a single valid email address`);
-	}
-	return value;
-}
-
-function requireHeader(value, name, maxLength) {
-	if (typeof value !== "string" || !value.trim() || value.length > maxLength || /[\r\n]/.test(value)) {
-		throw new TypeError(`${name} must be non-empty, at most ${maxLength} characters, and contain no line breaks`);
-	}
-	return value.trim();
-}
-
-function requireText(value, name) {
-	if (typeof value !== "string" || !value.trim() || value.length > MAX_MESSAGE_TEXT) {
-		throw new TypeError(`${name} must be non-empty and at most ${MAX_MESSAGE_TEXT} characters`);
 	}
 	return value;
 }

@@ -5,8 +5,8 @@
  * language and timezone preferences, linked portal, and development mode. It also
  * stores per-session placeholders populated from request query parameters, cookies,
  * headers, and rendered records; per-tab WebSocket connections; and stateful content
- * values. The timeout method refreshes the session's inactivity timer using the
- * configured TIMEOUT in minutes (15 minutes by default).
+ * values. Sessions are removed after their final WebSocket closes and the grace
+ * period expires, if no socket reconnects.
  *
  * @author Giancarlo Trevisan
  * @version 1.0.0
@@ -29,8 +29,6 @@ class STWSession {
 	langs; // Accepted user languages (Accept-Language)
 	tz; // Timezone of the user
 	placeholders;
-	timestamp; // Session timeout in minutes
-	timer = 0;
 	dev; // If true STW Studio enabled
 	portal;
 	sockets = new Map(); // per-tab sockets
@@ -49,7 +47,6 @@ class STWSession {
 		this.langs = ["en"];
 		this.tz = "UTC";
 		this.setLoginPlaceholders();
-		this.timestamp = Date.now();
 		this.dev = false;
 		this.portal = portal;
 		this.states = new Map();
@@ -105,11 +102,6 @@ class STWSession {
 			this.placeholders.set(`@@${obj}`, value);
 		else
 			Object.keys(obj).forEach((key) => this.placeholders.set(`@@${key}`, obj[key]));
-	}
-	timeout(timer) {
-		clearTimeout(timer);
-		debugLog(`${(new Date()).toISOString()}: Want to keep the session [${this.sessionId}] alive?`);
-		this.timer = setTimeout(() => this.timeout(this.timer), parseInt(envGet("TIMEOUT") || "15") * 6e4);
 	}
 }
 

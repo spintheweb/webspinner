@@ -79,7 +79,7 @@ b(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					)]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('nodata="No connectors configured" rows="1000"')
-l('')a('/stws/edit/connector')p('connector;@@id')t('<i class="fa-light fa-pen-to-square"></i>')
+l('')a('/stws/interface/connector')p('connector;@@id')t('<i class="fa-light fa-pen-to-square"></i>')
 l('Name')f
 l('Type')f
 l('Host')f
@@ -104,7 +104,7 @@ l('Host')f
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorNew001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal" class="stwForm stwCompact">
+					class="stwForm stwCompact">
 					<name>
 						<text xml:lang="en" slug="connector-new"><![CDATA[New connector]]></text>
 					</name>
@@ -185,7 +185,7 @@ l('Host')f
 			</layout>
 			<options>
 				<option ref="c7StudioConnectorList01">
-					<text xml:lang="en"><![CDATA[Connectors <span style="float:right"><i class="fa-thin fa-plus" aria-label="New connector" onclick="event.stopPropagation();stwWS.send(JSON.stringify({method:'PATCH',resource:'/stws/edit/connector-new',options:{recurse:false}}))"></i></span>]]></text>
+					<text xml:lang="en"><![CDATA[Connectors <span style="float:right"><i class="fa-thin fa-plus" aria-label="New connector"></i></span>]]></text>
 				</option>
 				<option ref="c7StudioRoleList000001">
 					<text xml:lang="en"><![CDATA[Roles <span style="float:right"><i class="fa-thin fa-plus" aria-label="New role"></i></span>]]></text>

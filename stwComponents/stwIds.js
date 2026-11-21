@@ -13,10 +13,7 @@
  */
 const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 function newId(type = "x") {
-	return uuidToBase62(crypto.randomUUID(), type);
-}
-function uuidToBase62(uuid, type) {
-	const hex = uuid.replace(/-/g, "");
+	const hex = crypto.randomUUID().replace(/-/g, "");
 	let n = BigInt("0x" + hex);
 	if (n === 0n) return "0";
 	let out = "";
