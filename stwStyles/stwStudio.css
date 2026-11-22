@@ -7,7 +7,7 @@ body.stwStudioPage {
 	margin: 0;
 }
 
-body.stwStudioPage > div {
+body.stwStudioPage>div {
 	display: grid !important;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	gap: 0 !important;
@@ -16,14 +16,14 @@ body.stwStudioPage > div {
 	overflow: hidden;
 }
 
-body.stwStudioPage > #header,
-body.stwStudioPage > #footer,
+body.stwStudioPage>#header,
+body.stwStudioPage>#footer,
 body.stwStudioPage #leftPanel,
 body.stwStudioPage #rightPanel {
 	background-color: var(--bg-faint);
 }
 
-body.stwStudioPage > #header {
+body.stwStudioPage>#header {
 	border-bottom: thin solid var(--border);
 }
 
@@ -46,8 +46,8 @@ body.stwStudioPage #rightPanel {
 	border-left: thin solid var(--border);
 }
 
-body.stwStudioPage #leftPanel > *,
-body.stwStudioPage #rightPanel > * {
+body.stwStudioPage #leftPanel>*,
+body.stwStudioPage #rightPanel>* {
 	flex-grow: 1;
 	overflow-y: auto;
 }
@@ -57,7 +57,7 @@ body.stwStudioPage #rightPanel:empty {
 	display: none !important;
 }
 
-body.stwStudioPage > #footer {
+body.stwStudioPage>#footer {
 	border-top: thin solid var(--border);
 }
 
@@ -86,10 +86,10 @@ body.stwStudioPage #main {
 	overflow: hidden;
 }
 
-body.stwStudioPage #main > .stwTabs,
-body.stwStudioPage #main > .stwTabs > dl,
-body.stwStudioPage #main > .stwTabs > dl > dd,
-body.stwStudioPage #main > .stwTabs > dl > dd > article {
+body.stwStudioPage #main>.stwTabs,
+body.stwStudioPage #main>.stwTabs>dl,
+body.stwStudioPage #main>.stwTabs>dl>dd,
+body.stwStudioPage #main>.stwTabs>dl>dd>article {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
@@ -108,30 +108,11 @@ body.stwStudioPage #main > .stwTabs > dl > dd > article {
 	padding: 0 !important;
 }
 
-.stwStudioBrowserBar {
-	display: flex;
-	align-items: center;
-	gap: 0.25rem;
-	padding: var(--padding-compact);
-	border-bottom: thin solid var(--border);
-	background: var(--bg-faint);
-}
-
-.stwStudioBrowserBar button,
-.stwStudioBrowserBar input {
-	margin: 0 !important;
-	padding: var(--padding-reduced);
-}
-
-.stwStudioBrowserBar button {
-	min-width: 2.5rem;
-}
-
-.stwStudioBrowserBar input {
-	flex: 1;
-	min-width: 0;
-}
-
 .stwDevelop {
-	line-height: 1rem;
+	cursor: pointer;
+	position: absolute;
+	background-color: CanvasText;
+	color: Canvas;
+	line-height: 1.25rem;
+	border-radius: 0.25rem;
 }

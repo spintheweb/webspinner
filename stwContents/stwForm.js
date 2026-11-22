@@ -26,7 +26,10 @@ class STWForm extends STWContent {
 		let hasFormFields = false;
 		const placeholders = new Map(session.placeholders);
 		for (const row of records.rows) {
-			records.fields.forEach((field) => placeholders.set(`@@${field}`, row[field] || ""));
+			records.fields.forEach((field) => {
+				const value = row[field];
+				placeholders.set(`@@${field}`, value === 0 ? "0" : value || "");
+			});
 			placeholders.set("@@stwOrigin", this.uuid);
 			const rendered = await layout.render(records.fields, placeholders, session, "", this.uuid);
 			body += rendered.HTML;

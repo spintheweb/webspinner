@@ -12,7 +12,7 @@ import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import { envGet } from "./stwConfig.js";
 import { isProtectedWebbaselet } from "./stwWebbaselets.js";
 import { WBOL } from "./stwWBOL.js";
-import { assertSlugAllowed, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
+import { normalizeSlug, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 const localized = ["name", "slug", "keywords", "description", "layout"];
@@ -96,10 +96,9 @@ function validateChanges(element, locale, changes) {
 	if (element.type !== "Page" && ("keywords" in changes || "description" in changes)) {
 		throw new TypeError("Keywords and description can only be saved on pages");
 	}
-	if ("slug" in changes && (changes.slug !== changes.slug.replace(/[^a-z0-9_]/gi, "").toLowerCase() || !changes.slug)) {
-		throw new TypeError("Slug must contain only lowercase letters, digits or underscores");
+	if ("slug" in changes && (!changes.slug || changes.slug !== normalizeSlug(changes.slug))) {
+		throw new TypeError("Slug must contain only lowercase letters, digits, underscores, hyphens or periods");
 	}
-	if ("slug" in changes) assertSlugAllowed(changes.slug);
 	const definition = serializeSTWElement(element);
 	definition.children = [];
 	const shadow = element instanceof STWContent ? new element.constructor(definition) : new STWElement(definition);

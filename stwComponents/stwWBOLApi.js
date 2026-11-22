@@ -42,7 +42,7 @@
 import { STWFactory } from "./stwFactory.js";
 import { secureResponse } from "./stwResponse.js";
 import { STWContent } from "../stwElements/stwContent.js";
-import { assertSlugAllowed, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
+import { normalizeSlug, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { STWConnectors, assertConnectorId } from "./stwConnectors.js";
@@ -379,8 +379,7 @@ function prepareLocalizedUpdates(patch, defaultLocale, supportedLocales) {
 
 function normalizeLocalizedValue(field, value) {
 	if (field !== "slug") return value;
-	const slug = value.replace(/[^a-z0-9_]/gi, "").toLowerCase();
-	return assertSlugAllowed(slug);
+	return normalizeSlug(value);
 }
 
 function applyLocalizedUpdates(element, updates) {

@@ -18,7 +18,7 @@
  * @license Apache-2.0
  */
 import { STWConnectors } from "../stwComponents/stwConnectors.js";
-import { assertSlugAllowed, STWElement } from "./stwElement.js";
+import { normalizeSlug, STWElement } from "./stwElement.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
@@ -89,7 +89,7 @@ class STWContent extends STWElement {
 
 	localize(session, name, value = "") {
 		if (value) {
-			value = name === "slug" ? assertSlugAllowed(value.replace(/[^a-z0-9_]/gi, "").toLowerCase()) : value;
+			value = name === "slug" ? normalizeSlug(value) : value;
 			this[name].set(session.lang, value);
 			return value;
 		}
@@ -138,7 +138,10 @@ class STWContent extends STWElement {
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
 			const placeholders = new Map(session.placeholders);
 			if (records.rows.length)
-				records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
+				records.fields.forEach((field) => {
+					const value = records.rows[0]?.[field];
+					placeholders.set(`@@${field}`, value === 0 ? "0" : value || "");
+				});
 			settings = (await layout.render(records.fields, placeholders, session)).settings;
 			if (settings.get("visible") === "false")
 				return secureResponse(null, { status: 204 });

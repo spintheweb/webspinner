@@ -61,7 +61,7 @@ l('Type')D('type;@@type;wbol;/content-types') \tl('Section')e(';section;@@sectio
 l('Connector')d('connector;@@connector;wbol;/connectors/names')\tl('Parameters')e(';params;@@params')\n
 l('Command')m(';query;@@query')\n
 l('Layout')m(';layout;@@layout')\n
-b(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+b(';stwupdate;wbol;/@@uuid')t('Save')b(';stwdelete;wbol;/@@uuid')t('Delete')b(';stwinsert;wbol;/@@uuid')t('Insert')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorList01" origin="a6T6S55WbZjerGVamxGi8kA" type="table">

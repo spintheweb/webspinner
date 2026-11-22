@@ -72,7 +72,8 @@
 				<role id="user" visibility="true" />
 			</visibility>
 		</content>
-		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD" origin="wGGpiW7IjjrFqapqVuZopW" type="shortcut"
+		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD"
+			origin="wGGpiW7IjjrFqapqVuZopW" type="shortcut"
 			section="leftPanel" sequence="0">
 			<name>
 				<text xml:lang="en" slug="log-on"><![CDATA[Log on]]></text>

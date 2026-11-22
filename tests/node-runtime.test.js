@@ -806,7 +806,7 @@ test("the Studio content editor submits and updates the selected content", async
 		uuid: "editor-test-content",
 		subtype: "Text",
 		name: { en: "Original", it: "Italiano" },
-		slug: { en: "original", it: "italiano" },
+		slug: { en: "original-content", it: "italiano" },
 		section: "main",
 		class: "old-class",
 		connector: "json",
@@ -827,13 +827,15 @@ test("the Studio content editor submits and updates the selected content", async
 		const rendered = await editor.serve(new Request("http://localhost/stwc/edit-content"), session);
 		const { body } = await rendered.json();
 		assert.match(body, /name="uuid" value="editor-test-content"/);
+		assert.match(body, /name="slug" value="original-content"/);
+		assert.match(body, /name="sequence" value="0"/);
 		assert.match(body, /<option value="Text" selected>/);
 		assert.match(body, /name="query"[^>]*>\{&quot;value&quot;:&quot;a;b&quot;\}<\/textarea>/);
 		assert.match(body, /name="layout"[^>]*>&lt;p&gt;First; second &amp;amp; third&lt;\/p&gt;<\/textarea>/);
 		const token = /data-stw-action-token="([^"]+)"/.exec(body)?.[1];
 		assert.ok(token);
 		const fields = {
-			uuid: content.uuid, name: "Updated", slug: "updated", type: "Text",
+			uuid: content.uuid, name: "Updated", slug: "original-content", type: "Text",
 			section: "header", sequence: "0", cssClass: "", connector: "",
 			query: "", params: "", layout: "<p>Updated; & more</p>",
 			stwAction: "stwupdate", stwActionToken: token, stwOrigin: editor.uuid,
@@ -851,7 +853,8 @@ test("the Studio content editor submits and updates the selected content", async
 		const response = await submit(fields);
 		assert.equal(response.status, 303);
 		assert.equal(content.name.get("en"), "Updated");
-		assert.equal(content.slug.get("en"), "updated");
+		assert.equal(content.slug.get("en"), "original-content");
+		assert.equal(content.pathname(session), "/original-content");
 		assert.equal(content.section, "header");
 		assert.equal(content.sequence, "0");
 		assert.equal(content.cssClass, "");
@@ -860,6 +863,9 @@ test("the Studio content editor submits and updates the selected content", async
 		assert.equal(content.params, "");
 		assert.equal(content.layout.get("en"), "<p>Updated; & more</p>");
 		assert.equal(content.layout.get("it"), "t('Italiano')");
+		const reopened = await (await editor.serve(new Request("http://localhost/stwc/edit-content"), session)).json();
+		assert.match(reopened.body, /name="slug" value="original-content"/);
+		assert.match(reopened.body, /name="sequence" value="0"/);
 
 		const wrongId = await submit({ ...fields, uuid: "other-content" });
 		assert.equal(wrongId.status, 400);
@@ -1101,6 +1107,11 @@ test("the reserved wbol slug is rejected when elements are created or updated", 
 	const content = new STWContent({ uuid: "reserved-content", subtype: "Text", slug: { en: "home" } });
 	assert.throws(() => content.localize({ lang: "en" }, "slug", "wbol"), /slug 'wbol' is reserved/i);
 	assert.equal(content.slug.get("en"), "home");
+	content.localize({ lang: "en" }, "slug", "news-item.v2");
+	assert.equal(content.slug.get("en"), "news-item.v2");
+	element.updateLocalizedField({}, "slug", { en: "news-item.v2" });
+	assert.equal(element.slug.get("en"), "news-item.v2");
+	assert.equal(validateChanges(content, "en", { slug: "news-item.v2" }).slug.get("en"), "news-item.v2");
 });
 
 test("WBOL element API requires the developer role", async () => {
@@ -1527,14 +1538,14 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 		assert.equal(response.status, 200);
 		const updated = await response.json();
 		assert.equal(updated.name, "Search optimized");
-		assert.equal(updated.slug, "searchoptimized");
+		assert.equal(updated.slug, "search-optimized");
 		assert.equal(updated.keywords, "search, metadata");
 		assert.equal(updated.description, "Updated description");
 		assert.equal("visibility" in updated, false);
 		response = await call(`${seoId}?locale=fr`);
 		const frenchElement = await response.json();
 		assert.equal(frenchElement.name, "Optimisee pour la recherche");
-		assert.equal(frenchElement.slug, "optimiseerecherche");
+		assert.equal(frenchElement.slug, "optimisee-recherche");
 		assert.equal(frenchElement.description, "Description mise a jour");
 
 		response = await call(seoId, "PATCH", { name: { en: "No unauthorized updates" }, position: 0 });

@@ -79,7 +79,7 @@ class STWElement {
 	}
 	localize(session, name, value = "") {
 		if (value) {
-			value = name === "slug" ? assertSlugAllowed(value.replace(/[^a-z0-9_]/gi, "").toLowerCase()) : value;
+			value = name === "slug" ? normalizeSlug(value) : value;
 			this[name].set(session.lang, value);
 			return value;
 		}
@@ -191,7 +191,7 @@ class STWElement {
 		for (const [lang, localizedValue] of entries) {
 			this[field].set(
 				lang,
-				field === "slug" ? localizedValue.replace(/[^a-z0-9_]/gi, "").toLowerCase() : localizedValue
+				field === "slug" ? normalizeSlug(localizedValue) : localizedValue
 			);
 		}
 	}
@@ -206,6 +206,10 @@ function assertSlugAllowed(slug) {
 		throw new TypeError("The slug 'wbol' is reserved");
 	}
 	return slug;
+}
+
+function normalizeSlug(slug) {
+	return assertSlugAllowed(slug.replace(/[^a-z0-9_.-]/gi, "").toLowerCase());
 }
 
 function serializeSTWElement(element) {
@@ -238,6 +242,7 @@ function serializeElementValue(value) {
 
 export {
 	assertSlugAllowed,
+	normalizeSlug,
 	STWElement,
 	serializeSTWElement
 };
