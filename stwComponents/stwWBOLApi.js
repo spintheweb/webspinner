@@ -3,12 +3,17 @@
  *
  * Webbase element routes require the `developer` role and Developer-role RBV,
  * except SEO users may read and edit localized metadata on SEO-visible elements:
- *   - GET /wbol returns the portal tree; GET /wbol/:uuid returns one locale-specific element.
+ *   - GET /wbol returns the portal tree with effective visibility for `?roles=`;
+ *     GET /wbol/:uuid returns one locale-specific element.
+ *   - POST/DELETE /wbol/:uuid/block acquires/releases an editor block.
  *   - GET /wbol/content-types lists registered content subtypes for developers.
  *   - POST /wbol creates a child from `{ parentId, element }`.
- *   - PATCH /wbol/:uuid updates an element and can move it with `parentId` and
- *     optional `position`. Localized string values update `?locale=` (default:
- *     the Developer's session language); localized maps merge by locale.
+ *   - POST /wbol/:uuid/move moves an element to Portal, Area, Page, or a
+ *     content option; content-option moves retain the source in the webbase.
+ *   - PATCH /wbol/:uuid updates an element and can move it among structural
+ *     parents with `parentId` and optional `position`. Localized string values
+ *     update `?locale=` (default: the Developer's session language); localized
+ *     maps merge by locale.
  *     DELETE /wbol/:uuid removes the element and its descendants.
  *   - GET /wbol/:uuid/visibility reads explicit RBV settings; only
  *     `leaddeveloper` may change them, and may not assign `root` or
@@ -43,15 +48,19 @@ import { STWFactory } from "./stwFactory.js";
 import { secureResponse } from "./stwResponse.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { normalizeSlug, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
+import { STWArea } from "../stwElements/stwArea.js";
+import { STWPage } from "../stwElements/stwPage.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { STWConnectors, assertConnectorId } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";
-import { envGet } from "./stwConfig.js";
+import { envGet, readBooleanSetting } from "./stwConfig.js";
 import { canDevelopElement, isDeployed, isProtectedWebbaselet, webbaseletKind } from "./stwWebbaselets.js";
 import { isAbsolute } from "node:path";
+import { randomUUID } from "node:crypto";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
+const elementBlocks = new Map();
 
 async function handleWbolApi(request, session) {
 	const url = new URL(request.url);
@@ -69,6 +78,37 @@ async function handleWbolApi(request, session) {
 		const adminResponse = await handleWbolAdminApi(request, session, segments.slice(1));
 		if (adminResponse) return adminResponse;
 	}
+	if (segments.length === 3 && segments[2] === "block") {
+		const element = STWIndex.get(segments[1]);
+		if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
+		if (typeof session.user !== "string" || !session.user || session.user === "guest")
+			return jsonResponse({ error: "Forbidden" }, 403);
+		if (request.method === "POST") {
+			const canEdit = canEditElement(session, element) ||
+				(session.roles.includes("seo") && Boolean(element.isVisible(session, "seo") & 1));
+			if (!canEdit) return jsonResponse({ error: "Forbidden" }, 403);
+			if (isProtectedWebbaselet(element) || element.blocked && element.blocked !== session.user)
+				return jsonResponse({ blocked: element.blocked, token: null });
+			const token = randomUUID();
+			if (!elementBlocks.has(element.uuid)) elementBlocks.set(element.uuid, new Map());
+			elementBlocks.get(element.uuid).set(token, session.user);
+			element.blocked = session.user;
+			return jsonResponse({ blocked: element.blocked, token });
+		}
+		if (request.method === "DELETE") {
+			const token = url.searchParams.get("token");
+			const holders = elementBlocks.get(element.uuid);
+			if (!token || holders?.get(token) !== session.user)
+				return jsonResponse({ error: "Block not found" }, 404);
+			holders.delete(token);
+			if (holders.size === 0) {
+				elementBlocks.delete(element.uuid);
+				if (element.blocked === session.user) element.blocked = "";
+			}
+			return secureResponse(null, { status: 204 });
+		}
+		return methodNotAllowed("POST, DELETE");
+	}
 	if (segments.length === 3 && segments[2] === "visibility") {
 		const element = STWIndex.get(segments[1]);
 		if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
@@ -82,7 +122,7 @@ async function handleWbolApi(request, session) {
 		}
 		const element = STWIndex.get(segments[1]);
 		if (!(element instanceof STWPortal)) return jsonResponse({ error: "Portal not found" }, 404);
-		return handlePortalConnectorsRoute(request, element);
+		return handlePortalConnectorsRoute(request, element, session);
 	}
 	if (segments.length === 3 && segments[2] === "roles") {
 		const element = STWIndex.get(segments[1]);
@@ -103,6 +143,7 @@ async function handleWbolApi(request, session) {
 		if (!canDevelopElement(session, element)) return jsonResponse({ error: "Forbidden" }, 403);
 		if (request.method !== "GET" && isProtectedWebbaselet(element))
 			return jsonResponse({ error: "Deployed webbaselets are read-only" }, 403);
+		if (segments[2] === "move") return handleMoveRoute(request, element, session);
 		if (segments[2] === "options") return handleOptionsRoute(request, element, session);
 		return jsonResponse({ error: "Not found" }, 404);
 	}
@@ -128,7 +169,9 @@ async function handleWbolApi(request, session) {
 					? serializeLocalizedElement(element, localizedSession)
 					: serializeSeoElement(element, localizedSession));
 			}
-			return jsonResponse(filterAccessibleTree(element, session, true));
+			const roles = url.searchParams.getAll("roles").flatMap((value) => value.trim().split(/\s+/).filter(Boolean));
+			const visibilitySession = { portal, roles: roles.length ? roles : session.roles };
+			return jsonResponse(filterAccessibleTree(element, session, visibilitySession, true));
 		}
 		if (method === "POST" && !id) {
 			if (!hasDeveloperRole) return jsonResponse({ error: "Forbidden" }, 403);
@@ -142,6 +185,7 @@ async function handleWbolApi(request, session) {
 			}
 			if (isProtectedWebbaselet(parent)) return jsonResponse({ error: "Deployed webbaselets are read-only" }, 403);
 			if (!canDevelopElement(session, parent)) return jsonResponse({ error: "Forbidden" }, 403);
+			if (blockedByOther(parent, session)) return jsonResponse({ error: "Element is blocked by another user" }, 409);
 			validateDefinitionTree(body.element);
 			const definitionIds = collectDefinitionIds(body.element);
 			if (new Set(definitionIds).size !== definitionIds.length || definitionIds.some((elementId) => STWIndex.has(elementId))) {
@@ -164,6 +208,8 @@ async function handleWbolApi(request, session) {
 			if (!canDevelop && !canEditSeo) return jsonResponse({ error: "Forbidden" }, 403);
 			const patch = await readJson(request);
 			if (!isRecord(patch)) return jsonResponse({ error: "Expected a JSON object" }, 400);
+			if (blockedByOther(element, session))
+				return jsonResponse({ error: "Element is blocked by another user" }, 409);
 			if ("visibility" in patch) {
 				return jsonResponse({ error: "Use the visibility route to change role visibility" }, 403);
 			}
@@ -179,11 +225,14 @@ async function handleWbolApi(request, session) {
 			const localizedUpdates = prepareLocalizedUpdates(patch, locale, getSupportedLocales(session));
 			const parentId = patch.parentId;
 			const position = patch.position;
+			if ((parentId !== void 0 || position !== void 0) &&
+				(blockedByOther(element.parent, session) || blockedByOther(STWIndex.get(parentId), session)))
+				return jsonResponse({ error: "Element is blocked by another user" }, 409);
 			const updates = { ...patch };
 			delete updates.parentId;
 			delete updates.position;
 			for (const field of ["name", "slug", "keywords", "description"]) delete updates[field];
-			for (const field of ["uuid", "subtype", "children", "parent", "modified"]) {
+			for (const field of ["uuid", "subtype", "children", "parent", "modified", "blocked"]) {
 				if (field in updates) return jsonResponse({ error: `${field} cannot be changed through PATCH` }, 400);
 			}
 			let replacement;
@@ -214,8 +263,11 @@ async function handleWbolApi(request, session) {
 				if (element instanceof STWPortal) return jsonResponse({ error: "The portal cannot be moved" }, 400);
 				if (typeof parentId !== "string") return jsonResponse({ error: "parentId must be a string" }, 400);
 				const newParent = STWIndex.get(parentId);
-				if (!(newParent instanceof STWElement) || newParent instanceof STWContent) {
+				if (!(newParent instanceof STWPortal || newParent instanceof STWArea || newParent instanceof STWPage)) {
 					return jsonResponse({ error: "Parent element not found or cannot contain children" }, 400);
+				}
+				if (element instanceof STWArea && newParent instanceof STWPage) {
+					return jsonResponse({ error: "An area cannot be a child of a page" }, 400);
 				}
 				if (isProtectedWebbaselet(newParent)) return jsonResponse({ error: "Deployed webbaselets are read-only" }, 403);
 				if (!canDevelopElement(session, newParent)) return jsonResponse({ error: "Forbidden" }, 403);
@@ -237,6 +289,9 @@ async function handleWbolApi(request, session) {
 				movePosition = position;
 			}
 			const localizedSession = { ...session, lang: locale };
+			if (moveTo && (blockedByOther(moveTo, session) || blockedByOther(element.parent, session)))
+				return jsonResponse({ error: "Element is blocked by another user" }, 409);
+			if (replacement) replacement.blocked = element.blocked;
 			(replacement || element).update(localizedSession, updates);
 			if (replacement) {
 				const parent = element.parent;
@@ -253,6 +308,8 @@ async function handleWbolApi(request, session) {
 			if (!(element instanceof STWElement)) return jsonResponse({ error: "Element not found" }, 404);
 			if (isProtectedWebbaselet(element)) return jsonResponse({ error: "Deployed webbaselets are read-only" }, 403);
 			if (!canDevelopElement(session, element)) return jsonResponse({ error: "Forbidden" }, 403);
+			if (treeBlockedByOther(element, session) || blockedByOther(element.parent, session))
+				return jsonResponse({ error: "Element is blocked by another user" }, 409);
 			if (element instanceof STWPortal) return jsonResponse({ error: "Cannot delete the portal" }, 405);
 			const parent = element.parent;
 			const index = parent?.children.indexOf(element) ?? -1;
@@ -282,7 +339,15 @@ function canEditElement(session, element) {
 			(session.roles.includes("leaddeveloper") || session.roles.includes("root")));
 }
 
-function filterAccessibleTree(element, session, root = false) {
+function blockedByOther(element, session) {
+	return Boolean(element?.blocked && element.blocked !== session.user);
+}
+
+function treeBlockedByOther(element, session) {
+	return blockedByOther(element, session) || element.children.some((child) => treeBlockedByOther(child, session));
+}
+
+function filterAccessibleTree(element, session, visibilitySession, root = false) {
 	if (isDeployed() && webbaseletKind(element) === "studio") return null;
 	const developerVisible = canDevelopElement(session, element);
 	const seoVisible = session.roles.includes("seo") && Boolean(element.isVisible(session, "seo") & 1);
@@ -295,8 +360,11 @@ function filterAccessibleTree(element, session, root = false) {
 	} else {
 		result = { uuid: element.uuid, type: element.type, subtype: element.subtype || element.type };
 	}
+	result.blocked = element.blocked;
+	result.visibility = element.isVisible(visibilitySession);
+	if (element instanceof STWContent) result.section = element.section;
 	result.children = element.children
-		.map((child) => filterAccessibleTree(child, session))
+		.map((child) => filterAccessibleTree(child, session, visibilitySession))
 		.filter(Boolean);
 	return result;
 }
@@ -306,6 +374,8 @@ function serializeSeoElement(element, session) {
 		uuid: element.uuid,
 		type: element.type,
 		subtype: element.subtype || element.type,
+		blocked: element.blocked,
+		...(isProtectedWebbaselet(element) ? { readonly: "true" } : {}),
 		name: localizedValue(element, "name", session),
 		slug: localizedValue(element, "slug", session),
 		keywords: localizedValue(element, "keywords", session),
@@ -388,6 +458,87 @@ function applyLocalizedUpdates(element, updates) {
 	}
 }
 
+async function handleMoveRoute(request, element, session) {
+	if (request.method.toUpperCase() !== "POST") return methodNotAllowed("POST");
+	try {
+		const body = await readJson(request);
+		if (!isRecord(body) || typeof body.parentId !== "string" ||
+			Object.keys(body).some((key) => !["parentId", "position"].includes(key))) {
+			throw new TypeError("Expected { parentId: string, position?: number }");
+		}
+		if (element instanceof STWPortal) {
+			throw new TypeError("The portal cannot be moved");
+		}
+		const destination = STWIndex.get(body.parentId);
+		if (!(destination instanceof STWElement)) {
+			return jsonResponse({ error: "Destination element not found" }, 404);
+		}
+		if (isProtectedWebbaselet(destination)) {
+			return jsonResponse({ error: "Deployed webbaselets are read-only" }, 403);
+		}
+		if (!canDevelopElement(session, destination)) return jsonResponse({ error: "Forbidden" }, 403);
+		if (blockedByOther(element, session) || blockedByOther(destination, session) || blockedByOther(element.parent, session))
+			return jsonResponse({ error: "Element is blocked by another user" }, 409);
+		const sourceParent = element.parent;
+		if (!sourceParent || !sourceParent.children.includes(element)) {
+			return jsonResponse({ error: "Element is detached from the webbase" }, 409);
+		}
+
+		if (destination instanceof STWContent) {
+			if (!Array.isArray(destination.options)) {
+				return jsonResponse({ error: "Destination content does not support options" }, 400);
+			}
+			if (wouldCreateOptionCycle(element, destination, session)) {
+				return jsonResponse({ error: "Moving this element would create a content option recursion" }, 400);
+			}
+			if (destination.options.some((option) => resolveOptionReference(option.ref, session) === element)) {
+				return jsonResponse({ error: "Element is already an option of the destination" }, 409);
+			}
+			const position = body.position === void 0 ? destination.options.length : body.position;
+			if (!Number.isInteger(position) || position < 0 || position > destination.options.length) {
+				return jsonResponse({ error: "position must be a valid option index" }, 400);
+			}
+			destination.options.splice(position, 0, {
+				name: new Map(),
+				ref: element.uuid,
+				parameters: ""
+			});
+			destination.modified = Date.now();
+			return jsonResponse({
+				uuid: element.uuid,
+				parentId: destination.uuid,
+				position,
+				option: true
+			});
+		}
+
+		if (!(destination instanceof STWPortal || destination instanceof STWArea || destination instanceof STWPage)) {
+			return jsonResponse({ error: "Destination must be a Portal, Area, Page, or option-capable Content" }, 400);
+		}
+		if (element instanceof STWArea && destination instanceof STWPage) {
+			return jsonResponse({ error: "An area cannot be a child of a page" }, 400);
+		}
+		if (destination === element || isDescendantOf(destination, element)) {
+			return jsonResponse({ error: "An element cannot be moved into itself or its descendants" }, 400);
+		}
+		const maxPosition = destination === sourceParent ? sourceParent.children.length - 1 : destination.children.length;
+		const position = body.position === void 0 ? maxPosition : body.position;
+		if (!Number.isInteger(position) || position < 0 || position > maxPosition) {
+			return jsonResponse({ error: "position must be a valid child index" }, 400);
+		}
+		moveElement(element, destination, position);
+		destination.modified = Date.now();
+		return jsonResponse({
+			uuid: element.uuid,
+			parentId: destination.uuid,
+			position,
+			option: false
+		});
+	} catch (error) {
+		return apiErrorResponse(error, "WBOL element move failed:");
+	}
+}
+
 async function handleVisibilityRoute(request, element, session) {
 	const method = request.method.toUpperCase();
 	const isLeadDeveloper = session.roles.includes("leaddeveloper") || session.roles.includes("root");
@@ -416,6 +567,7 @@ async function handleVisibilityRoute(request, element, session) {
 				throw new AdminApiError(403, "The portal can only grant visibility to the root role");
 			}
 		}
+		if (blockedByOther(element, session)) return jsonResponse({ error: "Element is blocked by another user" }, 409);
 		if (method === "PUT") {
 			for (const role of element.visibility.keys()) {
 				if (role !== "root" && role !== "administrator") element.visibility.delete(role);
@@ -455,6 +607,7 @@ async function handleOptionsRoute(request, element, session) {
 			for (let depth = 0; depth < patch.path.length; depth++) {
 				option = options[patch.path[depth]];
 				if (!option) return jsonResponse({ error: "Option path not found" }, 404);
+				if (blockedByOther(element, session)) return jsonResponse({ error: "Element is blocked by another user" }, 409);
 				if (depth < patch.path.length - 1) {
 					if (!Array.isArray(option.options)) return jsonResponse({ error: "Option path not found" }, 404);
 					options = option.options;
@@ -467,6 +620,7 @@ async function handleOptionsRoute(request, element, session) {
 			return jsonResponse(serializeOptions(element.options));
 		}
 		const options = await readJson(request);
+		if (blockedByOther(element, session)) return jsonResponse({ error: "Element is blocked by another user" }, 409);
 		element.options = normalizeOptions(options);
 		element.modified = Date.now();
 		return jsonResponse(serializeOptions(element.options));
@@ -475,7 +629,7 @@ async function handleOptionsRoute(request, element, session) {
 	}
 }
 
-async function handlePortalConnectorsRoute(request, portal) {
+async function handlePortalConnectorsRoute(request, portal, session) {
 	const method = request.method.toUpperCase();
 	if (method === "GET") return jsonResponse(Object.fromEntries(portal.connectors));
 	if (method !== "PUT") return methodNotAllowed("GET, PUT");
@@ -484,6 +638,7 @@ async function handlePortalConnectorsRoute(request, portal) {
 		if (!isRecord(connectors) || !Object.values(connectors).every((value) => typeof value === "string")) {
 			throw new TypeError("Expected a connector name-to-value object");
 		}
+		if (blockedByOther(portal, session)) return jsonResponse({ error: "Element is blocked by another user" }, 409);
 		portal.connectors = new Map(Object.entries(connectors));
 		portal.modified = Date.now();
 		return jsonResponse(Object.fromEntries(portal.connectors));
@@ -583,6 +738,32 @@ function moveElement(element, parent, position) {
 	parent.children.splice(targetPosition, 0, element);
 	element.parent = parent;
 }
+function wouldCreateOptionCycle(source, destination, session) {
+	if (!(source instanceof STWContent)) return false;
+	const visited = new Set();
+	function reachesDestination(content) {
+		if (content === destination) return true;
+		if (visited.has(content)) return false;
+		visited.add(content);
+		function visitOptions(options) {
+			for (const option of options || []) {
+				const referenced = resolveOptionReference(option.ref, session);
+				if (referenced instanceof STWContent && reachesDestination(referenced)) return true;
+				if (visitOptions(option.options)) return true;
+			}
+			return false;
+		}
+		return visitOptions(content.options);
+	}
+	return reachesDestination(source);
+}
+function resolveOptionReference(ref, session) {
+	if (typeof ref !== "string") return null;
+	const target = ref.split(/[?#]/, 1)[0];
+	const indexed = STWIndex.get(target);
+	if (indexed instanceof STWElement) return indexed;
+	return session.portal?.find(session, target) || null;
+}
 function isDescendantOf(element, ancestor) {
 	for (let parent = element.parent; parent; parent = parent.parent) {
 		if (parent === ancestor) return true;
@@ -619,6 +800,7 @@ function indexElementTree(element) {
 }
 function removeElementTree(element) {
 	for (const child of element.children) removeElementTree(child);
+	elementBlocks.delete(element.uuid);
 	STWIndex.delete(element.uuid);
 }
 function isRecord(value) {
@@ -685,7 +867,7 @@ async function handleWbolAdminApi(request, session, segments) {
 				{ id: "wbol", name: "wbol" },
 				...configurations.map(({ id, name }) => ({ id, name }))
 			];
-			if (envGet("ALLOW_AI", "false").trim().toLowerCase() === "true") {
+			if (readBooleanSetting("ALLOW_AI")) {
 				choices.push({ id: "assistant", name: "assistant" });
 			}
 			return jsonResponse(choices);
@@ -965,6 +1147,17 @@ function validateConnector(value) {
 	for (const key of ["host", "user", "password", "passwordEnv", "database", "contentType", "from"]) {
 		if (value[key] !== void 0) result[key] = requireString(value[key], key);
 	}
+	if (value.windowsAuth !== void 0) {
+		if (typeof value.windowsAuth !== "boolean") throw new AdminApiError(400, "windowsAuth must be a boolean");
+		if (type !== "mssql") throw new AdminApiError(400, "windowsAuth is only supported for mssql connectors");
+		result.windowsAuth = value.windowsAuth;
+	}
+	if (value.odbcDriver !== void 0) {
+		if (type !== "mssql" || result.windowsAuth !== true) {
+			throw new AdminApiError(400, "odbcDriver requires Windows authentication on an mssql connector");
+		}
+		result.odbcDriver = requireNonEmptyString(value.odbcDriver, "odbcDriver");
+	}
 	if (value.secure !== void 0) {
 		if (typeof value.secure !== "boolean") throw new AdminApiError(400, "secure must be a boolean");
 		result.secure = value.secure;
@@ -975,8 +1168,12 @@ function validateConnector(value) {
 		}
 		result.port = value.port;
 	}
-	if (["mysql", "postgres", "mssql"].includes(type) && (!result.host || !result.user || !result.database)) {
-		throw new AdminApiError(400, `${type} connector requires host, user, and database`);
+	const windowsAuth = type === "mssql" && result.windowsAuth === true;
+	if (["mysql", "postgres", "mssql"].includes(type) &&
+		(!result.host || (!windowsAuth && !result.user) || !result.database)) {
+		throw new AdminApiError(400, windowsAuth
+			? "mssql connector requires host and database"
+			: `${type} connector requires host, user, and database`);
 	}
 	if (type === "mongodb" && (!result.host || !result.database)) {
 		throw new AdminApiError(400, "mongodb connector requires host and database");
@@ -1005,7 +1202,7 @@ function validateConnector(value) {
 	return result;
 }
 function validateConnectorFields(value) {
-	const allowed = new Set(["id", "name", "type", "host", "user", "password", "passwordEnv", "database", "contentType", "port", "secure", "from"]);
+	const allowed = new Set(["id", "name", "type", "host", "user", "password", "passwordEnv", "database", "contentType", "port", "secure", "from", "windowsAuth", "odbcDriver"]);
 	for (const key of Object.keys(value)) {
 		if (!allowed.has(key)) throw new AdminApiError(400, `Unsupported connector field: ${key}`);
 	}

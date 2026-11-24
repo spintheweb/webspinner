@@ -19,11 +19,22 @@
 	<link href="/styles/style.css" rel="stylesheet">
 	<link href="/styles/stwStyle.css" rel="stylesheet">
 	<script src="/scripts/stwClient.js"></script>
-	<script src="/scripts/clientStudio.js"></script>
+	<script src="/scripts/steClientStudio.js"></script>
 	<script src="/scripts/client.js"></script>
+	<script>
+		function load() {
+			document.querySelectorAll("input[type=checkbox]").forEach(checkbox => {
+				checkbox.tristate = checkbox.checked ? 1 : 2;
+				checkbox.addEventListener("click", e => {
+					checkbox.checked = [null, true, false][++checkbox.tristate % 3];
+					checkbox.indeterminate = checkbox.tristate % 3 == 0;
+				});
+			});
+		}
+	</script>
 </head>
 
-<body>
+<body onload="load()">
 	<header data-section id="header"></header>
 	<div style="display: flex; gap:0.5rem; height: 100vh; align-items: flex-start;">
 		<aside data-section id="leftPanel" style="position: relative; display: flex; flex-direction: column;"></aside>

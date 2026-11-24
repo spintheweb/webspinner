@@ -15,7 +15,7 @@
  * @license Apache-2.0
  */
 import { getCookies } from "./stwNode.js";
-import { debugLog, envGet } from "./stwConfig.js";
+import { debugLog, envGet, readBooleanSetting } from "./stwConfig.js";
 
 class STWSession {
 	sessionId;
@@ -44,6 +44,7 @@ class STWSession {
 		this.roles = ["guest"];
 		this.placeholders = new Map();
 		this.setLanguage("en");
+		this.setApplicationPlaceholders();
 		this.langs = ["en"];
 		this.tz = "UTC";
 		this.setLoginPlaceholders();
@@ -57,6 +58,10 @@ class STWSession {
 	setLanguage(language) {
 		this.lang = language;
 		this.placeholders.set("@@stwlanguage", language);
+	}
+
+	setApplicationPlaceholders() {
+		this.placeholders.set("@@stwALLOW_AI", readBooleanSetting("ALLOW_AI") ? "true" : "false");
 	}
 
 	/**
@@ -97,7 +102,8 @@ class STWSession {
 			for (const [key, value2] of obj.headers)
 				this.placeholders.set(`@@${key}`, value2);
 			this.setLoginPlaceholders();
-			this.placeholders.set("@@stwlanguage", this.lang);
+			this.setLanguage(this.lang);
+			this.setApplicationPlaceholders();
 		} else if (typeof obj === "string")
 			this.placeholders.set(`@@${obj}`, value);
 		else

@@ -4,6 +4,7 @@
  */
 
 const stwStudioReturnUrlKey = "stwStudioReturnUrl";
+const stwStudioBlocks = new Map();
 
 function _isStudioPage() {
 	return /^\/stws(?:\/|$)/.test(window.location.pathname);
@@ -139,7 +140,7 @@ function _stwOpenElementEditor(anchor) {
 	const type = anchor.dataset.stwEditorType;
 	const uuid = anchor.dataset.stwEditorUuid;
 	const resource = {
-		Portal: "/stws/edit/edit-site",
+		Portal: "/stws/edit/edit-portal",
 		Area: "/stws/edit/edit-area",
 		Page: "/stws/edit/edit-page",
 		Content: "/stws/edit/edit-content"
@@ -151,18 +152,64 @@ function _stwOpenElementEditor(anchor) {
 	_stwSendEditorRequest(resource, uuid);
 }
 
-function _stwSendEditorRequest(resource, uuid) {
+async function _stwSendEditorRequest(resource, uuid) {
 	if (!stwCanStudio || !stwWS || stwWS.readyState !== WebSocket.OPEN) {
 		window.alert("The Studio editor connection is unavailable.");
 		return;
 	}
-	stwWS.send(JSON.stringify({
-		method: "PATCH",
-		resource: `${resource}?uuid=${encodeURIComponent(uuid)}`,
-		options: { placeholder: "" },
-		search: window.location.search
-	}));
+	let token;
+	try {
+		const response = await fetch(`/wbol/${encodeURIComponent(uuid)}/block`, { method: "POST" });
+		if (!response.ok) throw new Error(`Could not block element (${response.status}): ${await response.text()}`);
+		const block = await response.json();
+		if (!block || typeof block.blocked !== "string" ||
+			(block.token !== null && (typeof block.token !== "string" || !block.token)))
+			throw new Error("Invalid block response from Webspinner.");
+		token = block.token;
+		if (token) stwStudioBlocks.set(token, uuid);
+		if (!stwWS || stwWS.readyState !== WebSocket.OPEN) throw new Error("The Studio editor connection is unavailable.");
+		stwWS.send(JSON.stringify({
+			method: "PATCH",
+			resource,
+			options: { placeholder: "", recurse: false },
+			search: { uuid, stwBlockToken: token || "" }
+		}));
+	} catch (error) {
+		if (token) {
+			try {
+				await _stwReleaseBlock(token);
+			} catch (releaseError) {
+				console.error("Could not release the Studio block:", releaseError);
+			}
+		}
+		window.alert(error instanceof Error ? error.message : String(error));
+	}
 }
+
+async function _stwReleaseBlock(token) {
+	const uuid = stwStudioBlocks.get(token);
+	if (!uuid) return;
+	const response = await fetch(`/wbol/${encodeURIComponent(uuid)}/block?token=${encodeURIComponent(token)}`, {
+		method: "DELETE", keepalive: true
+	});
+	if (!response.ok && response.status !== 404) throw new Error(`Could not release block (${response.status}): ${await response.text()}`);
+	stwStudioBlocks.delete(token);
+}
+
+document.addEventListener("close", (event) => {
+	const token = event.target.querySelector?.('input[name="uuid"][data-stw-block-token]')?.dataset.stwBlockToken;
+	if (!token || !stwStudioBlocks.has(token)) return;
+	_stwReleaseBlock(token).catch((error) => {
+		console.error("Could not release the Studio block:", error);
+		window.alert(error.message);
+	});
+}, true);
+
+window.addEventListener("pagehide", () => {
+	for (const token of stwStudioBlocks.keys()) {
+		_stwReleaseBlock(token).catch((error) => console.error("Could not release the Studio block:", error));
+	}
+});
 
 window.addEventListener("message", (event) => {
 	if (event.origin !== window.location.origin || event.source !== _stwStudioFrame()?.contentWindow) return;

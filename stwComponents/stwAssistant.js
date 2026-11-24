@@ -6,7 +6,7 @@
  * @license Apache-2.0
  */
 import { randomUUID } from "node:crypto";
-import { envGet } from "./stwConfig.js";
+import { envGet, readBooleanSetting } from "./stwConfig.js";
 import { handleWbolApi } from "./stwWBOLApi.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { applyPersistentChanges, captureRevision, validateChanges } from "./stwAssistantPersistence.js";
@@ -104,9 +104,7 @@ function apply(session) {
  */
 async function executeAssistant(session, resource, method, fields = {}, fetchImpl = fetch) {
 	if (!session.roles.includes("developer")) throw new Error("Developer access required");
-	const allowAi = envGet("ALLOW_AI", "false").trim().toLowerCase();
-	if (allowAi !== "true" && allowAi !== "false") throw new TypeError('ALLOW_AI must be "true" or "false"');
-	if (allowAi !== "true") throw new Error("AI assistant is disabled; set ALLOW_AI=true to enable it");
+	if (!readBooleanSetting("ALLOW_AI")) throw new Error("AI assistant is disabled; set ALLOW_AI=true to enable it");
 	const route = `${method} ${resource}`;
 	if (route === "GET /state") return [{ uuid: history(session).uuid }];
 	if (route === "GET /history") {

@@ -14,11 +14,12 @@ COPY stwElements ./stwElements
 COPY public ./public
 COPY webbaselets ./webbaselets
 COPY stwStyles ./stwStyles
-COPY deployment/entrypoint.sh deployment/config-server.mjs ./deployment/
-COPY .env.example ./.env
+COPY deployment/entrypoint.sh deployment/docker.env ./deployment/
+COPY deployment/seed/connectors.json deployment/seed/users.json deployment/seed/webbase.wbol ./.data/
 COPY LICENSE README.md ./
 
-RUN mkdir -p .data .cert \
+RUN mkdir -p .cert \
+    && cp deployment/docker.env .data/.env.docker \
     && chown -R node:node /app \
     && chmod +x /app/deployment/entrypoint.sh
 
@@ -27,9 +28,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "fetch('http://localhost:' + (process.env.PORT || '8080')).then(() => process.exit(0)).catch(() => process.exit(1))"
 
-ENV HOST=0.0.0.0
 ENV PORT=8080
-ENV ALLOW_DEV=false
 ENV ALLOW_ROOT=false
 ENV ALLOW_AI=false
 ENV SPINNER_ENV=docker

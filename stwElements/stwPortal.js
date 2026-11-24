@@ -23,7 +23,7 @@ import { STWArea } from "./stwArea.js";
 import { STWElement } from "./stwElement.js";
 import { STWIndex } from "./stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
-import { debugLog, envGet, isDebugging } from "../stwComponents/stwConfig.js";
+import { debugLog, envGet, readBooleanSetting, isDebugging } from "../stwComponents/stwConfig.js";
 import { registerWebbaselet } from "../stwComponents/stwWebbaselets.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { watch } from "node:fs";
@@ -64,8 +64,7 @@ class STWPortal extends STWElement {
 	static get instance() {
 		if (!STWPortal.#instance) {
 			debugLog(`${(new Date()).toISOString()}: Loading webbase '${envGet("WEBBASE")}'...`);
-			const allowDev = envGet("ALLOW_DEV", "false").trim().toLowerCase();
-			if (allowDev !== "true" && allowDev !== "false") throw new TypeError('ALLOW_DEV must be "true" or "false"');
+			readBooleanSetting("ALLOW_DEV");
 			const webbase = envGet("WEBBASE") || "./.data/webbase.wbol";
 			const wbol = WBOL(webbase);
 			STWPortal.#instance = new STWPortal(wbol);
@@ -74,7 +73,7 @@ class STWPortal extends STWElement {
 					`Webbase '${webbase}' not found. Set WEBBASE="<path>" in the .env file or place the webbase in ${webbase}.`
 				);
 			STWPortal.#instance.addWebbaselet(envGet("COMMON_WEBBASELET") || "./webbaselets/stwCommon.wbol", "common");
-			if (allowDev === "true")
+			if (readBooleanSetting("ALLOW_DEV"))
 				STWPortal.#instance.addWebbaselet(envGet("STUDIO_WEBBASELET") || "./webbaselets/stwStudio.wbol", "studio");
 			
 			if (isDebugging)

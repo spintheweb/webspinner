@@ -5,6 +5,9 @@
 							  https://spintheweb.org/schemas/wbol.xsd /schemas/wbol.xsd"
 	uuid="wGGpiW7IjjrFqapqVuZopW"
 	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
+	<name>
+		<text xml:lang="en" slug="northstar-cycles"><![CDATA[Northstar Cycles]]></text>
+	</name>
 	<visibility>
 		<role id="root" />
 		<role id="administrator" />
@@ -13,321 +16,450 @@
 		<role id="developer" />
 		<role id="leaddeveloper" />
 		<role id="seo" />
+		<role id="sales" />
+		<role id="engineering" />
+		<role id="production" />
+		<role id="procurement" />
+		<role id="quality" />
+		<role id="service" />
+		<role id="finance" />
+		<role id="people" />
 	</visibility>
-	<name>
-		<text xml:lang="en" slug="spin-the-web"><![CDATA[Spin the Web]]></text>
-	</name>
 	<children>
-		<content uuid="c4sHhyptkJDFXjfOgnM0lRD" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
+		<content uuid="c557WVTgnyAw5Jx99Kx2FZh" origin="wGGpiW7IjjrFqapqVuZopW" type="menus"
 			section="header" sequence="1">
 			<name>
-				<text xml:lang="en" slug="menus"><![CDATA[Menus]]></text>
+				<text xml:lang="en" slug="navigation"><![CDATA[Navigation]]></text>
 			</name>
-			<layout>
-				<text xml:lang="en"><![CDATA[\s('xvertical')]]></text>
-			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
 				<role id="user" visibility="true" />
 			</visibility>
 			<options>
-				<option ref="/home"></option>
-				<option>
-					<text xml:lang="en"><![CDATA[Data]]></text>
-					<options>
-						<option ref="/sales"></option>
-						<option ref="/customers"></option>
-					</options>
-				</option>
-				<option ref="/stwc/users"></option>
-				<option ref="/stwc/mail"></option>
-				<option ref="/stwc/configuration"></option>
-				<option></option>
-				<option>
-					<text xml:lang="en"><![CDATA[<i class="fa-light fa-fw fa-user"></i> @@stwloginname]]></text>
-				</option>
+				<option ref="pGGpiXMKLBB9JzXmwCV1IY" />
+				<option ref="a4WlL07c1X206fDR4jVCGm0"><text xml:lang="en"><![CDATA[Bicycles]]></text></option>
+				<option ref="a2uflK3oAqSUsnP16JeKZQW"><text xml:lang="en"><![CDATA[Rider support]]></text></option>
+				<option ref="a7KKERNwUU9pADVAEFTnSwz"><text xml:lang="en"><![CDATA[Sales]]></text></option>
+				<option ref="a3jT83RjBE232acdcpDWu6B"><text xml:lang="en"><![CDATA[Engineering]]></text></option>
+				<option ref="a6l3mGYPpHoDUm5wxSO77Jm"><text xml:lang="en"><![CDATA[Production]]></text></option>
+				<option ref="a3pIFbylNxOJJtOVHl86peI"><text xml:lang="en"><![CDATA[Procurement]]></text></option>
+				<option ref="a6jnetwAOXcuySpMyGfCCsI"><text xml:lang="en"><![CDATA[Quality]]></text></option>
+				<option ref="a3PjuRiufRmRP1D4NG03B36"><text xml:lang="en"><![CDATA[Service]]></text></option>
+				<option ref="a1zRo36ELHxTtxuixOybL7l"><text xml:lang="en"><![CDATA[Finance]]></text></option>
+				<option ref="a7hgPlV9ns0jILyRGgYHetA"><text xml:lang="en"><![CDATA[People]]></text></option>
+				<option ref="/stwc/users" />
+				<option ref="/stwc/configuration" />
+				<option />
+				<option><text xml:lang="en"><![CDATA[<i class="fa-light fa-fw fa-user"></i> @@stwloginname]]></text></option>
+				<option ref="c2hvVEcjC57XCDxmovj54PD" />
 				<option ref="c3gJOg8rVapMR0eiVIizt6c" />
 			</options>
 		</content>
-		<content uuid="c7be7AxZl4EpUSHsMrRVMPD" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
+		<content uuid="c18gmpzt1OyJUaBpNBm5EKP" origin="wGGpiW7IjjrFqapqVuZopW" type="breadcrumbs"
 			section="header" sequence="2">
 			<name>
 				<text xml:lang="en" slug="breadcrumbs"><![CDATA[Breadcrumbs]]></text>
 			</name>
-			<layout>
-				<text xml:lang="en"><![CDATA[\s('header='<i class="fa-light fa-sidebar" onclick="toggleSidebar(event)"></i>' footer='<i class="fa-light fa-sidebar-flip" onclick="toggleSidebar(event)"></i>'')]]></text>
-			</layout>
 			<visibility>
 				<role id="guest" visibility="true" />
 				<role id="user" visibility="true" />
 			</visibility>
 		</content>
-		<content uuid="c8PW7Ll3WxQGzFYtKAyojK" origin="wGGpiW7IjjrFqapqVuZopW" type="languages"
+		<content uuid="c4PEW7fF6X39pI3ZcU2v2Ts" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
 			section="footer" sequence="1">
 			<name>
-				<text xml:lang="en" slug="languages"><![CDATA[Languages]]></text>
+				<text xml:lang="en" slug="footer"><![CDATA[Footer]]></text>
 			</name>
 			<visibility>
 				<role id="guest" visibility="true" />
 				<role id="user" visibility="true" />
 			</visibility>
+			<layout>
+				<text xml:lang="en"><![CDATA[<p>Northstar Cycles &mdash; thoughtful bicycles for everyday adventures.</p>]]></text>
+			</layout>
 		</content>
-		<content uuid="c7be7AxZl4EpUSHsMrsVMPD" ref="c2hvVEcjC57XCDxmovj54PD"
-			origin="wGGpiW7IjjrFqapqVuZopW" type="shortcut"
-			section="leftPanel" sequence="0">
-			<name>
-				<text xml:lang="en" slug="log-on"><![CDATA[Log on]]></text>
-			</name>
-			<visibility>
-				<role id="guest" visibility="true" />
-				<role id="root" visibility="true" />
-			</visibility>
-		</content>
-		<page uuid="pGGpiXMKLdB9JzXAwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">
-			<name>
-				<text xml:lang="en" slug="customers"><![CDATA[Customers]]></text>
-			</name>
-			<children>
-				<content uuid="c4sHhyqzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
-					section="main" sequence="1">
-					<name>
-						<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[e('search;txt;@txt')b('/customers;stwsearch')\a('style="margin-right:0.5rem" ')b(';stwreset')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="cGGpiZrNdTKE2Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="main" sequence="2">
-					<name>
-						<text xml:lang="en" slug="list"><![CDATA[Customers]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[SELECT 'fufi' as stwFufi, customers.* FROM customers WHERE [customername like '%@txt%']]]></query>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Customers" rows="3" nodata="<span>No customer name found that includes <b>@txt</b></span>" ')l('Name;1')a('/customers/customer')pfl('Contact last name;')el('Contact name;;sum')flfb(';stwsearch')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="cGGpiZrNdTKE3Zvi7KQF20" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
-					section="main" sequence="3">
-					<name>
-						<text xml:lang="en" slug="customer"><![CDATA[Customer]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-fw fa-user"></i> @@customerName' ')>>
-							l('Contact last name')\tf\n
-							l('Contact name')\tf\n
-							l\tf]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-			</children>
-			<visibility>
-				<role id="guest" visibility="true" />
-				<role id="user" visibility="true" />
-			</visibility>
-		</page>
+
 		<page uuid="pGGpiXMKLBB9JzXmwCV1IY" origin="wGGpiW7IjjrFqapqVuZopW">
 			<name>
 				<text xml:lang="en" slug="home"><![CDATA[Home]]></text>
 			</name>
 			<children>
-				<content uuid="c4sHhypzM0UjizY20BICPrH" origin="wGGpiW7IjjrFqapqVuZopW" type="tabs"
-					section="main" sequence="10">
-					<name>
-						<text xml:lang="en" slug="tabs"><![CDATA[Tabs]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-					<options>
-						<option ref="c3YCLoAbUczj9NNvlOFO081">
-							<text xml:lang="en"><![CDATA[./public]]></text>
-						</option>
-						<option ref="c3YCLoAbUczjbaXTHruz8Yx" />
-						<option ref="c4sHhypzM1UjizY20C0N9LP" />
-					</options>
-				</content>
-				<content uuid="c4sHhypzM1UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="geomap">
-					<name>
-						<text xml:lang="en" slug="map"><![CDATA[Map]]></text>
-					</name>
-					<visibility>
-						<role id="user" visibility="false" />
-					</visibility>
-				</content>
-				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
-					section="main" sequence="11">
-					<name>
-						<text xml:lang="en" slug="code-editor"><![CDATA[Code Editor]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Code Editor"')m('javascript;note;Hello World!')\rb(';stwsubmit')p('fufi;what')q('.')t('Submit')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="c4sHhypzNzBJ7LpOv3ROBvX" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
-					section="main" sequence="9">
-					<name>
-						<text xml:lang="en" slug="explain"><![CDATA[Explain]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <strong>HTML (HyperText Markup Language)</strong> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, <strong>WBOL (Webbase Ontology Language)</strong> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="c5B17joaUJGDnbYu9ft7xlH" origin="wGGpiW7IjjrFqapqVuZopW" type="calendar"
-					section="leftPanel" sequence="1">
-					<name>
-						<text xml:lang="en" slug="calendar"><![CDATA[Calendar]]></text>
-					</name>
-
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="date"')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-			</children>
-		</page>
-		<page uuid="p76qSPuePylfg88klSQBx5r" origin="wGGpiW7IjjrFqapqVuZopW">
-			<name>
-				<text xml:lang="en" slug="sales"><![CDATA[Sales]]></text>
-			</name>
-			<visibility>
-				<role id="guest" visibility="true" />
-			</visibility>
-			<children>
-				<content uuid="c5pFgYiS4cfdHZyTCNV3Wdi" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					section="rightPanel" sequence="1">
-					<name>
-						<text xml:lang="en" slug="offices"><![CDATA[Offices]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[select * from offices]]></query>
-					<layout>
-						<!--text
-						xml:lang="en"><![CDATA[\s('caption="Offices"
-						key="officeId"')l('City')hel('Tel.')e('tel')b(';stwdelete')t('-')b(';stwinsert')t('+')]]></text-->
-						<text xml:lang="en"><![CDATA[\s('caption="Offices" key="officeId" footer="This is a footer" header="This is a header" collapsible')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="c3YCLoAbUczj9NNvlOFO081" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
-					sequence="1">
-					<name>
-						<text xml:lang="en" slug="files"><![CDATA[Files]]></text>
-					</name>
-					<query connector="node"><![CDATA[
-const fs = require("node:fs");
-console.log(JSON.stringify(fs.readdirSync("./public", { withFileTypes: true })
-    .map(entry => ({ name: entry.name, type: entry.isDirectory() ? "directory" : "file" }))));
-]]></query>
-				</content>
-				<content uuid="c3YCLoAbUczjbaXTHruz8Yx" origin="wGGpiW7IjjrFqapqVuZopW" type="list"
-					sequence="5">
-					<name>
-						<text xml:lang="en" slug="objects"><![CDATA[Objects]]></text>
-					</name>
-					<query connector="objects" parameters="id=3&amp;id=5&amp;id=10"><![CDATA[$.({"name":name,"color":data.color})]]></query>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('rownumber="False" closable header="This data comes from the API: https://api.restful-api.dev/objects"')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="true" />
-					</visibility>
-				</content>
-				<content uuid="c7mIXOTljyDnSgsnYFNOqrh" origin="wGGpiW7IjjrFqapqVuZopW" type="table"
+				<content uuid="c1wUcP37YPMX2JLe7WZchID" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
 					section="main" sequence="1">
-					<name>
-						<text xml:lang="en" slug="employees"><![CDATA[Employees]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[select *, 'collapsible' as foo from employees limit 3]]></query>
+					<name><text xml:lang="en" slug="welcome"><![CDATA[Welcome]]></text></name>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Employees" key="employeeNumber" @@foo ')
-								l('Name;1')a('dashboard')pp('fufi;@@foo')ff
-								l('Ext.')f
-								l('eMail;2')a('mailto:@@email')f
-								lf
-								lf
-								l('Title;3')f]]></text>
+						<text xml:lang="en"><![CDATA[
+<h1>Make every journey a little more joyful.</h1>
+<p>At Northstar Cycles, we imagine bicycles that feel at home on the morning commute, the long way home, and the road beyond.</p>
+<p>Explore our <a href="/bicycles/range">bicycle range</a>, discover <a href="/bicycles/craft">how we build</a>, or find <a href="/support/welcome">rider support</a>.</p>
+						]]></text>
+					</layout>
+				</content>
+				<content uuid="cGn4RZbeJxmRPcuHcQjxf1" origin="wGGpiW7IjjrFqapqVuZopW" type="text"
+					section="main" sequence="2">
+					<name><text xml:lang="en" slug="our-approach"><![CDATA[Our approach]]></text></name>
+					<layout>
+						<text xml:lang="en"><![CDATA[
+<h2>Built for the ride ahead</h2>
+<p>We bring design, manufacturing, and care together around a simple idea: a bicycle should invite its rider to keep exploring.</p>
+<p>Our teams have their own workspaces in the navigation once they sign in.</p>
+						]]></text>
 					</layout>
 				</content>
 			</children>
 		</page>
-		<page uuid="p3ACYHuY1IOe1UCmBuXClNc" origin="ayfpEhe2ISsKb9NiVLcw5y">
-			<name>
-				<text xml:lang="en" slug="page"><![CDATA[Page]]></text>
-			</name>
+
+		<area uuid="a4WlL07c1X206fDR4jVCGm0" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p7pMcIkWyTZSgIenHyDI22u">
+			<name><text xml:lang="en" slug="bicycles"><![CDATA[Bicycles]]></text></name>
 			<visibility>
 				<role id="guest" visibility="true" />
+				<role id="user" visibility="true" />
+				<role id="developer" visibility="true" />
+				<role id="seo" visibility="true" />
 			</visibility>
 			<children>
-				<content uuid="cno61aDt5dXpvK93DcE96l" origin="wGGpiW7IjjrFqapqVuZopW"
-					type="tree"
-					section="main" sequence="10">
-					<name>
-						<text xml:lang="en" slug="db-schema"><![CDATA[DB Schema]]></text>
-					</name>
-					<query connector="mysqlsample"><![CDATA[SELECT 'TABLES' as TYPE, 'TABLES' as NAME, null as rows, '' as DATA_TYPE, '' as COLUMN_TYPE, '' as COLUMN_KEY, 'TABLE' as PATH
-								UNION
-								SELECT 'TABLE', T.TABLE_NAME, T.TABLE_ROWS, '', '', '', concat_ws('/', 'TABLE', T.TABLE_NAME)
-								    FROM information_schema.tables T 
-								    WHERE T.TABLE_SCHEMA='qt3ul9nb_sampledb' and T.TABLE_TYPE = 'BASE TABLE'
-								UNION
-								SELECT 'COLUMN', C.COLUMN_NAME, null, C.DATA_TYPE, C.COLUMN_TYPE, C.COLUMN_KEY, concat_ws('/', 'TABLE', T.TABLE_NAME, C.COLUMN_NAME)
-								    FROM information_schema.tables T inner join information_schema.columns C on T.TABLE_SCHEMA = C.TABLE_SCHEMA and T.TABLE_NAME = C.TABLE_NAME 
-								    WHERE T.TABLE_SCHEMA='qt3ul9nb_sampledb' and T.TABLE_TYPE = 'BASE TABLE'
-								UNION
-								SELECT 'VIEWS', 'VIEWS', null, '', '', '', 'VIEW'
-								UNION
-								SELECT 'VIEW', V.TABLE_NAME, null, '', '', '', concat_ws('/', 'VIEW', V.TABLE_NAME)
-								    FROM information_schema.views V
-								    WHERE V.TABLE_SCHEMA='qt3ul9nb_sampledb'
-								UNION
-								SELECT 'COLUMN', C.COLUMN_NAME, null, C.DATA_TYPE, C.COLUMN_TYPE, C.COLUMN_KEY, concat_ws('/', 'VIEW', V.TABLE_NAME, C.COLUMN_NAME)
-								    FROM information_schema.views V inner join information_schema.columns C on V.TABLE_SCHEMA = C.TABLE_SCHEMA and V.TABLE_NAME = C.TABLE_NAME
-								    WHERE V.TABLE_SCHEMA='qt3ul9nb_sampledb'
-								UNION
-								SELECT 'ROUTINES', 'ROUTINES', null, '', '', '', 'ROUTINE'
-								UNION
-								SELECT distinct concat(R.ROUTINE_TYPE, 'S'), concat(R.ROUTINE_TYPE, 'S'), null, '', '', '', concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE)
-								    FROM information_schema.ROUTINES R
-								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb'
-								UNION
-								SELECT R.ROUTINE_TYPE, R.ROUTINE_NAME, null, '', '', '', concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE, R.ROUTINE_NAME)
-								    FROM information_schema.ROUTINES R
-								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb'
-								UNION
-								SELECT 'PARAMETER', ifnull(P.PARAMETER_NAME, 'RETURN'), null, P.DATA_TYPE, P.DTD_IDENTIFIER, ifnull(P.PARAMETER_MODE, ''), concat_ws('/', 'ROUTINE', R.ROUTINE_TYPE, R.ROUTINE_NAME, ifnull(P.PARAMETER_NAME, 'RETURN'))
-								    FROM information_schema.ROUTINES R left join information_schema.PARAMETERS P ON R.ROUTINE_SCHEMA = P.SPECIFIC_SCHEMA and R.ROUTINE_NAME = P.SPECIFIC_NAME
-								    WHERE R.ROUTINE_SCHEMA='qt3ul9nb_sampledb']]></query>
-					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="DB Schema" key="PATH"')]]></text>
-					</layout>
-					<visibility>
-						<role id="guest" visibility="false" />
-					</visibility>
-				</content>
-
+				<page uuid="p7pMcIkWyTZSgIenHyDI22u" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="range"><![CDATA[Our bicycles]]></text></name>
+					<children>
+						<content uuid="c1kDfy0mDH0EmAKm16sDjPp" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="range-introduction"><![CDATA[Find your ride]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Find your ride</h1>
+<h2>City</h2><p>A practical companion for errands, commutes, and discovering your neighborhood.</p>
+<h2>Trail</h2><p>A versatile bicycle for unpaved paths and weekends that start where the pavement ends.</p>
+<h2>Touring</h2><p>A steady companion for longer journeys, with room for the things you need along the way.</p>
+<p>Discover our <a href="/bicycles/craft">approach to craft</a> and <a href="/bicycles/sustainability">design for longevity</a>.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p3b8ARmwgLRHao7HbDUU2sO" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="craft"><![CDATA[Our craft]]></text></name>
+					<children>
+						<content uuid="cskpfGnQuSiS1v9zctaHq6" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="craft-story"><![CDATA[From idea to ride]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>From idea to ride</h1>
+<p>A bicycle begins with the needs of its rider. Our designers, builders, and service team work together to turn those needs into a useful, maintainable machine.</p>
+<p><a href="/bicycles/range">Explore the range</a> or learn about <a href="/bicycles/sustainability">designing for longevity</a>.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p7wiIl4GxnEoqTEXScS523K" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="sustainability"><![CDATA[Design for longevity]]></text></name>
+					<children>
+						<content uuid="cxiWIqE7vaYR6y7I7Rib8c" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="longevity"><![CDATA[Keep riding]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Made to keep riding</h1>
+<p>Our design goal is to make bicycles easy to care for, with serviceable components and clear guidance for their owners.</p>
+<p>Visit <a href="/support/care">bicycle care</a> for a starting point.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
 			</children>
-		</page>
+		</area>
+
+		<area uuid="a2uflK3oAqSUsnP16JeKZQW" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p1szvbl5yL1uy30ayF29IL6">
+			<name><text xml:lang="en" slug="support"><![CDATA[Rider support]]></text></name>
+			<visibility>
+				<role id="guest" visibility="true" />
+				<role id="user" visibility="true" />
+				<role id="developer" visibility="true" />
+				<role id="seo" visibility="true" />
+			</visibility>
+			<children>
+				<page uuid="p1szvbl5yL1uy30ayF29IL6" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="welcome"><![CDATA[Rider support]]></text></name>
+					<children>
+						<content uuid="c1dedkg4IHdWJwY8kV5xjfG" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="support-introduction"><![CDATA[Here for the journey]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Here for the journey</h1>
+<p>Find practical guidance for looking after your bicycle and understanding the support available to riders.</p>
+<p><a href="/support/care">Bicycle care</a> &middot; <a href="/support/warranty">Warranty and service</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p1StPE4cgmVIsGdQXy5lcMz" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="care"><![CDATA[Bicycle care]]></text></name>
+					<children>
+						<content uuid="c32OIjsJxrVXBRNZubgVpXc" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="care-guide"><![CDATA[Care guide]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Care for your bicycle</h1>
+<p>Follow the instructions supplied with your bicycle and arrange regular servicing with a qualified bicycle mechanic.</p>
+<p>Before riding, check that the bicycle is in good condition. If anything seems unsafe or uncertain, have it inspected before use.</p>
+<p>See <a href="/support/warranty">warranty and service</a> for further guidance.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="pwmPZOEkwDnvCOqtgEPWnW" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="warranty"><![CDATA[Warranty and service]]></text></name>
+					<children>
+						<content uuid="c1LOWJ5AkV0i6o1mWaGCWmr" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="warranty-guidance"><![CDATA[Getting assistance]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Warranty and service</h1>
+<p>Keep your proof of purchase and bicycle details handy when requesting assistance. Warranty terms and service arrangements depend on the bicycle and where it was purchased.</p>
+<p>Consult the documentation supplied with your bicycle or the retailer for the applicable terms.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a7KKERNwUU9pADVAEFTnSwz" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p2KSHSP5YcPpkEDVDfqC4G1">
+			<name><text xml:lang="en" slug="sales"><![CDATA[Sales]]></text></name>
+			<visibility><role id="sales" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="p2KSHSP5YcPpkEDVDfqC4G1" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Sales overview]]></text></name>
+					<children>
+						<content uuid="c2H2r7mdNeCiSyWCefIkjMt" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="sales-workspace"><![CDATA[Sales workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Sales workspace</h1><p>Connect riders and retailers with the right bicycles, and coordinate commitments with the teams that build and support them.</p>
+<p><a href="/sales/orders">Orders and handoffs</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p4kEZMDRaQgtwgo5RWSF5lT" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="orders"><![CDATA[Orders and handoffs]]></text></name>
+					<children>
+						<content uuid="c4AS5QR8kqPRegoVyTO7BwN" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="order-journey"><![CDATA[Order journey]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Orders and handoffs</h1><p>From a rider's inquiry to delivery, record the agreed bicycle, configuration, delivery expectations, and the next responsible team.</p>
+<p>This workspace is a starting point for connecting an order system; it does not display live orders.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a3jT83RjBE232acdcpDWu6B" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="pjPUQRJvgxFzvshXtQjLBR">
+			<name><text xml:lang="en" slug="engineering"><![CDATA[Engineering]]></text></name>
+			<visibility><role id="engineering" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="pjPUQRJvgxFzvshXtQjLBR" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Engineering overview]]></text></name>
+					<children>
+						<content uuid="c57Ci8n8TIkJNB7ASpHUzIW" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="engineering-workspace"><![CDATA[Engineering workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Engineering workspace</h1><p>Shape the next generation of bicycles, from rider needs and frame geometry to maintainable components.</p>
+<p><a href="/engineering/designs">Designs and change decisions</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="plr6y7YMt2PbTka1qSg6Hn" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="designs"><![CDATA[Designs and changes]]></text></name>
+					<children>
+						<content uuid="c3g5G563ZoPreF6U0GE47A8" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="design-brief"><![CDATA[Design brief]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Designs and change decisions</h1><p>Bring design briefs, revisions, and engineering decisions together before sharing approved changes with production and service.</p>
+<p>Connect this page to the organization's design and product records when they are available.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a6l3mGYPpHoDUm5wxSO77Jm" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p5Lp1U9cQtWaWOz7lyK8niG">
+			<name><text xml:lang="en" slug="production"><![CDATA[Production]]></text></name>
+			<visibility><role id="production" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="p5Lp1U9cQtWaWOz7lyK8niG" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Production overview]]></text></name>
+					<children>
+						<content uuid="c5x8GW9WUqc9hm3jqWd5V9z" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="production-workspace"><![CDATA[Production workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Production workspace</h1><p>Coordinate materials, assembly, and the handoff to quality so each bicycle follows an understood build process.</p>
+<p><a href="/production/assembly">Assembly journey</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p7dEZo77LN3KSLCDZpxpdqJ" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="assembly"><![CDATA[Assembly journey]]></text></name>
+					<children>
+						<content uuid="c7dqrGt5MF6LtSowLm41KzB" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="assembly-overview"><![CDATA[Assembly overview]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Assembly journey</h1><p>Follow the bicycle from prepared components through assembly, inspection, and readiness for delivery.</p>
+<p>This page describes the workflow; it is not connected to a production schedule.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a3pIFbylNxOJJtOVHl86peI" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p5dMOFjOKiFNvoOFXx0uLtU">
+			<name><text xml:lang="en" slug="procurement"><![CDATA[Procurement]]></text></name>
+			<visibility><role id="procurement" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="p5dMOFjOKiFNvoOFXx0uLtU" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Procurement overview]]></text></name>
+					<children>
+						<content uuid="c7bcrs7T5H0s2h297jBImNF" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="procurement-workspace"><![CDATA[Procurement workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Procurement workspace</h1><p>Bring together the materials and supplier relationships needed to support reliable bicycle production.</p>
+<p><a href="/procurement/suppliers">Supplier collaboration</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p5dpWpdfTQizylaDsoFPOcE" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="suppliers"><![CDATA[Supplier collaboration]]></text></name>
+					<children>
+						<content uuid="c59sUComLSKBtiUFQ7GCOoX" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="supplier-handoffs"><![CDATA[Supplier handoffs]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Supplier collaboration</h1><p>Coordinate specifications, purchasing decisions, and delivery expectations with suppliers and the production team.</p>
+<p>Supplier records and purchasing data can be connected here when available.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a6jnetwAOXcuySpMyGfCCsI" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="pSrTvZ3Nr3PhWKdFcJScsg">
+			<name><text xml:lang="en" slug="quality"><![CDATA[Quality]]></text></name>
+			<visibility><role id="quality" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="pSrTvZ3Nr3PhWKdFcJScsg" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Quality overview]]></text></name>
+					<children>
+						<content uuid="c7LE2bamKa8svvapyll2yUa" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="quality-workspace"><![CDATA[Quality workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Quality workspace</h1><p>Make inspection, traceability, and improvement visible across the bicycle's journey from component to rider.</p>
+<p><a href="/quality/inspection">Inspection and learning</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p6o1YFSrm1LzJf27mLxAoeg" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="inspection"><![CDATA[Inspection and learning]]></text></name>
+					<children>
+						<content uuid="c58hvoZYb8HPWZZfw7OjKwU" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="quality-process"><![CDATA[Quality process]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Inspection and learning</h1><p>Capture inspection outcomes and share recurring findings with engineering, procurement, production, and service.</p>
+<p>Inspection records can be connected to this workspace when available.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a3PjuRiufRmRP1D4NG03B36" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p6K3bDhzrk1RbZqk8MtTsNJ">
+			<name><text xml:lang="en" slug="service"><![CDATA[Service]]></text></name>
+			<visibility><role id="service" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="p6K3bDhzrk1RbZqk8MtTsNJ" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Service overview]]></text></name>
+					<children>
+						<content uuid="cgeI9ahhFjHJsZRijrNwI1" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="service-workspace"><![CDATA[Service workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Service workspace</h1><p>Help riders enjoy their bicycles for longer, and bring field feedback back to the people who design and build them.</p>
+<p><a href="/service/repairs">Repair coordination</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p5qMbXA1nAVR2EPcs4DDeUz" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="repairs"><![CDATA[Repair coordination]]></text></name>
+					<children>
+						<content uuid="c6yg734ZVlIVcVugE0r1418" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="repair-journey"><![CDATA[Repair journey]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Repair coordination</h1><p>Coordinate the rider's request, inspection, parts, and return of the bicycle with qualified service providers.</p>
+<p>This is a workflow overview, not a live repair queue.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a1zRo36ELHxTtxuixOybL7l" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="p1wyIre3Y8EYMnSSImKajim">
+			<name><text xml:lang="en" slug="finance"><![CDATA[Finance]]></text></name>
+			<visibility><role id="finance" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="p1wyIre3Y8EYMnSSImKajim" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[Finance overview]]></text></name>
+					<children>
+						<content uuid="c3fp1loa9VRb8FZITtpbeuq" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="finance-workspace"><![CDATA[Finance workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Finance workspace</h1><p>Support responsible decisions across the business with a shared view of planning and financial processes.</p>
+<p><a href="/finance/planning">Planning and reporting</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p6yT7rUscX9EEyLrXBU3DXY" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="planning"><![CDATA[Planning and reporting]]></text></name>
+					<children>
+						<content uuid="c6Xjmo8QJW6VQfpjCUMBhxa" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="planning-process"><![CDATA[Planning process]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Planning and reporting</h1><p>Coordinate budgets, forecasts, and reporting with the teams responsible for sales, purchasing, and production.</p>
+<p>Financial records are not connected to this example workspace.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
+
+		<area uuid="a7hgPlV9ns0jILyRGgYHetA" origin="wGGpiW7IjjrFqapqVuZopW" mainpage="pnehsQujy3zFHY9ARFx00O">
+			<name><text xml:lang="en" slug="people"><![CDATA[People]]></text></name>
+			<visibility><role id="people" visibility="true" /><role id="developer" visibility="true" /></visibility>
+			<children>
+				<page uuid="pnehsQujy3zFHY9ARFx00O" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="overview"><![CDATA[People overview]]></text></name>
+					<children>
+						<content uuid="c5huUuK7ML2ckFMDYgvDODs" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="people-workspace"><![CDATA[People workspace]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>People workspace</h1><p>Support the people behind every bicycle, from joining the team to learning, collaboration, and workplace wellbeing.</p>
+<p><a href="/people/safety">Learning and safety</a></p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+				<page uuid="p4FedGcJk4rKDjq6iTdlr5b" origin="wGGpiW7IjjrFqapqVuZopW">
+					<name><text xml:lang="en" slug="safety"><![CDATA[Learning and safety]]></text></name>
+					<children>
+						<content uuid="c6bgFvtcibhkfoXCJYE0Hhr" origin="wGGpiW7IjjrFqapqVuZopW" type="text" section="main" sequence="1">
+							<name><text xml:lang="en" slug="team-learning"><![CDATA[Team learning]]></text></name>
+							<layout><text xml:lang="en"><![CDATA[
+<h1>Learning and safety</h1><p>Give each team access to its current training resources, workplace guidance, and contacts for raising concerns.</p>
+<p>Organization-specific resources can be linked here when available.</p>
+							]]></text></layout>
+						</content>
+					</children>
+				</page>
+			</children>
+		</area>
 	</children>
 </webbase>

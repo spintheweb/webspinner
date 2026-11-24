@@ -23,9 +23,10 @@
 					<name>
 						<text xml:lang="en" slug="edit-portal"><![CDATA[Edit Portal]]></text>
 					</name>
-					<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name' key="uuid"')h('uuid;@@uuid')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c5TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -33,9 +34,10 @@
 					<name>
 						<text xml:lang="en" slug="edit-area"><![CDATA[Edit Area]]></text>
 					</name>
-					<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c4TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -43,9 +45,10 @@
 					<name>
 						<text xml:lang="en" slug="edit-page"><![CDATA[Edit Page]]></text>
 					</name>
-					<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c3TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -53,10 +56,11 @@
 					<name>
 						<text xml:lang="en" slug="edit-content"><![CDATA[Edit content]]></text>
 					</name>
-					<query connector="wbol" parameters="/@uuid"><![CDATA[$]]></query>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name' key="uuid" {disabled=@@readonly}')
-h('uuid;@@uuid')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\n
+h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\n
 l('Type')D('type;@@type;wbol;/content-types') \tl('Section')e(';section;@@section')\tl('Sequence')e(';sequence;@@sequence')\n
 l('Connector')d('connector;@@connector;wbol;/connectors/names')\tl('Parameters')e(';params;@@params')\n
 l('Command')m(';query;@@query')\n
@@ -149,7 +153,8 @@ l('Host')f
 				</content>
 			</children>
 		</page>
-		<content uuid="c7K3dAiAsstAccrd0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion" section="rightPanel">
+		<content uuid="c7K3dAiAsstAccrd0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion"
+			section="rightPanel">
 			<name>
 				<text xml:lang="en" slug="assistant"><![CDATA[AI Assistant]]></text>
 			</name>
@@ -200,10 +205,10 @@ l('Host')f
 				<content uuid="c7StudioDevelopToggle01" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
 					section="header" sequence="1">
 					<name>
-						<text xml:lang="en" slug="develop-mode"><![CDATA[Develop mode]]></text>
+						<text xml:lang="en" slug="interactive-mode"><![CDATA[Interactive mode]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[l('Develop mode')D('_stwdevelop;@_stwdevelop;1;false;true')\a('onchange="document.cookie=`_stwdevelop=${this.value}; Path=/; SameSite=Lax`;window.location.reload()"')]]></text>
+						<text xml:lang="en"><![CDATA[l('Interactive mode&nbsp\;')\a('style="display:inline-block"')D('_stwdevelop;@_stwdevelop;1;false;true')\a('onchange="document.cookie=`_stwdevelop=${this.value}; Path=/; SameSite=Lax`;window.location.reload()"')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzX" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
@@ -215,7 +220,7 @@ l('Host')f
 						<text xml:lang="en"><![CDATA[\s('mode="vertical"')]]></text>
 					</layout>
 					<options>
-						<option ref="c6TC0s1xSa5NgDIgMyCbIhL">
+						<option ref="c6TC0s1xSa5NgDIgMyCbIha">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-sitemap" aria-label="Webbase"></i>]]></text>
 						</option>
 						<option ref="c64HscPpcM9pByUEWIVTocq">
@@ -227,6 +232,23 @@ l('Host')f
 						<option></option>
 						<option ref="c6TC0s1xSa5SWiCO4UTvujX">
 							<text xml:lang="en"><![CDATA[<i class="fa-light fa-2x fa-gear" aria-label="Settings"></i>]]></text>
+						</option>
+					</options>
+				</content>
+				<content uuid="c6TC0s1xSa5NgDIgMyCbIha" origin="a6T6S55WbZjerGVamxGi8kA"
+					type="accordion">
+					<name>
+						<text xml:lang="en" slug="settings"><![CDATA[Structure]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('header="&emsp;STRUCTURE"')]]></text>
+					</layout>
+					<options>
+						<option ref="c6TC0s1xSa5NgDIgMyCbIhL">
+							<text xml:lang="en"><![CDATA[Webbase <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>]]></text>
+						</option>
+						<option ref="c7StudioRoleList000001">
+							<text xml:lang="en"><![CDATA[Visibilities]]></text>
 						</option>
 					</options>
 				</content>
@@ -249,8 +271,22 @@ l('Host')f
 					};
 					$tree := function($node) {(
 						$icon := $lookup($icons, $node.type = "Content" ? $node.subtype : $node.type);
+						$lock := $node.blocked ? ($node.blocked = $stwlogin ?
+							"<span class='fa-light fa-fw fa-lock-open' aria-label='Locked by you'></span>" :
+							"<span class='fa-light fa-fw fa-lock' aria-label='Locked by another user'></span>") : "";
+						$section := $node.type = "Content" ? (
+							$node.section = "" ? "<span class='fa-light fa-fw fa-rectangle' aria-label='No section'></span>" :
+							$node.section = "modal" ? "<span class='fa-light fa-fw fa-window-maximize' aria-label='Modal'></span>" :
+							$node.section = "modeless" ? "<span class='fa-light fa-fw fa-window-restore' aria-label='Modeless'></span>" : ""
+						) : "";
+						$visibility := $node.visibility = 0 ? "<span class='fa-light fa-fw fa-eye-slash' aria-label='Hidden'></span>" :
+							$node.visibility = 1 ? "<span class='fa-light fa-fw fa-eye' aria-label='Visible'></span>" :
+							$node.visibility = 2 ? "<span class='fa-thin fa-fw fa-eye-slash' aria-label='Hidden by inheritance'></span>" :
+							$node.visibility = 3 ? "<span class='fa-thin fa-fw fa-eye' aria-label='Visible by inheritance'></span>" : "";
+						$badges := $lock & $section & $visibility;
 						{
-							"icon": "<span class='fa-light fa-fw fa-" & ($icon ? $icon : "rectangle") & "' aria-hidden='true'></span>",
+							"icon": ($badges ? "<span style='float:right'>" & $badges & "</span>" : "") &
+								"<span class='fa-light fa-fw fa-" & ($icon ? $icon : "rectangle") & "' aria-hidden='true'></span>",
 							"url": $node.type = "Portal" ? "/stws/edit/edit-portal" :
 								$node.type = "Area" ? "/stws/edit/edit-area" :
 								$node.type = "Page" ? "/stws/edit/edit-page" :
@@ -263,7 +299,7 @@ l('Host')f
 					)};
 					$tree($))]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('header='&emsp;WEBBASE <span style="float:right"><i class="fa-kit fa-light-folder-circle-plus" aria-label="New area"></i> <i class="fa-kit fa-light-file-circle-plus" aria-label="New page"></i> <i class="fa-kit fa-light-rectangle-circle-plus" aria-label="New content"></i></span>'')ft(' ')apf\a('onclick="event.preventDefault();stwWS.send(JSON.stringify({method:`PATCH`,resource:this.dataset.url,search:{uuid:this.dataset.uuid},options:{recurse:false}}))" data-url="@@url" data-uuid="@@uuid"')]]></text>
+						<text xml:lang="en"><![CDATA[ft(' ')apf\a('onclick="event.preventDefault();_stwSendEditorRequest(this.dataset.url,this.dataset.uuid)" data-url="@@url" data-uuid="@@uuid"')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5SWiCO4QcQf7T" origin="a6T6S55WbZjerGVamxGi8kA" type="tree">

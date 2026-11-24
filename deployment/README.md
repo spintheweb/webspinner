@@ -10,19 +10,21 @@ Build the image locally (no registry push) and run it:
 # 1) Build locally and load into your Docker engine
 bash deployment/build-docker.sh
 
-# 2) Run the local image
+# 2) Run the local image with persistent data
 docker run --rm \
-	-p 8080:8080 \
-	-e PORTAL_DOMAIN=example.com \
-	-v "$PWD/webspinner-data:/app/.data" \
+	-p 127.0.0.1:8080:8080 \
+	-e ALLOW_ROOT=true \
+	-v webspinner-data:/app/.data \
 	ghcr.io/spintheweb/webspinner:latest
 ```
 
 Notes:
 - Images are tagged locally as `ghcr.io/spintheweb/webspinner:latest` by default but are not pushed anywhere unless you explicitly use `--push`.
-- First run: if `PORTAL_DOMAIN` is not set and no sentinel is present, the container serves an info/setup page on port 8080. Set `PORTAL_DOMAIN` to proceed.
-- Persistent data: `./webspinner-data` on host is mounted to `/app/.data` in the container.
-- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASELET` and `PORTAL_DOMAIN`.
+- Open `http://localhost:8080` and sign in as `root` with the example password `password` to use `/stwc/configuration`.
+- A new empty volume receives the example webbase, connector configuration, users and Docker settings. Existing volume files are not replaced.
+- Docker settings are stored in `/app/.data/.env.docker` and survive container recreation. Changes require a restart; explicitly supplied environment variables take precedence.
+- The example users have a publicly known password. Change or remove them before exposing the service, and disable root access when it is no longer needed. Loopback port binding does not restrict access from other Docker containers.
+- Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASELET` and `ALLOW_ROOT`.
 
 ## Developer WBOL API
 
@@ -30,7 +32,8 @@ Notes:
 
 Authenticated sessions with the `developer` role can manage elements in the in-memory webbase at `/wbol` when their effective `developer` RBV is true. Portal visibility is granted only to `root`; LeadDeveloper and root can nevertheless read and edit the portal through the API. Developer users can access elements explicitly granted to them below the portal.
 
-- `GET /wbol` returns the portal tree; `GET /wbol/<uuid>` returns one element and its children.
+- `GET /wbol` returns the accessible portal tree. Each element includes `blocked` (the editing user, or an empty string), numeric effective `visibility` (0 hidden, 1 visible, 2 hidden by inheritance, 3 visible by inheritance), and, for content, `section`. Use `?roles=foo+fee` to evaluate visibility for those roles; omitted or empty roles use the session roles. The selected roles do not change access to the tree. Explicit role settings remain available through the visibility route. `GET /wbol/<uuid>` returns one element and its children.
+- `POST /wbol/<uuid>/block` acquires an in-memory editor block for the authenticated user and returns `{ blocked, token }`. If another user owns the block, or the element is read-only, `token` is null. Each successful acquisition must be released with `DELETE /wbol/<uuid>/block?token=<token>`; a user's block remains until all their tokens are released. WBOL writes to elements blocked by another user return 409. If a release request cannot reach the server, the block remains until release or server restart.
 - `POST /wbol` creates an element. The JSON body contains `parentId` and an `element` definition accepted by the registered element constructor. Set visibility separately through the visibility route.
 - `PATCH /wbol/<uuid>` updates an element through its runtime update method. Include `parentId` to move it, with optional `position` for its new child index. Localized string values update only `?locale=<portal-locale>`; without it, the Developer's session language is used. Localized maps merge locale entries rather than replacing the other locales.
 - `DELETE /wbol/<uuid>` removes an element and its descendants.
@@ -88,6 +91,9 @@ Use the provided compose file in the repo root:
 ```bash
 docker compose -f docker-compose.yml up --build
 ```
+
+Compose binds port 8080 to localhost and enables root for initial setup. It uses
+the same example accounts and persistent data volume described above.
 
 In VS Code, you can also run the tasks:
 - "Docker: Compose Up" to start

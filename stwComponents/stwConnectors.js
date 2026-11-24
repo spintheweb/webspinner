@@ -479,13 +479,26 @@ async function createDatabaseConnection(settings) {
 			return { type: settings.type, client };
 		}
 		case "mssql": {
-			const client = await new sql.ConnectionPool({
-				server: settings.host,
-				port: settings.port ?? 1433,
-				user: settings.user,
-				password: settings.password,
-				database: settings.database
-			}).connect();
+			const windowsAuth = settings.windowsAuth === true;
+			const driver = windowsAuth ? (await import("mssql/msnodesqlv8.js")).default : sql;
+			const config = windowsAuth
+				? {
+					connectionString: [
+						`Driver=${quoteOdbcValue(settings.odbcDriver ?? "ODBC Driver 18 for SQL Server")}`,
+						`Server=${quoteOdbcValue(settings.port ? `${settings.host},${settings.port}` : settings.host)}`,
+						`Database=${quoteOdbcValue(settings.database)}`,
+						"Trusted_Connection=Yes",
+						"TrustServerCertificate=Yes"
+					].join(";")
+				}
+				: {
+					server: settings.host,
+					port: settings.port ?? 1433,
+					database: settings.database,
+					user: settings.user,
+					password: settings.password
+				};
+			const client = await new driver.ConnectionPool(config).connect();
 			return { type: settings.type, client };
 		}
 		case "mongodb": {
@@ -501,6 +514,9 @@ async function createDatabaseConnection(settings) {
 		default:
 			throw new TypeError(`Unsupported database connector type: ${settings.type}`);
 	}
+}
+function quoteOdbcValue(value) {
+	return `{${value.replaceAll("}", "}}")}}`;
 }
 async function closeDatabaseConnection(connection) {
 	if (connection.type === "mysql") await connection.client.end();
@@ -750,7 +766,7 @@ async function executeWbolConnector(session, command, method, fields = {}, query
 		throw new Error(typeof data?.error === "string" ? data.error : `WBOL API request failed with status ${response.status}`);
 	}
 	if (query !== undefined) {
-		data = await jsonata(WBPL(query, session.placeholders)).evaluate(data);
+		data = await jsonata(WBPL(query, session.placeholders)).evaluate(data, { stwlogin: session.user });
 	}
 	const rows = data === undefined ? [] : Array.isArray(data) ? data : [data];
 	return {

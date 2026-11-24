@@ -50,7 +50,7 @@ When Studio is enabled, its controls stay in the top-level page while the live
 portal preview runs in a same-origin iframe. This separates their DOM and styles;
 it is not a security boundary.
 
-Root can read and update the active environment file through `GET /wbol/configuration` and `PATCH /wbol/configuration` (a JSON object of environment names and string values). The configuration page edits `HOST` and `ALLOW_DEV`. Changes require a restart; existing process environment variables take precedence over the file. Docker uses `.env.docker`, which must be persisted separately.
+Root can read and update the active environment file through `GET /wbol/configuration` and `PATCH /wbol/configuration` (a JSON object of environment names and string values). The configuration page edits `HOST` and `ALLOW_DEV`. Changes require a restart; existing process environment variables take precedence over the file. Docker stores `.env.docker` in its persistent `.data` volume.
 
 ## Local Studio assistant
 

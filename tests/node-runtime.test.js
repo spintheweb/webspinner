@@ -12,7 +12,8 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -88,6 +89,34 @@ test("studio preview blocks studio navigation but permits other destinations", a
 	assert.equal(frame.src, "http://localhost/customers");
 	context._stwStudioNavigate("https://example.com/");
 	assert.deepEqual(navigations, ["https://example.com/"]);
+});
+
+test("studio editor acquires and releases its block when the dialog closes", async () => {
+	const source = await readFile("./public/scripts/clientStudio.js", "utf8");
+	const listeners = new Map();
+	const calls = [];
+	const messages = [];
+	const document = { addEventListener: (event, handler) => listeners.set(event, handler) };
+	const window = { addEventListener() {}, alert: (message) => assert.fail(message) };
+	const context = {
+		document, window, stwCanStudio: true, stwIsEmbedded: false,
+		stwWS: { readyState: 1, send: (message) => messages.push(JSON.parse(message)) },
+		WebSocket: { OPEN: 1 },
+		fetch: async (url, options) => {
+			calls.push({ url, method: options.method });
+			return options.method === "POST"
+				? { ok: true, json: async () => ({ blocked: "alice", token: "token-1" }) }
+				: { ok: true };
+		}
+	};
+	runInNewContext(source, context);
+	await context._stwSendEditorRequest("/stws/edit/edit-page", "page-1");
+	assert.equal(calls[0].url, "/wbol/page-1/block");
+	assert.equal(messages[0].search.stwBlockToken, "token-1");
+	listeners.get("close")({ target: { querySelector: () => ({ dataset: { stwBlockToken: "token-1" } }) } });
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(calls[1].url, "/wbol/page-1/block?token=token-1");
+	assert.equal(calls[1].method, "DELETE");
 });
 
 test("Alt+F12 toggles studio and returns to the page it was opened from", async () => {
@@ -334,7 +363,8 @@ test("session preserves identity WBPL placeholders when request placeholders are
 		"@@stwlanguage": "en",
 		"@@stwlogin": "guest",
 		"@@stwloginname": "Guest",
-		"@@stwloginid": "-3"
+		"@@stwloginid": "-3",
+		"@@stwALLOW_AI": "false"
 	});
 
 	session.user = "alice";
@@ -347,6 +377,7 @@ test("session preserves identity WBPL placeholders when request placeholders are
 
 	assert.equal(session.placeholders.get("@page"), "home");
 	assert.equal(session.placeholders.get("@@stwlanguage"), "it");
+	assert.equal(session.placeholders.get("@@stwALLOW_AI"), "false");
 	assert.deepEqual(Object.fromEntries(
 		["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
 	), {
@@ -355,6 +386,41 @@ test("session preserves identity WBPL placeholders when request placeholders are
 		"@@stwloginid": "123"
 	});
 });
+
+test("@@stwALLOW_AI placeholder reflects ALLOW_AI environment setting", () => {
+	const oldAllowAi = process.env.ALLOW_AI;
+	try {
+		process.env.ALLOW_AI = "true";
+		const session1 = new STWSession("ai-enabled", {}, null);
+		assert.equal(session1.placeholders.get("@@stwALLOW_AI"), "true");
+		
+		process.env.ALLOW_AI = "false";
+		const session2 = new STWSession("ai-disabled", {}, null);
+		assert.equal(session2.placeholders.get("@@stwALLOW_AI"), "false");
+		
+		delete process.env.ALLOW_AI;
+		const session3 = new STWSession("ai-default", {}, null);
+		assert.equal(session3.placeholders.get("@@stwALLOW_AI"), "false");
+	} finally {
+		if (oldAllowAi === undefined) delete process.env.ALLOW_AI;
+		else process.env.ALLOW_AI = oldAllowAi;
+	}
+});
+
+test("@@stwALLOW_AI placeholder survives request placeholder reset", () => {
+	const oldAllowAi = process.env.ALLOW_AI;
+	try {
+		process.env.ALLOW_AI = "true";
+		const session = new STWSession("ai-reset-test", {}, null);
+		session.setPlaceholders(new Request("http://localhost/?page=home"));
+		assert.equal(session.placeholders.get("@@stwALLOW_AI"), "true");
+		assert.equal(session.placeholders.get("@page"), "home");
+	} finally {
+		if (oldAllowAi === undefined) delete process.env.ALLOW_AI;
+		else process.env.ALLOW_AI = oldAllowAi;
+	}
+});
+
 
 test("WebSocket language negotiation synchronizes the session language placeholder", async () => {
 	const portal = STWPortal.instance;
@@ -1131,6 +1197,36 @@ test("hashPassword creates a salted PBKDF2 password verifier", async () => {
 	assert.match(verifier, /^[0-9a-f]{32}:[0-9a-f]{64}$/);
 });
 
+test("Docker configuration persists in the data directory across restarts", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "webspinner-docker-config-"));
+	const env = { ...process.env, SPINNER_ENV: "docker" };
+	delete env.ALLOW_DEV;
+	try {
+		await mkdir(join(dir, ".data"));
+		await writeFile(join(dir, ".env.docker"), "ALLOW_DEV=true\n");
+		await writeFile(join(dir, ".data", ".env.docker"), "ALLOW_DEV=false\n");
+		const configUrl = new URL("../stwComponents/stwConfig.js", import.meta.url).href;
+		const securityUrl = new URL("../stwComponents/stwSecurity.js", import.meta.url).href;
+		const run = (script) => {
+			const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+				cwd: dir, env, encoding: "utf8"
+			});
+			assert.equal(result.status, 0, result.stderr);
+			return result.stdout.trim();
+		};
+		assert.equal(run(`import { envGet } from ${JSON.stringify(configUrl)};
+			import { STWSecurity } from ${JSON.stringify(securityUrl)};
+			console.log(envGet("ALLOW_DEV"));
+			await STWSecurity.updateConfiguration({ ALLOW_DEV: "true" });`), "false");
+		assert.equal(run(`import { envGet } from ${JSON.stringify(configUrl)};
+			console.log(envGet("ALLOW_DEV"));`), "true");
+		assert.match(await readFile(join(dir, ".data", ".env.docker"), "utf8"), /ALLOW_DEV=true/);
+		assert.equal(await readFile(join(dir, ".env.docker"), "utf8"), "ALLOW_DEV=true\n");
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
 test("successful logon requests a session rotation while preserving the verified identity", async () => {
 	const previousUsersPath = process.env.USERS;
 	const securityDir = await mkdtemp(join(tmpdir(), "webspinner-logon-rotation-"));
@@ -1482,6 +1578,108 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 	}
 });
 
+test("WBOL tree reports effective visibility for requested roles without changing access", async () => {
+	const portal = new STWPortal({ uuid: "tree-visibility-portal" });
+	const area = new STWArea({ uuid: "tree-visibility-area", visibility: { developer: true, foo: true, fee: false } });
+	const page = new STWPage({ uuid: "tree-visibility-page" });
+	const denied = new STWPage({ uuid: "tree-visibility-denied", visibility: { foo: false, fee: false } });
+	const content = new STWContent({ uuid: "tree-visibility-content", subtype: "Text", section: "main" });
+	const hidden = new STWPage({ uuid: "tree-visibility-hidden", visibility: { developer: false, foo: true } });
+	area.parent = portal;
+	page.parent = area;
+	denied.parent = area;
+	content.parent = denied;
+	hidden.parent = area;
+	portal.children.push(area);
+	area.children.push(page, denied, hidden);
+	denied.children.push(content);
+	content.blocked = "alice";
+	const session = { roles: ["developer"], portal, lang: "en" };
+	const call = async (query = "") => {
+		const response = await handleWbolApi(new Request(`http://localhost/wbol${query}`), session);
+		assert.equal(response.status, 200);
+		return response.json();
+	};
+	try {
+		const tree = await call("?roles=foo+fee");
+		const [returnedArea] = tree.children;
+		const [returnedPage, returnedDenied] = returnedArea.children;
+		const [returnedContent] = returnedDenied.children;
+		assert.equal(tree.visibility, 0);
+		assert.equal(returnedArea.visibility, 1);
+		assert.equal(returnedPage.visibility, 3);
+		assert.equal(returnedDenied.visibility, 0);
+		assert.equal(returnedContent.visibility, 2);
+		assert.equal(returnedArea.blocked, "");
+		assert.equal(returnedContent.blocked, "alice");
+		assert.equal(returnedContent.section, "main");
+		assert.equal("section" in returnedArea, false);
+		assert.deepEqual(returnedArea.children.map((child) => child.uuid), [page.uuid, denied.uuid]);
+
+		const defaultTree = await call();
+		assert.equal(defaultTree.children[0].visibility, 1);
+		assert.equal(defaultTree.children[0].children[1].children[0].visibility, 3);
+		assert.equal((await call("?roles=")).children[0].visibility, 1);
+		assert.equal((await call("?roles=fee")).children[0].visibility, 0);
+		assert.equal((await call("?roles=fee+foo")).children[0].visibility, 1);
+		portal.mainpage = page.uuid;
+		assert.equal((await call("?roles=fee")).children[0].children[0].visibility, 1);
+		assert.deepEqual(session.roles, ["developer"]);
+		const forbidden = await handleWbolApi(new Request("http://localhost/wbol?roles=developer"), { roles: ["guest"], portal });
+		assert.equal(forbidden.status, 403);
+	} finally {
+		STWIndex.delete(portal.uuid);
+	}
+});
+
+test("WBOL element blocks protect edits until every owner token is released", async () => {
+	const portal = new STWPortal({ uuid: "block-test-portal", langs: ["en"] });
+	const area = new STWArea({ uuid: "block-test-area", visibility: { developer: true, seo: true } });
+	const page = new STWPage({ uuid: "block-test-page" });
+	area.parent = portal;
+	page.parent = area;
+	portal.children.push(area);
+	area.children.push(page);
+	STWIndex.set(area.uuid, area);
+	STWIndex.set(page.uuid, page);
+	const alice = { user: "alice", roles: ["developer"], portal, lang: "en" };
+	const bob = { user: "bob", roles: ["developer"], portal, lang: "en" };
+	const seo = { user: "seo", roles: ["seo"], portal, lang: "en" };
+	const call = (session, path, method = "GET", body) => handleWbolApi(
+		new Request(`http://localhost/wbol/${path}`, {
+			method,
+			headers: body === undefined ? {} : { "Content-Type": "application/json" },
+			body: body === undefined ? undefined : JSON.stringify(body)
+		}), session
+	);
+	try {
+		const first = await (await call(alice, `${page.uuid}/block`, "POST")).json();
+		const second = await (await call(alice, `${page.uuid}/block`, "POST")).json();
+		assert.equal(first.blocked, "alice");
+		assert.ok(first.token);
+		assert.notEqual(first.token, second.token);
+		assert.deepEqual(await (await call(bob, `${page.uuid}/block`, "POST")).json(), { blocked: "alice", token: null });
+		assert.equal((await (await call(seo, page.uuid)).json()).blocked, "alice");
+		assert.equal((await call(bob, page.uuid, "PATCH", { name: "Blocked" })).status, 409);
+		assert.equal((await call(bob, area.uuid, "DELETE")).status, 409);
+		assert.equal((await call(bob, `${page.uuid}/block?token=${first.token}`, "DELETE")).status, 404);
+		assert.equal((await call(alice, `${page.uuid}/block?token=${first.token}`, "DELETE")).status, 204);
+		assert.equal(page.blocked, "alice");
+		assert.equal((await call(alice, page.uuid, "PATCH", { name: "Allowed" })).status, 200);
+		assert.equal((await call(alice, `${page.uuid}/block?token=${second.token}`, "DELETE")).status, 204);
+		assert.equal(page.blocked, "");
+		assert.equal((await call(bob, page.uuid, "PATCH", { name: "Released" })).status, 200);
+		const seoBlock = await (await call(seo, `${page.uuid}/block`, "POST")).json();
+		assert.equal(seoBlock.blocked, "seo");
+		assert.ok(seoBlock.token);
+		assert.equal((await call(seo, `${page.uuid}/block?token=${seoBlock.token}`, "DELETE")).status, 204);
+	} finally {
+		STWIndex.delete(page.uuid);
+		STWIndex.delete(area.uuid);
+		STWIndex.delete(portal.uuid);
+	}
+});
+
 test("SEO users can edit only locale-sensitive metadata on SEO-visible elements", async () => {
 	const portalId = `seo-portal-${Date.now()}`;
 	const seoId = `seo-content-${Date.now()}`;
@@ -1494,6 +1692,7 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 	const content = new STWContent({
 		uuid: seoId,
 		subtype: "Text",
+		section: "main",
 		name: { en: "Original", fr: "Originale" },
 		slug: { en: "original", fr: "originale" },
 		keywords: { en: "old" },
@@ -1507,10 +1706,11 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 	});
 	portal.children.push(content, hidden);
 	content.parent = portal;
+	content.blocked = "editor";
 	hidden.parent = portal;
 	STWIndex.set(seoId, content);
 	STWIndex.set(hiddenId, hidden);
-	const session = { roles: ["seo"], lang: "en", portal };
+	const session = { user: "editor", roles: ["seo"], lang: "en", portal };
 	const call = (path, method = "GET", body) => handleWbolApi(
 		new Request(`http://localhost/wbol/${path}`, {
 			method,
@@ -1524,8 +1724,13 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 		assert.equal(treeResponse.status, 200);
 		const tree = await treeResponse.json();
 		assert.deepEqual(tree.children.map((child) => child.uuid), [seoId]);
-		assert.equal("visibility" in tree.children[0], false);
+		assert.equal(tree.children[0].visibility, 1);
+		assert.equal(tree.children[0].blocked, "editor");
+		assert.equal(tree.children[0].section, "main");
 		assert.equal("options" in tree.children[0], false);
+		const otherRoles = await (await call("?roles=guest")).json();
+		assert.deepEqual(otherRoles.children.map((child) => child.uuid), [seoId]);
+		assert.equal(otherRoles.children[0].visibility, 2);
 
 		let response = await call(seoId);
 		assert.equal(response.status, 200);
@@ -1884,6 +2089,25 @@ test("LeadDeveloper manages non-Node connectors while developers can list names"
 		assert.equal((await update("PATCH", "/extra", { host: "https://other.example.test" })).status, 200);
 		assert.equal((await update("PATCH", "/extra", { type: "node", host: process.execPath })).status, 403);
 		assert.equal((await update("DELETE", "/extra")).status, 204);
+		const saveConfigurations = STWConnectors.saveConfigurations;
+		STWConnectors.saveConfigurations = async (configurations) => {
+			await writeFile(connectorsPath, JSON.stringify(configurations));
+		};
+		try {
+			const windowsSql = await update("POST", "", {
+				id: "windows-sql", type: "mssql", host: "localhost", database: "AdventureWorks2025",
+				windowsAuth: true, odbcDriver: "ODBC Driver 18 for SQL Server"
+			});
+			assert.equal(windowsSql.status, 201);
+			const windowsConfig = await windowsSql.json();
+			assert.equal(windowsConfig.windowsAuth, true);
+			assert.equal(windowsConfig.odbcDriver, "ODBC Driver 18 for SQL Server");
+			assert.equal((await update("POST", "", {
+				id: "invalid-windows-auth", type: "api", host: "https://example.test", windowsAuth: true
+			})).status, 400);
+		} finally {
+			STWConnectors.saveConfigurations = saveConfigurations;
+		}
 		const administratorResponse = await handleWbolApi(
 			new Request("http://localhost/wbol/connectors"),
 			{ roles: ["administrator"] }

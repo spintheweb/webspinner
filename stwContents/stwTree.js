@@ -41,7 +41,7 @@ class STWTree extends STWContent {
 				if (value === null || typeof value !== "object")
 					placeholders.set(`@@${key}`, String(value ?? ""));
 			const hasChildren = node.children?.length > 0;
-			const toggle = `<span style="display:inline-block;width:${depth}rem"></span>${hasChildren ? `<i class="fa-light fa-angle-down"></i> ` : ""}`;
+			const toggle = depth ? `<span style="display:inline-block;width:${0.75 * depth}rem"></span>${hasChildren ? `<i class="fa-light fa-angle-down"></i> ` : ""}` : "";
 			const html = (await layout.render(fields, placeholders, session, "", this.uuid)).HTML;
 			let children = "";
 			if (hasChildren) {
@@ -80,10 +80,10 @@ class STWTree extends STWContent {
 	}
 
 	/**
-    * Build a tree structure from flat data with path indicators /
-    * @param rows - Array of records with path information
-    * @param pathField - Field name containing the path (e.g., "path")
-    */
+	 * Build a tree structure from flat data with path indicators /
+	 * @param rows - Array of records with path information
+	 * @param pathField - Field name containing the path (e.g., "path")
+	 */
 	buildTreeFromPaths(rows, pathField) {
 		const root = { children: [] };
 		const nodeMap = new Map();

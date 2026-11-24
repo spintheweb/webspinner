@@ -22,6 +22,7 @@
 		"jsonata": "^2.1.0",
 		"mailparser": "^3.7.4",
 		"mongodb": "^6.15.0",
+		"msnodesqlv8": "^6.2.2",
 		"mssql": "^11.0.1",
 		"mysql2": "^3.14.0",
 		"nodemailer": "^10.6.1",

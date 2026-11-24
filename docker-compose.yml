@@ -9,13 +9,10 @@ services:
     container_name: webspinner
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       # Server Configuration
-      - HOST=0.0.0.0
       - PORT=8080
-      # Portal domain (set to your public DNS name). If unset, container will serve an info page on first run.
-      - PORTAL_DOMAIN=${PORTAL_DOMAIN:-}
       
       # TLS/SSL (optional - uncomment and provide cert paths if using HTTPS)
       # - CERTFILE=/app/.cert/cert.pem
@@ -35,8 +32,7 @@ services:
       
       # Security
       - USERS=./.data/users.json
-      - ALLOW_DEV=false
-      - ALLOW_ROOT=false
+      - ALLOW_ROOT=true
       
       # Database Connection (if using external database)
       # - DB_HOST=mysql

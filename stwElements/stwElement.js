@@ -33,6 +33,7 @@ class STWElement {
 	parent;
 	children = [];
 	modified;
+	blocked; // Identifies the user that is editing the element
 	extra;
 
 	constructor(element) {
@@ -45,6 +46,7 @@ class STWElement {
 		this.description = new Map(Object.entries(element.description || {}));
 		this.visibility = new Map(Object.entries(element.visibility || {}));
 		this.modified = element.modified || Date.now();
+		this.blocked = "";
 		this.extra = element.extra;
 		for (const child of element.children || []) {
 			const constructor = STWFactory[child.subtype || child.type];

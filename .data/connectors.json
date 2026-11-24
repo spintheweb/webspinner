@@ -41,5 +41,14 @@
 		"user": "info@spintheweb.org",
 		"password": "MAIL_PASSWORD",
 		"from": "info@spintheweb.org"
+	},
+	{
+		"id": "adventureworks2025",
+		"name": "AdventureWorks2025",
+		"type": "mssql",
+		"host": "localhost",
+		"database": "AdventureWorks2025",
+		"windowsAuth": true,
+		"odbcDriver": "ODBC Driver 18 for SQL Server"
 	}
 ]
