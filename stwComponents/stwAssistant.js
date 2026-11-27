@@ -48,7 +48,7 @@ async function chat(session, fields, fetchImpl) {
 		if (!response.ok) throw new Error("Selected element is unavailable");
 		const data = await response.json();
 		element = visibleElement(session, uuid);
-		context = Object.fromEntries(["uuid", "type", "subtype", "name", "slug", "keywords", "description", "layout", "query", "connector"]
+		context = Object.fromEntries(["uuid", "type", "subtype", "name", "slug", "description", "layout", "query", "connector"]
 			.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
 		context.locale = session.lang;
 		try {

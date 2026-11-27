@@ -1,3 +1,4 @@
 .stwCodeeditor {
-    /* Content-specific styles using global color variables */
+	width: 100%;
+	min-height: 10rem;
 }

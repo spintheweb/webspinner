@@ -360,8 +360,7 @@
 	<xs:complexType name="PageType">
 		<xs:all>
 			<xs:element name="name" type="NameType" />
-			<xs:element name="keywords" type="KeywordsType" minOccurs="0" />
-			<xs:element name="description" type="KeywordsType" minOccurs="0" />
+			<xs:element name="description" type="DescriptionType" minOccurs="0" />
 			<xs:element name="visibility" type="VisibilityType" minOccurs="0" />
 			<xs:element name="documentation" type="DocumentationType" minOccurs="0" />
 			<xs:element name="children" type="PageChildrenType" minOccurs="0" />
@@ -417,7 +416,7 @@
 		</xs:sequence>
 	</xs:complexType>
 
-	<xs:complexType name="KeywordsType">
+	<xs:complexType name="DescriptionType">
 		<xs:sequence>
 			<xs:element name="text" type="LocalizedTextType" maxOccurs="unbounded" />
 		</xs:sequence>

@@ -4,7 +4,8 @@
  * Webbase element routes require the `developer` role and Developer-role RBV,
  * except SEO users may read and edit localized metadata on SEO-visible elements:
  *   - GET /wbol returns the portal tree with effective visibility for `?roles=`;
- *     GET /wbol/:uuid returns one locale-specific element.
+ *     GET /wbol/:uuid returns one locale-specific element, with `?fallback=false`
+ *     suppressing fallback values for missing localized metadata.
  *   - POST/DELETE /wbol/:uuid/block acquires/releases an editor block.
  *   - GET /wbol/content-types lists registered content subtypes for developers.
  *   - POST /wbol creates a child from `{ parentId, element }`.
@@ -58,6 +59,7 @@ import { envGet, readBooleanSetting } from "./stwConfig.js";
 import { canDevelopElement, isDeployed, isProtectedWebbaselet, webbaseletKind } from "./stwWebbaselets.js";
 import { isAbsolute } from "node:path";
 import { randomUUID } from "node:crypto";
+import { broadcastElementBlock } from "./stwStudioEvents.js";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
 const elementBlocks = new Map();
@@ -65,6 +67,42 @@ const elementBlocks = new Map();
 async function handleWbolApi(request, session) {
 	const url = new URL(request.url);
 	const segments = url.pathname.split("/").filter(Boolean);
+	if (segments.length === 2 && segments[1] === "search-results") {
+		if (!session.roles.some(role => role === "developer" || role === "seo"))
+			return jsonResponse({ error: "Forbidden" }, 403);
+		if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, { Allow: "GET" });
+		const encoded = url.searchParams.get("ids") || "";
+		if (!encoded) return jsonResponse([]);
+		if (!/^[A-Za-z0-9_-]+$/.test(encoded))
+			return jsonResponse({ error: "Invalid search results" }, 400);
+		let ids, locale;
+		try {
+			ids = JSON.parse(decodeURIComponent(Buffer.from(encoded, "base64url").toString("utf8")));
+			locale = resolveEditingLocale(url, session);
+		} catch (error) {
+			if (error instanceof SyntaxError || error instanceof URIError || error instanceof TypeError)
+				return jsonResponse({ error: "Invalid search results or locale" }, 400);
+			throw error;
+		}
+		if (!Array.isArray(ids) || ids.some(id => typeof id !== "string"))
+			return jsonResponse({ error: "Invalid search results" }, 400);
+		const localizedSession = { ...session, lang: locale };
+		const results = [];
+		for (const id of ids) {
+			const element = STWIndex.get(id);
+			if (!(element instanceof STWElement)) continue;
+			if (isDeployed() && webbaseletKind(element) === "studio") continue;
+			const developerVisible = canEditElement(session, element);
+			const seoVisible = session.roles.includes("seo") && Boolean(element.isVisible(session, "seo") & 1);
+			if (!developerVisible && !seoVisible) continue;
+			results.push({
+				name: localizedValue(element, "name", localizedSession) || id,
+				uuid: id,
+				type: element instanceof STWContent ? "Content" : element.type
+			});
+		}
+		return jsonResponse(results);
+	}
 	if (segments.length === 2 && segments[1] === "content-types") {
 		if (!session.roles.includes("developer")) return jsonResponse({ error: "Forbidden" }, 403);
 		if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, { Allow: "GET" });
@@ -92,7 +130,9 @@ async function handleWbolApi(request, session) {
 			const token = randomUUID();
 			if (!elementBlocks.has(element.uuid)) elementBlocks.set(element.uuid, new Map());
 			elementBlocks.get(element.uuid).set(token, session.user);
+			const changed = element.blocked !== session.user;
 			element.blocked = session.user;
+			if (changed) broadcastElementBlock(element);
 			return jsonResponse({ blocked: element.blocked, token });
 		}
 		if (request.method === "DELETE") {
@@ -103,7 +143,10 @@ async function handleWbolApi(request, session) {
 			holders.delete(token);
 			if (holders.size === 0) {
 				elementBlocks.delete(element.uuid);
-				if (element.blocked === session.user) element.blocked = "";
+				if (element.blocked === session.user) {
+					element.blocked = "";
+					broadcastElementBlock(element);
+				}
 			}
 			return secureResponse(null, { status: 204 });
 		}
@@ -165,9 +208,14 @@ async function handleWbolApi(request, session) {
 			if (id) {
 				const locale = resolveEditingLocale(url, session);
 				const localizedSession = { ...session, lang: locale };
-				return jsonResponse(developerVisible
+				const result = developerVisible
 					? serializeLocalizedElement(element, localizedSession)
-					: serializeSeoElement(element, localizedSession));
+					: serializeSeoElement(element, localizedSession);
+				if (url.searchParams.get("fallback") === "false") {
+					for (const field of ["name", "slug", "description"])
+						result[field] = element[field].get(locale) || "";
+				}
+				return jsonResponse(result);
 			}
 			const roles = url.searchParams.getAll("roles").flatMap((value) => value.trim().split(/\s+/).filter(Boolean));
 			const visibilitySession = { portal, roles: roles.length ? roles : session.roles };
@@ -214,10 +262,10 @@ async function handleWbolApi(request, session) {
 				return jsonResponse({ error: "Use the visibility route to change role visibility" }, 403);
 			}
 			const seoOnly = !canDevelop;
-			if (seoOnly && Object.keys(patch).some((field) => !["name", "slug", "keywords", "description"].includes(field))) {
-				return jsonResponse({ error: "SEO role may update only name, slug, keywords, and description" }, 403);
+			if (seoOnly && Object.keys(patch).some((field) => !["name", "slug", "description"].includes(field))) {
+				return jsonResponse({ error: "SEO role may update only name, slug, and description" }, 403);
 			}
-			const hasLocalizedStrings = ["name", "slug", "keywords", "description"]
+			const hasLocalizedStrings = ["name", "slug", "description"]
 				.some((field) => typeof patch[field] === "string");
 			const locale = seoOnly && !hasLocalizedStrings
 				? null
@@ -231,7 +279,7 @@ async function handleWbolApi(request, session) {
 			const updates = { ...patch };
 			delete updates.parentId;
 			delete updates.position;
-			for (const field of ["name", "slug", "keywords", "description"]) delete updates[field];
+			for (const field of ["name", "slug", "description"]) delete updates[field];
 			for (const field of ["uuid", "subtype", "children", "parent", "modified", "blocked"]) {
 				if (field in updates) return jsonResponse({ error: `${field} cannot be changed through PATCH` }, 400);
 			}
@@ -378,7 +426,6 @@ function serializeSeoElement(element, session) {
 		...(isProtectedWebbaselet(element) ? { readonly: "true" } : {}),
 		name: localizedValue(element, "name", session),
 		slug: localizedValue(element, "slug", session),
-		keywords: localizedValue(element, "keywords", session),
 		description: localizedValue(element, "description", session)
 	};
 }
@@ -386,7 +433,7 @@ function serializeSeoElement(element, session) {
 function serializeLocalizedElement(element, session) {
 	const result = serializeSTWElement(element);
 	if (isProtectedWebbaselet(element)) result.readonly = "true";
-	for (const field of ["name", "slug", "keywords", "description"]) {
+	for (const field of ["name", "slug", "description"]) {
 		result[field] = localizedValue(element, field, session);
 	}
 	if (element instanceof STWContent) {
@@ -420,7 +467,7 @@ function getSupportedLocales(session) {
 
 function prepareLocalizedUpdates(patch, defaultLocale, supportedLocales) {
 	const updates = [];
-	for (const field of ["name", "slug", "keywords", "description"]) {
+	for (const field of ["name", "slug", "description"]) {
 		if (!(field in patch)) continue;
 		const value = patch[field];
 		if (typeof value === "string") {

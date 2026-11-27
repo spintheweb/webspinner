@@ -1,6 +1,6 @@
+
 .stwCalendar {
-	width: 100%;
-	max-width: 100%;
+	margin: var(--padding);
 }
 
 .stwCalendar table:first-of-type {

@@ -15,7 +15,7 @@ import { WBOL } from "./stwWBOL.js";
 import { normalizeSlug, serializeSTWElement, STWElement } from "../stwElements/stwElement.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
-const localized = ["name", "slug", "keywords", "description", "layout"];
+const localized = ["name", "slug", "description", "layout"];
 const allowed = new Set([...localized, "query"]);
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -93,8 +93,8 @@ function validateChanges(element, locale, changes) {
 	if (!(element instanceof STWContent) && ("query" in changes || "layout" in changes)) {
 		throw new TypeError("Only content elements have a query or layout");
 	}
-	if (element.type !== "Page" && ("keywords" in changes || "description" in changes)) {
-		throw new TypeError("Keywords and description can only be saved on pages");
+	if (element.type !== "Page" && "description" in changes) {
+		throw new TypeError("Description can only be saved on pages");
 	}
 	if ("slug" in changes && (!changes.slug || changes.slug !== normalizeSlug(changes.slug))) {
 		throw new TypeError("Slug must contain only lowercase letters, digits, underscores, hyphens or periods");
@@ -103,7 +103,7 @@ function validateChanges(element, locale, changes) {
 	definition.children = [];
 	const shadow = element instanceof STWContent ? new element.constructor(definition) : new STWElement(definition);
 	shadow.update({ lang: locale }, changes);
-	for (const field of ["name", "slug", "keywords", "description"]) {
+	for (const field of ["name", "slug", "description"]) {
 		if (field in changes) shadow[field].set(locale, changes[field]);
 	}
 	return shadow;

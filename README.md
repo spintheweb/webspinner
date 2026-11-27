@@ -65,8 +65,8 @@ Enter an element UUID, confirm local context sharing, and send a question or edi
 The conversation is stored in the session and shown by the Conversation content.
 Review the Proposed changes content before selecting **Apply proposal**.
 
-The assistant edits one existing element's name or slug, a page's keywords or
-description, or a content's query or localized layout. It writes only a uniquely identified element in the
+The assistant edits one existing element's name or slug or a page's description,
+or a content's query or localized layout. It writes only a uniquely identified element in the
 configured local Webbase, Common or Studio WBOL sources; remote, downloaded
 and ambiguous sources cannot be saved. If the running element or source changed since the
 proposal, request a new proposal. Queries are never executed by the assistant,

@@ -23,5 +23,19 @@ Typical features
 
 ## Spin the Web Studio
 
-Studio is no longer embedded as a webbaselet. Developer tools should use the developer-authorized `/wbol` API documented
-in the deployment guide.
+Spin the Web Studio (`stwStudio.wbol`) is a project-managed webbaselet that
+provides browser-based tools for working with a running portal. It includes a
+Webbase tree and explorer, editors for portal elements, connector and role
+management, preview and interactive controls, and an optional local AI
+assistant.
+
+Open or close Studio with `Alt+F12` when developer access is enabled. Studio
+uses the `/wbol` API to edit the active in-memory Webbase; those edits are not
+automatically written back to WBOL source files. The optional assistant has a
+separate proposal workflow for supported source edits.
+
+Studio requires `ALLOW_DEV=true`. In deployed mode (`DEPLOYED=true`), the
+project-managed Studio webbaselet is hidden and project-managed webbaselets are
+read-only. Use `DEPLOYED=false` only for local development; updates can
+overwrite these webbaselets. See the [deployment guide](../deployment/README.md)
+for configuration and API details.

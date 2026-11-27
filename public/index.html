@@ -19,28 +19,18 @@
 	<link href="/styles/style.css" rel="stylesheet">
 	<link href="/styles/stwStyle.css" rel="stylesheet">
 	<script src="/scripts/stwClient.js"></script>
-	<script src="/scripts/steClientStudio.js"></script>
+	<script src="/scripts/stwClientStudio.js"></script>
 	<script src="/scripts/client.js"></script>
-	<script>
-		function load() {
-			document.querySelectorAll("input[type=checkbox]").forEach(checkbox => {
-				checkbox.tristate = checkbox.checked ? 1 : 2;
-				checkbox.addEventListener("click", e => {
-					checkbox.checked = [null, true, false][++checkbox.tristate % 3];
-					checkbox.indeterminate = checkbox.tristate % 3 == 0;
-				});
-			});
-		}
-	</script>
 </head>
 
-<body onload="load()">
+<body>
 	<header data-section id="header"></header>
-	<div style="display: flex; gap:0.5rem; height: 100vh; align-items: flex-start;">
-		<aside data-section id="leftPanel" style="position: relative; display: flex; flex-direction: column;"></aside>
-		<main data-section id="main"
-			style="position: relative; display: flex; flex-direction: column; overflow-x: auto; width:100%;"></main>
-		<aside data-section id="rightPanel" style="position: relative; display: flex; flex-direction: column;"></aside>
+	<div id="frame" style="display: grid; grid-template-columns: var(--stw-frame-columns, auto 0 1fr 0 auto); margin: 0;">
+		<aside data-section id="leftPanel"></aside>
+		<div></div>
+		<main data-section id="main"></main>
+		<div></div>
+		<aside data-section id="rightPanel"></aside>
 	</div>
 	<footer data-section id="footer"></footer>
 </body>

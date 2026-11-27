@@ -37,6 +37,7 @@ function escapeAttribute(value) {
 
 class ChoiceQueryError extends Error {}
 class EmbedFetchError extends Error {}
+class EditorFormatError extends Error {}
 
 class STWLayout {
 	wbll;
@@ -165,7 +166,7 @@ class STWLayout {
 				formFields: runtime.FormFields
 			};
 		} catch (_err) {
-			if (_err instanceof ChoiceQueryError || _err instanceof EmbedFetchError) throw _err;
+			if (_err instanceof ChoiceQueryError || _err instanceof EmbedFetchError || _err instanceof EditorFormatError) throw _err;
 			const index = runtime.Index;
 			throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
 		}
@@ -401,19 +402,18 @@ class FormSymbol extends BaseSymbol {
 class TextAreaSymbol extends FormSymbol {
 	constructor(args, tagName = "textarea", runtime) {
 		super(args, tagName, runtime, true);
+		const format = this.args[0];
+		if (!["", "textarea", "wysiwyg", "javascript", "html", "css"].includes(format))
+			throw new EditorFormatError(`Unsupported multiline input format: ${format}`);
+		if (format && format !== "textarea")
+			this.attrs.set("data-stw-editor", format);
 		this.text = String(this.attrs.get("value") ?? "");
 		this.attrs.delete("type");
 		this.attrs.delete("value");
 	}
 	toString() {
-		if (this.args[0] === "contenteditable") {
-			this.tagName = "div";
-			this.attrs.set("contenteditable", "");
-		} else if (this.args[0])
-			this.attrs.set("class", this.args[0]);
 		const htmlAttrs = [...this.attrs.entries()].map(([key, value]) => value === true ? ` ${key}` : ` ${key}="${escapeAttribute(value)}"`).join("");
-		const text = this.tagName === "textarea" ? escapeAttribute(this.text) : this.text;
-		return `<${this.tagName}${htmlAttrs}>${text || ""}</${this.tagName}>`;
+		return `<${this.tagName}${htmlAttrs}>${escapeAttribute(this.text)}</${this.tagName}>`;
 	}
 }
 class ButtonSymbol extends FormSymbol {

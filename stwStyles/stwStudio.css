@@ -1,111 +1,114 @@
-body.stwStudioPage {
-	display: grid;
-	grid-template-rows: auto 1fr auto;
-	height: 100vh;
-	overflow: hidden;
-	background-color: var(--bg);
-	margin: 0;
+body.stwStudioPage #frame {
+	--stw-frame-columns: minmax(0, var(--stw-left-width, 20rem)) var(--stw-left-bar-width, 1px) minmax(0, 1fr) var(--stw-right-bar-width, 1px) minmax(0, var(--stw-right-width, 20rem));
+	min-height: 0;
 }
 
-body.stwStudioPage>div {
-	display: grid !important;
-	grid-template-columns: auto minmax(0, 1fr) auto;
-	gap: 0 !important;
-	height: auto !important;
-	align-items: stretch !important;
-	overflow: hidden;
+.stwStudioPage #frame.stwStudioAutoHideLeft > #leftPanel,
+.stwStudioPage #frame.stwStudioAutoHideRight > #rightPanel {
+	visibility: hidden;
 }
 
-body.stwStudioPage>#header,
-body.stwStudioPage>#footer,
-body.stwStudioPage #leftPanel,
-body.stwStudioPage #rightPanel {
-	background-color: var(--bg-faint);
+.stwStudioPage .stwStudioSplitter {
+	position: relative;
+	background-color: var(--border);
+	cursor: ew-resize;
+	touch-action: none;
 }
 
-body.stwStudioPage>#header {
-	border-bottom: thin solid var(--border);
+.stwStudioPage .stwStudioSplitter::before {
+	content: "";
+	position: absolute;
+	inset: 0 -4px;
 }
 
-body.stwStudioPage #leftPanel,
-body.stwStudioPage #rightPanel {
-	min-width: 25rem;
-	overflow: hidden;
+.stwStudioPage .stwStudioSplitter:hover,
+.stwStudioPage .stwStudioSplitter:focus-visible {
+	background: var(--special);
+}
+
+.stwStudioPage #frame > [data-section] > article {
+	flex: 1 1 auto;
+}
+
+.stwStudioPage #frame .stwTabs > section,
+.stwStudioPage #frame .stwAccordion > section {
 	display: flex;
-	flex-direction: column;
-	font-size: smaller;
+	overflow: hidden;
 }
 
-body.stwStudioPage #leftPanel {
-	grid-column: 1;
-	border-right: thin solid var(--border);
+.stwStudioPage #frame .stwTabs > section > dl {
+	min-width: 0;
 }
 
-body.stwStudioPage #rightPanel {
-	grid-column: 3;
-	border-left: thin solid var(--border);
-}
-
-body.stwStudioPage #leftPanel>*,
-body.stwStudioPage #rightPanel>* {
-	flex-grow: 1;
-	overflow-y: auto;
-}
-
-body.stwStudioPage #leftPanel:empty,
-body.stwStudioPage #rightPanel:empty {
-	display: none !important;
-}
-
-body.stwStudioPage>#footer {
-	border-top: thin solid var(--border);
-}
-
-body.stwStudioPage #main {
-	grid-column: 2;
-	display: flex !important;
-	flex-direction: column;
-	width: auto !important;
+.stwStudioPage #frame .stwTabs > section > dl > dd {
+	display: flex;
+	flex: 1 1 0;
 	min-width: 0;
 	min-height: 0;
+}
+
+.stwStudioPage #frame .stwTabs > section > dl > dd > article {
+	flex: 1 1 0;
+	min-height: 0;
 	overflow: hidden;
 }
 
-#stwStudioPreview {
-	display: block;
-	width: 100%;
+.stwStudioPage #frame .stwTabs > section > .stwHTabs > div,
+.stwStudioPage #frame .stwTabs > section > .stwVTabs > div {
+	flex: 0 0 auto;
+}
+
+.stwStudioPage #frame .stwAccordion > section > dl > dd {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.stwStudioPage #frame .stwAccordion > section > dl > dd > article {
+	box-sizing: border-box;
 	height: 100%;
-	min-width: 0;
-	min-height: 0;
-	border: 0;
 }
 
-#stwStudioPreviewHost {
-	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-}
-
-body.stwStudioPage #main>.stwTabs,
-body.stwStudioPage #main>.stwTabs>dl,
-body.stwStudioPage #main>.stwTabs>dl>dd,
-body.stwStudioPage #main>.stwTabs>dl>dd>article {
+.stwStudioPage #c6TC0s1xSa5NgDIgMyCdmzZ > section {
 	display: flex;
-	flex: 1;
+}
+
+.stwStudioPage #c6TC0s1xSa5NgDIgMyCdmzZ form {
+	flex: 1 1 0;
 	flex-direction: column;
 	min-height: 0;
-	overflow: hidden;
 }
 
-.stwStudioBrowser {
+.stwStudioPage #c6TC0s1xSa5NgDIgMyCdmzZ iframe {
+	flex: 1 1 0;
 	min-height: 0;
 }
 
-.stwStudioBrowser form {
+.stwStudioPage .stwStudioFileView > section,
+.stwStudioPage .stwStudioFileView form,
+.stwStudioPage .stwStudioFileView form > section,
+.stwStudioPage .stwStudioFileView #c7StudioFileText000001:not([hidden]) {
 	display: flex;
+	flex: 1 1 0;
 	flex-direction: column;
-	height: 100%;
-	padding: 0 !important;
+	min-height: 0;
+}
+
+.stwStudioPage .stwStudioFileView textarea[name="contents"] {
+	flex: 1 1 0;
+	min-height: 0;
+	resize: none;
+}
+
+.stwStudioPage .stwStudioFileView .stwCodeeditor {
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+.stwStudioPage .stwStudioFileView img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
 }
 
 .stwDevelop {

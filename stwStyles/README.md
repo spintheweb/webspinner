@@ -1,5 +1,9 @@
 # Spin the Web Styles
 
-Spin the Web relays by default on Fontawesome[https://fontawesome.com/] iconographics.
+`stwStyles` contains the CSS for Spin the Web's shared interface and rendered
+Webbase components. It includes common visual states and component-specific
+styles for elements such as forms, tables, navigation, calendars, charts, maps,
+tabs, and trees. It also includes styles for the Spin the Web Studio interface.
 
-TODO: File that maps icons used by Spin the Web
+The styles use shared theme properties to keep the appearance consistent across
+the application.

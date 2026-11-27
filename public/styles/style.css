@@ -49,13 +49,17 @@
 html {
 	background: var(--bg);
 	color: var(--text);
+	height: 100vh;
 }
 
 body {
 	font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 	font-size: inherit;
-	background: var(--bg);
-	color: var(--text);
+	display: grid;
+	grid-template-rows: auto 1fr auto;
+	height: 100vh;
+	overflow: hidden;
+	background-color: var(--bg);
 	margin: 0;
 }
 
@@ -63,6 +67,29 @@ h1 {
 	font-size: larger;
 	color: var(--special);
 	margin: var(--padding);
+}
+
+aside,
+main,
+article {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+article>h1,
+article>header,
+article>footer {
+	flex: 0 0 auto;
+	margin: 0 var(--padding);
+}
+
+article>section {
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
 }
 
 dialog[open] {
@@ -74,7 +101,6 @@ dialog[open] {
 }
 
 dialog h1 {
-	position: relative;
 	background-color: var(--special);
 	color: var(--on-special);
 	margin: 0;
@@ -82,20 +108,24 @@ dialog h1 {
 	font-size: smaller;
 }
 
+dialog > article > h1 {
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+dialog > article > h1.stwDragging {
+	cursor: grabbing;
+}
+
+/*
 article {
-	position: relative;
 	display: flex;
 	flex-direction: column;
-	flex-grow: 1;
+	flex: 1 1 0;
+	min-height: 0;
 }
-
-article>div {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 1;
-	overflow: auto;
-}
-
+*/
 article:focus {
 	outline: none;
 	border: none;
@@ -104,6 +134,18 @@ article:focus {
 input {
 	padding: var(--padding-compact);
 	margin: 0;
+}
+
+button:has(i[class*="fa-"]),
+:is(.stwForm, .stwTable) button:has(i[class*="fa-"]) {
+	box-sizing: border-box;
+	width: 2.5rem;
+	height: 2.5rem;
+	min-width: 0;
+}
+
+.stwForm button:has(i[class*="fa-"]) > i {
+	width: auto;
 }
 
 a {

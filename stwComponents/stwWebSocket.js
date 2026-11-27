@@ -22,6 +22,7 @@ import { STWPage } from "../stwElements/stwPage.js";
 import { newId } from "./stwIds.js";
 import { debugLog } from "./stwConfig.js";
 import { WebSocket } from "ws";
+import { registerStudioConnection } from "./stwStudioEvents.js";
 const SESSION_CLEANUP_GRACE_PERIOD_MS = 3e4;
 
 function handleWebSocket(request, socket, session, stwSessions) {
@@ -29,6 +30,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 	const tabId = url.searchParams.get("tab") || newId();
 	const prev = session.sockets.get(tabId);
 	session.sockets.set(tabId, socket);
+	const unregisterStudioConnection = registerStudioConnection(socket, session);
 	if (prev && prev !== socket && prev.readyState === WebSocket.OPEN) {
 		try {
 			prev.close(1e3, "superseded");
@@ -42,23 +44,27 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			url2.searchParams.set(key, value);
 		}
 		const syntheticRequest = new Request(url2, { headers: request.headers });
-		session.setPlaceholders(syntheticRequest);
+		const requestSession = data.method === "HEAD"
+			? session
+			: Object.assign(Object.create(Object.getPrototypeOf(session)), session);
+		if (requestSession !== session) requestSession.placeholders = new Map(session.placeholders);
+		requestSession.setPlaceholders(syntheticRequest);
 		let resourcesToProcess = [];
-		let element = STWPortal.instance.find(session, data.resource);
+		let element = STWPortal.instance.find(requestSession, data.resource);
 		if (element instanceof STWArea) {
-			if (!(element.isVisible(session) & 1)) {
+			if (!(element.isVisible(requestSession) & 1)) {
 				socket.send(JSON.stringify({ method: "REDIRECT", url: "/" }));
 				return;
 			}
 			element = STWPortal.index.get(element.mainpage);
 		}
-		if (element instanceof STWPage && !(element.isVisible(session) & 1)) {
+		if (element instanceof STWPage && !(element.isVisible(requestSession) & 1)) {
 			socket.send(JSON.stringify({ method: "REDIRECT", url: "/" }));
 			return;
 		}
 		if (data.method === "PATCH") {
 			if (element instanceof STWPage) {
-				resourcesToProcess = element.contents(session, typeof data.options.recurse == "undefined" ? true : data.options.recurse) || [];
+				resourcesToProcess = element.contents(requestSession, typeof data.options.recurse == "undefined" ? true : data.options.recurse) || [];
 			} else if (element) {
 				resourcesToProcess = [data.resource];
 			}
@@ -72,24 +78,34 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			}));
 			resourcesToProcess = element instanceof STWPage ? element.contents(session) : [];
 		}
-		if (resourcesToProcess.length === 0) return;
+		if (resourcesToProcess.length === 0) {
+			if (typeof data.options?.studioBlockToken === "string")
+				socket.send(JSON.stringify({ method: "STW_EDITOR_ERROR", studioBlockToken: data.options.studioBlockToken }));
+			return;
+		}
 		const finalData = [];
 		let processCount = resourcesToProcess.length;
 		for (const resource of resourcesToProcess) {
-			const found = STWPortal.instance.find(session, resource);
+			const found = STWPortal.instance.find(requestSession, resource);
 			if (!found) {
 				finalData.push({ method: "DELETE", id: resource });
 			} else {
 				const content = found;
-				const response = await content.serve(
-					syntheticRequest,
-					session,
-					data.method === "PATCH" && data.options.sections?.includes(content.section) ? content : void 0
-				);
-				if (response.status === 200) {
-					finalData.push(await response.json());
-				} else {
-					finalData.push({ method: "DELETE", id: content.uuid });
+				try {
+					const response = await content.serve(
+						syntheticRequest,
+						requestSession,
+						data.method === "PATCH" && data.options.sections?.includes(content.section) ? content : void 0
+					);
+					if (response.status === 200) {
+						finalData.push(await response.json());
+					} else {
+						finalData.push({ method: "DELETE", id: content.uuid });
+					}
+				} catch (error) {
+					if (typeof data.options?.studioBlockToken !== "string") throw error;
+					console.error("Could not render the Studio editor:", error);
+					finalData.push({ method: "STW_EDITOR_ERROR" });
 				}
 			}
 			if (!--processCount) {
@@ -105,6 +121,8 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			});
 			payload.forEach((content) => {
 				content.placeholder = options.placeholder;
+				if (typeof options.studioBlockToken === "string")
+					content.studioBlockToken = options.studioBlockToken;
 				socket.send(JSON.stringify(content));
 			});
 		}
@@ -113,6 +131,7 @@ function handleWebSocket(request, socket, session, stwSessions) {
 		console.error(error);
 	});
 	socket.on("close", () => {
+		unregisterStudioConnection();
 		if (session.sockets.get(tabId) === socket) {
 			session.sockets.delete(tabId);
 			setTimeout(() => {

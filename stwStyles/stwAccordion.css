@@ -1,11 +1,8 @@
-.stwAccordion {
-	overflow: hidden;
-}
-
 .stwAccordion dl {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	flex: 1 1 0;
+	min-height: 0;
 }
 
 .stwAccordion dt {
@@ -15,9 +12,12 @@
 
 .stwAccordion dd {
 	margin: 0 0 0 var(--margin);
+	overflow: auto;
+	/*
 	overflow-y: auto;
 	overflow-x: hidden;
 	text-overflow: ellipsis;
+*/
 }
 
 .stwAccordion dd:not(:first-of-type) {

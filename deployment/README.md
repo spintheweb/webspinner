@@ -41,7 +41,7 @@ Authenticated sessions with the `developer` role can manage elements in the in-m
 - `GET /wbol/<uuid>/options` reads options for content types that define them (for example menus, tabs, and accordions); `PUT` replaces the complete options array. `PATCH` with `?locale=<portal-locale>` and `{"path":[0],"name":"Label"}` updates one option name at its array-index path, preserving its other locale values. The session language is the default.
 - `GET /wbol/<portal-uuid>/connectors` reads the portal's connector values; `PUT` replaces the name-to-value map. Both require `leaddeveloper` or `root`.
 - `GET /wbol/<portal-uuid>/roles` lists all known roles for LeadDeveloper, root, or developers with effective developer visibility on the portal; `POST` with `{"role":"editors"}` creates a role for LeadDeveloper or root.
-- SEO sessions with effective `seo` visibility can read filtered element metadata and `PATCH` only `name`, `slug`, `keywords`, and `description`. Supply locale-to-string maps to update any supported portal locale; SEO access does not permit other element edits.
+- SEO sessions with effective `seo` visibility can read filtered element metadata and `PATCH` only `name`, `slug`, and `description`. Supply locale-to-string maps to update any supported portal locale; SEO access does not permit other element edits.
 
 Root or administrator sessions can manage accounts; root or LeadDeveloper can manage custom roles. The `administrator` role cannot assign `root`, `developer`, `leaddeveloper`, or `seo`. LeadDeveloper users can assign `developer` and `seo`; root can manage any role. Connector configuration routes require `leaddeveloper` or `root`, except that only root can configure Node connectors:
 

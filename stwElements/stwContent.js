@@ -131,7 +131,7 @@ class STWContent extends STWElement {
 				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type}@${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
-		let settings, HTML, records;
+		let settings, HTML, records, renderingError = false;
 		const layout = this.getLayout(session);
 		try {
 			records = await STWConnectors.command(session, this);
@@ -152,9 +152,10 @@ class STWContent extends STWElement {
 			if (!HTML) {
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
-				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">\n${this.develop(session, ref)}${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption")}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n${HTML}\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
+				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">\n${this.develop(session, ref)}${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption")}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n<section>${HTML}</section>\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
 			}
 		} catch (error) {
+			renderingError = true;
 			const safeStringify = (obj) => {
 				const keys = ["subtype", "cssClass", "section", "sequence", "connector", "command", "params", "layout"];
 				const filtered = {};
@@ -165,15 +166,17 @@ class STWContent extends STWElement {
 			};
 			let dev = "";
 			if (session.dev && (this.isVisible(session, "developer") & 1) && !isProtectedWebbaselet(this) && !this.pathname(session).startsWith("/stws"))
-				dev = `<i class="fa-light fa-fw fa-pen-to-square" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit/edit-content", search: { uuid: "${this.uuid}" }, options: { recurse: false } }))'></i>`;
+				dev = `<i class="fa-light fa-fw fa-pen-to-square" onclick='_stwOpenContentEditor("${this.uuid}")'></i>`;
 
-			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error</h1>\n<header>${error.message}</header>\n<pre>${safeStringify(this)}</pre>\n</article>`;
+			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error${closable("modal")}</h1>\n<header>${error.message}</header>\n<section><pre>${safeStringify(this)}</pre></section>\n</article>`;
 		}
 		const data = {
 			method: "PUT",
+			pathname: this.pathname(session),
 			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
+			error: renderingError,
 			body: HTML
 		};
 		return secureResponse(JSON.stringify(data), { headers: { "Content-Type": this.contentType } });
@@ -213,7 +216,7 @@ class STWContent extends STWElement {
 		if (isProtectedWebbaselet(content))
 			return "";
 		if (session.dev && (content.isVisible(session, "developer") & 1))
-			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='stwWS.send(JSON.stringify({ method: "PATCH", resource: "/stws/edit/edit-content", search: { uuid: "${content.uuid}" }, options: { recurse: false } }))'><i class="fa-light fa-pen-to-square"></i></span>`;
+			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='_stwOpenContentEditor("${content.uuid}")'><i class="fa-light fa-pen-to-square"></i></span>`;
 		return "";
 	}
 }

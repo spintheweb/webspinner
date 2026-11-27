@@ -55,28 +55,41 @@ class STWTabs extends STWContent {
 		body += `</div><dd><article id="${newId("c")}" href="${href}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
 		const mode = settings.get("mode") || "horizontal";
 		return `<dl class="stw${String(mode)[0].toUpperCase()}Tabs">${body}</dl>
-<script name="STWTabs" onload="fnSTWTabs('${this.uuid}')">
- function fnSTWTabs(id) {
-	const tabs = self.document.getElementById(id);
+<script name="STWTabs" onload="fnSTWTabs(this)">
+ function fnSTWTabs(script) {
+	const tabs = script.closest("article");
 	tabs.querySelector("dl").addEventListener("click", event => {
     event.stopImmediatePropagation();
     
     if (event.target.tagName === "I" && event.target.classList.contains("fa-xmark")) {
-		event.currentTarget.querySelector("article").remove();
-		event.target.closest("dt").previousElementSibling?.click();
-		event.target.closest("dt").remove();
+		const closing = event.target.closest("dt");
+		if (!closing.classList.contains("stwSelected")) {
+			closing.remove();
+			return;
+		}
+		let next = closing.previousElementSibling;
+		while (next && !next.hasAttribute("data-ref")) next = next.previousElementSibling;
+		if (!next) {
+			next = closing.nextElementSibling;
+			while (next && !next.hasAttribute("data-ref")) next = next.nextElementSibling;
+		}
+		closing.remove();
+		if (next) next.click();
+		else event.currentTarget.querySelector("dd").replaceChildren();
 		return;
     }
 
     const target = event.target.closest("dt");
     if (target && target.hasAttribute("data-ref")) {
-		event.currentTarget.querySelector("dd").innerHTML = '<article id="refreshSTWTab"></article>';
-		if (target.classList.contains("stwSelected"))
-       target.classList.remove("stwSelected");
-		else {
+		if (!target.classList.contains("stwSelected")) {
+       const placeholder = document.createElement("article");
+       const uuid = crypto.randomUUID ? crypto.randomUUID() :
+          Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+       placeholder.id = _newId(uuid, "c");
+       event.currentTarget.querySelector("dd").replaceChildren(placeholder);
        event.currentTarget.querySelector("dt.stwSelected")?.classList.remove("stwSelected");
        target.classList.add("stwSelected");
-       stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-href"), options: { placeholder: "refreshSTWTab" } }));
+       stwWS.send(JSON.stringify({ method: "PATCH", resource: target.getAttribute("data-href"), options: { placeholder: placeholder.id } }));
 		}
     }
 	});

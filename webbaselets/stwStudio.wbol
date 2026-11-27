@@ -19,53 +19,358 @@
 			</name>
 			<children>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal" class="stwForm stwCompact">
+					section="modeless">
 					<name>
 						<text xml:lang="en" slug="edit-portal"><![CDATA[Edit Portal]]></text>
 					</name>
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioPortalTabs00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c5TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal" class="stwForm stwCompact">
+					section="modeless">
 					<name>
 						<text xml:lang="en" slug="edit-area"><![CDATA[Edit Area]]></text>
 					</name>
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioAreaTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c4TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal" class="stwForm stwCompact">
+					section="modeless">
 					<name>
 						<text xml:lang="en" slug="edit-page"><![CDATA[Edit Page]]></text>
 					</name>
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name' key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioPageTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c3TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="modal" class="stwForm stwCompact">
+					section="modeless">
 					<name>
 						<text xml:lang="en" slug="edit-content"><![CDATA[Edit content]]></text>
 					</name>
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name' key="uuid" {disabled=@@readonly}')
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioContentTabs0001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioEditorLock00001" origin="a6T6S55WbZjerGVamxGi8kA" type="form">
+					<name>
+						<text xml:lang="en" slug="editor-lock"><![CDATA[Editor lock]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[h('uuid;@uuid')\a('data-stw-block-token="@stwBlockToken"')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioPortalTabs00001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs">
+					<name>
+						<text xml:lang="en" slug="portal-editor-tabs"><![CDATA[Portal editor]]></text>
+					</name>
+					<options>
+						<option ref="c7StudioPortalForm00001"><text xml:lang="en"><![CDATA[General]]></text></option>
+						<option ref="c7StudioVisRoles0000001"><text xml:lang="en"><![CDATA[Visibility]]></text></option>
+					</options>
+				</content>
+				<content uuid="c7StudioAreaTabs000001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs">
+					<name>
+						<text xml:lang="en" slug="area-editor-tabs"><![CDATA[Area editor]]></text>
+					</name>
+					<options>
+						<option ref="c7StudioAreaForm000001"><text xml:lang="en"><![CDATA[General]]></text></option>
+						<option ref="c7StudioVisRoles0000001"><text xml:lang="en"><![CDATA[Visibility]]></text></option>
+					</options>
+				</content>
+				<content uuid="c7StudioPageTabs000001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs">
+					<name>
+						<text xml:lang="en" slug="page-editor-tabs"><![CDATA[Page editor]]></text>
+					</name>
+					<options>
+						<option ref="c7StudioPageForm000001"><text xml:lang="en"><![CDATA[General]]></text></option>
+						<option ref="c7StudioVisRoles0000001"><text xml:lang="en"><![CDATA[Visibility]]></text></option>
+					</options>
+				</content>
+				<content uuid="c7StudioContentTabs0001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs">
+					<name>
+						<text xml:lang="en" slug="content-editor-tabs"><![CDATA[Content editor]]></text>
+					</name>
+					<options>
+						<option ref="c7StudioContentForm0001"><text xml:lang="en"><![CDATA[General]]></text></option>
+						<option ref="c7StudioOptionsEdit0001"><text xml:lang="en"><![CDATA[Options]]></text></option>
+						<option ref="c7StudioVisRoles0000001"><text xml:lang="en"><![CDATA[Visibility]]></text></option>
+					</options>
+				</content>
+				<content uuid="c7StudioPortalForm00001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
+					<name>
+						<text xml:lang="en" slug="portal-editor-form"><![CDATA[Portal details]]></text>
+					</name>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioAreaForm000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
+					<name>
+						<text xml:lang="en" slug="area-editor-form"><![CDATA[Area details]]></text>
+					</name>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioPageForm000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
+					<name>
+						<text xml:lang="en" slug="page-editor-form"><![CDATA[Page details]]></text>
+					</name>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioContentForm0001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
+					<name>
+						<text xml:lang="en" slug="content-editor-form"><![CDATA[Content details]]></text>
+					</name>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')
 h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\n
 l('Type')D('type;@@type;wbol;/content-types') \tl('Section')e(';section;@@section')\tl('Sequence')e(';sequence;@@sequence')\n
 l('Connector')d('connector;@@connector;wbol;/connectors/names')\tl('Parameters')e(';params;@@params')\n
 l('Command')m(';query;@@query')\n
 l('Layout')m(';layout;@@layout')\n
 b(';stwupdate;wbol;/@@uuid')t('Save')b(';stwdelete;wbol;/@@uuid')t('Delete')b(';stwinsert;wbol;/@@uuid')t('Insert')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioOptionsEdit0001" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
+					<name>
+						<text xml:lang="en" slug="edit-options"><![CDATA[Options]]></text>
+					</name>
+					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
+						{"supported": $exists(options) ? "true" : "false",
+						 "readonly": readonly = "true" or (blocked and blocked != $stwlogin) ? "true" : "false",
+						 "message": $exists(options) ? "Edit options, then save changes." : "This content does not support options."}])]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('header="@@message" rows="1"')
+l('Ref')e(';reference;;Elements')\a('data-stw-uuid="@uuid" data-stw-language="@@stwlanguage" data-stw-supported="@@supported" data-stw-readonly="@@readonly" data-stw-type="@@type" placeholder="Element slug, URL or path" aria-label="Reference"')
+l('Text')e(';text;')
+l('Parameters')e(';parameters;')\a('placeholder="Query string"')
+b(';stwnone')\a('type="button" data-option-action="add" title="Add" aria-label="Add"')t('<i class="fa-light fa-plus" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-option-action="child" title="Add child" aria-label="Add child"')t('<i class="fa-light fa-folder-plus" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-option-action="up" title="Move up" aria-label="Move up"')t('<i class="fa-light fa-arrow-up" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-option-action="down" title="Move down" aria-label="Move down"')t('<i class="fa-light fa-arrow-down" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-option-action="delete" title="Delete" aria-label="Delete"')t('<i class="fa-light fa-trash" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-option-action="save" title="Save" aria-label="Save"')t('<i class="fa-light fa-floppy-disk" aria-hidden="true"></i>')
+t('<script name="stwStudioOptions" onload="stwStudioOptionsInit(this)">
+function stwStudioOptionsInit(script) {
+	const article = script.closest("article");
+	if (article.dataset.stwOptionsInitialized) return;
+	article.dataset.stwOptionsInitialized = "true";
+	const tbody = article.querySelector("tbody");
+	const template = tbody.querySelector("tr");
+	const details = template.querySelector("input[name=reference]").dataset;
+	const uuid = details.stwUuid;
+	const language = details.stwLanguage;
+	const readonly = details.stwReadonly === "true";
+	const menus = details.stwType === "Menus";
+	template.querySelectorAll("script").forEach(node => node.remove());
+	template.querySelectorAll("input,select").forEach(node => { node.hidden = true; });
+	template.querySelectorAll("[data-option-action]").forEach(button => {
+		button.hidden = button.dataset.optionAction !== "add" && button.dataset.optionAction !== "save";
+		button.disabled = true;
+	});
+	if (details.stwSupported !== "true") return;
+	const endpoint = "/wbol/" + encodeURIComponent(uuid) + "/options";
+	const getJson = async url => {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(await response.text() || "Could not load options");
+		return response.json();
+	};
+	Promise.all([getJson(endpoint), getJson("/wbol")]).then(([options, tree]) => {
+		const references = [];
+		const paths = new Map();
+		const referenceValues = new Map();
+		const changed = () => { article.querySelector("header").textContent = "Unsaved option changes."; };
+		const visit = (node, parentPath) => {
+			const slug = node.slug && (node.slug[language] || Object.values(node.slug)[0]);
+			const path = parentPath !== null && slug ? parentPath + "/" + slug : null;
+			if (node.uuid && slug) references.push({ uuid: node.uuid, slug, path });
+			(node.children || []).forEach(child => visit(child, path));
+		};
+		(tree.children || []).forEach(node => visit(node, ""));
+		const slugCounts = new Map();
+		references.forEach(ref => { slugCounts.set(ref.slug, (slugCounts.get(ref.slug) || 0) + 1); });
+		const labels = references.map(ref => {
+			let label = slugCounts.get(ref.slug) > 1 ? ref.slug + " (" + (ref.path || ref.uuid) + ")" : ref.slug;
+			if (referenceValues.has(label)) label += " [" + ref.uuid + "]";
+			referenceValues.set(label, ref.uuid);
+			paths.set(ref.uuid, label);
+			if (ref.path) paths.set(ref.path, label);
+			return label;
+		});
+		const controls = template.querySelectorAll("[data-option-action]");
+		controls.forEach(button => { button.disabled = readonly; });
+		const render = () => {
+			tbody.querySelectorAll("tr[data-option-row]").forEach(row => row.remove());
+			const draw = (items, depth) => {
+				items.forEach((item, index) => {
+					const row = template.cloneNode(true);
+					row.dataset.optionRow = "true";
+					row.querySelectorAll("script").forEach(node => node.remove());
+					const reference = row.querySelector("input[name=reference]");
+					const list = row.querySelector("datalist");
+					const text = row.querySelector("input[name=text]");
+					const parameters = row.querySelector("input[name=parameters]");
+					reference.hidden = false;
+					text.hidden = false;
+					parameters.hidden = false;
+					reference.disabled = readonly;
+					text.disabled = readonly;
+					parameters.disabled = readonly;
+					list.id = "stwOptions" + crypto.randomUUID();
+					reference.setAttribute("list", list.id);
+					list.replaceChildren(...labels.map(label => new Option(label)));
+					reference.value = paths.get(item.ref) || item.ref || "";
+					reference.setCustomValidity(slugCounts.get(reference.value) > 1 ? "Choose a specific path for this slug." : "");
+					reference.style.marginInlineStart = (depth * 1.5) + "rem";
+					text.value = item.name[language] || "";
+					parameters.value = item.parameters || "";
+					reference.addEventListener("input", () => {
+						reference.setCustomValidity(slugCounts.get(reference.value) > 1 ? "Choose a specific path for this slug." : "");
+						item.ref = referenceValues.get(reference.value) ?? reference.value;
+						changed();
+					});
+					text.addEventListener("input", () => { item.name[language] = text.value; changed(); });
+					parameters.addEventListener("input", () => { item.parameters = parameters.value; changed(); });
+					row.querySelectorAll("[data-option-action]").forEach(button => {
+						const action = button.dataset.optionAction;
+						button.hidden = action === "add" || action === "save" || action === "child" && !menus;
+						button.disabled = readonly || action === "up" && index === 0 || action === "down" && index === items.length - 1;
+						button.addEventListener("click", () => {
+							if (action === "child") (item.options ||= []).push({ name: {}, ref: "", parameters: "", options: [] });
+							else if (action === "delete") {
+								if (item.options?.length && !window.confirm("Delete this option and its nested options?")) return;
+								items.splice(index, 1);
+							} else if (action === "up" || action === "down") {
+								const destination = index + (action === "up" ? -1 : 1);
+								[items[index], items[destination]] = [items[destination], items[index]];
+							}
+							changed();
+							render();
+						});
+					});
+					tbody.insertBefore(row, template);
+					if (item.options?.length) draw(item.options, depth + 1);
+				});
+			};
+			draw(options, 0);
+		};
+		template.querySelector("[data-option-action=add]").addEventListener("click", () => {
+			options.push({ name: {}, ref: "", parameters: "", ...(menus ? { options: [] } : {}) });
+			changed();
+			render();
+		});
+		template.querySelector("[data-option-action=save]").addEventListener("click", async event => {
+			const save = event.currentTarget;
+			const invalid = [...article.querySelectorAll("input[name=reference]")].find(input => !input.hidden && !input.checkValidity());
+			if (invalid) {
+				invalid.reportValidity();
+				return;
+			}
+			article.querySelectorAll("input,select,button").forEach(control => { control.disabled = true; });
+			try {
+				const response = await fetch(endpoint, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(options)
+				});
+				if (!response.ok) throw new Error(await response.text() || "Could not save options");
+				article.querySelector("header").textContent = "Options saved.";
+			} catch (error) {
+				window.alert(error instanceof Error ? error.message : String(error));
+			} finally {
+				template.querySelector("[data-option-action=add]").disabled = readonly;
+				save.disabled = readonly;
+				render();
+			}
+		});
+		render();
+	}).catch(error => {
+		window.alert(error instanceof Error ? error.message : String(error));
+	});
+}
+</script>')]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioVisRoles0000001" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
+					<name>
+						<text xml:lang="en" slug="visibility-roles"><![CDATA[Visibility]]></text>
+					</name>
+					<query connector="wbol" parameters="/roles/visibility"><![CDATA[$map($, function($role) {
+						{"role": $role}
+					})]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('rows="1000000" nodata="No roles found"')
+l('Role')f
+l('Visibility')c('visibility;;')\a('disabled data-stw-role="@@role" data-stw-uuid="@uuid" aria-label="Visibility for @@role"')
+t('<script name="stwStudioVisibility" onload="stwStudioVisibilityInit(this)">
+function stwStudioVisibilityInit(script) {
+	const table = script.closest("article");
+	if (table.dataset.stwVisibilityInitialized) return;
+	table.dataset.stwVisibilityInitialized = "true";
+	const boxes = table.querySelectorAll("input[data-stw-role]");
+	const endpoint = "/wbol/" + encodeURIComponent(boxes[0].dataset.stwUuid) + "/visibility";
+	const setState = (box, value) => {
+		box.checked = value === true;
+		box.indeterminate = value === null;
+		box.tristate = value === null ? 3 : value ? 1 : 2;
+	};
+	fetch(endpoint).then(async response => {
+		if (!response.ok) throw new Error(await response.text() || "Could not load visibility");
+		return response.json();
+	}).then(visibility => {
+		boxes.forEach(box => {
+			const role = box.dataset.stwRole;
+			let value = Object.hasOwn(visibility, role) ? visibility[role] : null;
+			setState(box, value);
+			box.hidden = false;
+			if (role === "root" || role === "administrator") return;
+			box.disabled = false;
+			box.addEventListener("click", async () => {
+				const next = box.indeterminate ? null : box.checked;
+				box.disabled = true;
+				try {
+					const response = await fetch(endpoint, {
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ [role]: next })
+					});
+					if (!response.ok) throw new Error(await response.text() || "Could not save visibility");
+					value = next;
+				} catch (error) {
+					setState(box, value);
+					window.alert(error instanceof Error ? error.message : String(error));
+				} finally {
+					box.disabled = false;
+				}
+			});
+		});
+	}).catch(error => {
+		window.alert(error instanceof Error ? error.message : String(error));
+	});
+}
+</script>')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorList01" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
@@ -159,7 +464,7 @@ l('Host')f
 				<text xml:lang="en" slug="assistant"><![CDATA[AI Assistant]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('header="&emsp;AI ASSISTANT"')]]></text>
+				<text xml:lang="en"><![CDATA[\s('header="&emsp;AI ASSISTANT" visible="@@stwALLOW_AI" ')]]></text>
 			</layout>
 			<options>
 				<option ref="c7K3dAiAsstAsk000000002">
@@ -178,7 +483,29 @@ l('Host')f
 				<text xml:lang="en" slug="search"><![CDATA[Search]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('header="&emsp;SEARCH"')e\a('placeholder="Search"')e\a('placeholder="Replace"')b(';stwsearch')t('Search')\nt('search results')]]></text>
+				<text xml:lang="en"><![CDATA[\s('header="&emsp;SEARCH"')
+e(';search;')\a('placeholder="Search" aria-label="Search" data-stw-language="@@stwlanguage" onkeydown="_stwStudioSearchKey(event,this)"')
+b(';stwnone')\a('type="button" data-stw-search-action="case" aria-pressed="false" title="Match case" aria-label="Match case" onclick="_stwStudioSearchToggle(this)"')t('<i class="fa-light fa-font" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-stw-search-action="word" aria-pressed="false" title="Match whole word" aria-label="Match whole word" onclick="_stwStudioSearchToggle(this)"')t('<i class="fa-light fa-text-width" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-stw-search-action="regex" aria-pressed="false" title="Use regular expression" aria-label="Use regular expression" onclick="_stwStudioSearchToggle(this)"')t('<i class="fa-light fa-asterisk" aria-hidden="true"></i>')
+b(';stwnone')\a('type="button" data-stw-search-action="search" title="Search" aria-label="Search" onclick="_stwStudioSearch(this)"')t('<i class="fa-light fa-magnifying-glass" aria-hidden="true"></i>')
+\ne(';replace;')\a('placeholder="Replace" aria-label="Replace"')
+\nt('')\a('data-stw-search-status role="status"')
+o('c7StudioSearchResults01')p('stwSearchLocale;@@stwlanguage')\a('data-stw-search-results')]]></text>
+			</layout>
+		</content>
+		<content uuid="c7StudioSearchResults01" origin="a6T6S55WbZjerGVamxGi8kA" type="list">
+			<name>
+				<text xml:lang="en" slug="search-results"><![CDATA[Search results]]></text>
+			</name>
+			<query connector="wbol" parameters="/search-results?ids=@stwSearchIds&amp;locale=@stwSearchLocale"><![CDATA[$.{
+				"name": $replace($replace($replace(name, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"),
+				"uuid": uuid,
+				"type": type
+			}]]></query>
+			<layout>
+				<text xml:lang="en"><![CDATA[\s('rows="9007199254740991" nodata=""')
+a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="event.preventDefault();_stwOpenElementEditor(this)"')f]]></text>
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion">
@@ -272,8 +599,9 @@ l('Host')f
 					$tree := function($node) {(
 						$icon := $lookup($icons, $node.type = "Content" ? $node.subtype : $node.type);
 						$lock := $node.blocked ? ($node.blocked = $stwlogin ?
-							"<span class='fa-light fa-fw fa-lock-open' aria-label='Locked by you'></span>" :
-							"<span class='fa-light fa-fw fa-lock' aria-label='Locked by another user'></span>") : "";
+							"<span data-stw-lock class='fa-light fa-fw fa-lock-open' aria-label='Locked by you'></span>" :
+							"<span data-stw-lock class='fa-light fa-fw fa-lock' aria-label='Locked by another user'></span>") :
+							"<span data-stw-lock hidden></span>";
 						$section := $node.type = "Content" ? (
 							$node.section = "" ? "<span class='fa-light fa-fw fa-rectangle' aria-label='No section'></span>" :
 							$node.section = "modal" ? "<span class='fa-light fa-fw fa-window-maximize' aria-label='Modal'></span>" :
@@ -309,12 +637,38 @@ l('Host')f
 					<query connector="node"><![CDATA[
 						const fs = require("node:fs");
 						const path = require("node:path");
-						const tree = (name, location, directory) => ({
-							label: "<span>" + name.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;") + "</span>",
-							children: directory ? fs.readdirSync(location, { withFileTypes: true })
-								.sort((a, b) => a.name.localeCompare(b.name))
-								.map(entry => tree(entry.name, path.join(location, entry.name), entry.isDirectory())) : []
-						});
+						const escape = value => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+							.replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+						const imageExtensions = new Set([".avif", ".bmp", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp"]);
+						const textExtensions = new Set([".acn", ".c", ".cc", ".config", ".cpp", ".css", ".csv", ".cjs", ".env",
+							".go", ".h", ".hpp", ".htm", ".html", ".ini", ".java", ".js", ".json", ".log", ".md", ".mjs",
+							".php", ".ps1", ".py", ".rb", ".rs", ".scss", ".sh", ".sql", ".tex", ".toml", ".ts", ".tsx",
+							".txt", ".wbol", ".xml", ".yaml", ".yml"]);
+						const tree = (name, location, directory) => {
+							let label = "<span>" + escape(name) + "</span>";
+							if (!directory) {
+								const extension = path.extname(name).toLowerCase();
+								const kind = imageExtensions.has(extension) ? "image" :
+									textExtensions.has(extension) ? "text" : extension === ".pdf" ? "pdf" : "other";
+								const file = path.relative(path.resolve("./public"), path.resolve(location)).split(path.sep).join("/");
+								const onclick = "(function(node){const tabs=document.getElementById('c7StudioMainTabs000001');" +
+									"const bar=tabs?.querySelector('dl > div');if(!bar)return;const file=node.dataset.stwFile;" +
+									"let tab=[...bar.querySelectorAll('dt[data-ref]')].find(item=>item.dataset.stwFile===file);" +
+									"if(!tab){tab=document.createElement('dt');tab.dataset.ref='c7StudioFileView000001';" +
+									"tab.dataset.href='c7StudioFileView000001?file='+encodeURIComponent(file);" +
+									"tab.dataset.stwFile=file;tab.dataset.stwKind=node.dataset.stwKind;tab.textContent=node.textContent;" +
+									"const close=document.createElement('i');close.className='fa-light fa-xmark';" +
+									"tab.append(' ',close);bar.append(tab);}if(!tab.classList.contains('stwSelected'))tab.click();})(this)";
+								label = "<span data-stw-file=\"" + escape(file) + "\" data-stw-kind=\"" + kind +
+									"\" onclick=\"" + escape(onclick) + "\">" + escape(name) + "</span>";
+							}
+							return {
+								label,
+								children: directory ? fs.readdirSync(location, { withFileTypes: true })
+									.sort((a, b) => a.name.localeCompare(b.name))
+									.map(entry => tree(entry.name, path.join(location, entry.name), entry.isDirectory())) : []
+							};
+						};
 						console.log(JSON.stringify(tree("public", "./public", true)));
 					]]></query>
 					<layout>
@@ -328,7 +682,11 @@ l('Host')f
 					</name>
 					<query connector="assistant" parameters="/state"><![CDATA[$]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('header="Local model: the element and chat are sent to the local assistant."')l('Element UUID')e(';uuid;@@uuid')\rl('Share this context with the local model')e('checkbox;consent;yes')\rl('Message')m(';message')\rb('.;stwsubmit;assistant;/chat')t('Send')b('.;stwsubmit;assistant;/apply')t('Apply proposal')]]></text>
+						<text xml:lang="en"><![CDATA[\s('header="Local model: the element and chat are sent to the local assistant."')
+l('Element UUID')e(';uuid;@@uuid')\n
+l('Share this context with the local model')e('checkbox;consent;yes')\n
+l('Message')m(';message')\n
+b('.;stwsubmit;assistant;/chat')t('Send')b('.;stwsubmit;assistant;/apply')t('Apply proposal')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7K3dAiAsstHist00000003" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
@@ -349,18 +707,80 @@ l('Host')f
 						<text xml:lang="en"><![CDATA[\s('nodata="No pending proposal"')l('Field')fl('Current')fl('Proposed')f]]></text>
 					</layout>
 				</content>
-				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="main">
+				<content uuid="c6TC0s1xSa5NgDIgMyCdmzZ" origin="a6T6S55WbZjerGVamxGi8kA" type="form">
 					<name>
 						<text xml:lang="en" slug="portal"><![CDATA[Portal]]></text>
 					</name>
 					<layout>
 						<text xml:lang="en"><![CDATA[
-\A('style="display:flex;flex-grow:1;align-items:center;justify-content:space-evenly;gap:0.5rem;"')
+\A('style="display:flex;flex:0 0 auto;align-items:center;justify-content:space-evenly;gap:0.5rem;"')
 t('<i class="fa-light fa-fw fa-arrow-left"></i><i class="fa-light fa-fw fa-arrow-right"></i><i class="fa-light fa-rotate-right"></i><i class="fa-light fa-fw fa-house"></i>')
-e(';url;@rul')\a('onchange="alert()" style="flex-grow:1;min-width:0;width:100%;box-sizing:border-box;margin:0;"')\n
+e(';url;@rul')\a('onchange="alert()" style="flex-grow:1;min-width:0;width:100%;box-sizing:border-box;margin:0;"')\n('style="display:flex;flex:1 1 0;min-height:0;"')
 O('@url')
 ]]></text>
+					</layout>
+				</content>
+				<content uuid="c7StudioMainTabs000001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
+					section="main">
+					<name>
+						<text xml:lang="en" slug="main"><![CDATA[Main]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[]]></text>
+					</layout>
+					<options>
+						<option ref="c6TC0s1xSa5NgDIgMyCdmzZ">
+							<text xml:lang="en"><![CDATA[Portal]]></text>
+						</option>
+					</options>
+				</content>
+				<content uuid="c7StudioFileView000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
+					class="stwForm stwStudioFileView">
+					<name>
+						<text xml:lang="en" slug="file-viewer"><![CDATA[File viewer]]></text>
+					</name>
+					<query connector="json"><![CDATA[{}]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('closable=true')
+t('<section><p id="c7StudioFileStatus000001" role="status"></p><img id="c7StudioFileImage000001" alt="" hidden><div id="c7StudioFileText000001" hidden><label for="stwE0">File contents</label>')
+m('javascript;contents;')
+t('</div></section><script name="STWStudioFileViewer" onload="fnSTWStudioFileViewer()">
+function fnSTWStudioFileViewer() {
+	const selected = document.getElementById("c7StudioMainTabs000001")
+		?.querySelector("dt.stwSelected[data-stw-file]");
+	const status = document.getElementById("c7StudioFileStatus000001");
+	const image = document.getElementById("c7StudioFileImage000001");
+	const text = document.querySelector("#c7StudioFileText000001 textarea[name=contents]");
+	if (!selected || !status || !image || !text) return;
+	const url = "/" + selected.dataset.stwFile.split("/").map(encodeURIComponent).join("/");
+	image.hidden = true;
+	text.closest("#c7StudioFileText000001").hidden = true;
+	status.textContent = "";
+	if (selected.dataset.stwKind === "image") {
+		image.src = url;
+		image.hidden = false;
+	} else if (selected.dataset.stwKind === "text") {
+		text.value = "";
+		text.closest("#c7StudioFileText000001").hidden = false;
+		status.textContent = "Loading file…";
+		fetch(url).then(response => {
+			if (!response.ok) throw new Error(`Could not load file (${response.status})`);
+			return response.text();
+		}).then(contents => {
+			text.value = contents;
+			text.dispatchEvent(new Event("input", { bubbles: true }));
+			status.textContent = "";
+		}).catch(error => {
+			status.textContent = error instanceof Error ? error.message : String(error);
+			console.error("Could not load Studio file:", error);
+		});
+	} else {
+		status.textContent = selected.dataset.stwKind === "pdf"
+			? "PDF preview is not available yet."
+			: "Preview is not available for this file type.";
+	}
+}
+</script>')]]></text>
 					</layout>
 				</content>
 			</children>

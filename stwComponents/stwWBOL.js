@@ -72,7 +72,6 @@ function WBOLFragment(element) {
 				obj = Object.assign(parseName(child), obj);
 				break;
 			case "layout":
-			case "keywords":
 			case "description":
 				obj[localName(child)] = parseText(child);
 				break;

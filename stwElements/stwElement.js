@@ -22,12 +22,12 @@ import { STWFactory } from "../stwComponents/stwFactory.js";
 import { STWIndex } from "./stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { newId } from "../stwComponents/stwIds.js";
+
 class STWElement {
 	uuid;
 	type;
 	name;
 	slug;
-	keywords;
 	description;
 	visibility;
 	parent;
@@ -42,7 +42,6 @@ class STWElement {
 		this.name = new Map(Object.entries(element.name || { "en": `New ${this.type}` }));
 		this.slug = new Map(Object.entries(element.slug || { "en": `New ${this.type}`.replace(/[^a-z0-9_]/gi, "").toLowerCase() }));
 		for (const slug of this.slug.values()) assertSlugAllowed(slug);
-		this.keywords = new Map(Object.entries(element.keywords || {}));
 		this.description = new Map(Object.entries(element.description || {}));
 		this.visibility = new Map(Object.entries(element.visibility || {}));
 		this.modified = element.modified || Date.now();
@@ -59,7 +58,7 @@ class STWElement {
 		}
 	}
 	getData(session, key) {
-		if (["name", "slug", "keywords", "description"].includes(key))
+		if (["name", "slug", "description"].includes(key))
 			return this.localize(session, key);
 		return "";
 	}
@@ -94,7 +93,6 @@ class STWElement {
 			subtype: this.subtype || this.type,
 			name: this.localize(session, "name"),
 			slug: this.localize(session, "slug"),
-			keywords: this.localize(session, "keywords"),
 			description: this.localize(session, "description"),
 			visibility: Object.fromEntries(this.visibility),
 			modified: this.modified,
@@ -160,7 +158,6 @@ class STWElement {
 	update(session, data) {
 		this.updateLocalizedField(session, "slug", data.slug);
 		this.updateLocalizedField(session, "name", data.name);
-		this.updateLocalizedField(session, "keywords", data.keywords);
 		this.updateLocalizedField(session, "description", data.description);
 		this.modified = Date.now();
 		if (data.visibility) {
