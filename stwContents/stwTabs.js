@@ -12,6 +12,7 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { newId } from "../stwComponents/stwIds.js";
 
@@ -29,8 +30,8 @@ class STWTabs extends STWContent {
 	async render(request, session, records) {
 		const layout = this.getLayout(session);
 		const placeholders = new Map(session.placeholders);
-		placeholders.set("@@stwOrigin", this.uuid);
-		const settings = (await layout.render(records.fields, placeholders, session, "", this.uuid, `stwFA${this.uuid}`)).settings;
+		placeholders.set("@@stworigin", this.uuid);
+		const { settings, scripts } = await layout.render(records.fields, placeholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const search = new URL(request.url).search;
 		let body = "<div>", id = "", href = "";
 		for (const option of this.options) {
@@ -39,7 +40,7 @@ class STWTabs extends STWContent {
 			else {
 				const element = session.portal.find(session, option.ref || "");
 				if (element instanceof STWContent && (element.isVisible(session) & 1)) {
-					const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
+					const name = localizedValue(option.name, session) || (element ? element.localize(session, "name") : option.ref);
 					const contentSearch = option.parameters ? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}` : search;
 					const contentHref = `${element.uuid}${contentSearch}`;
 					body += `<dt data-ref="${element.uuid}" data-href="${contentHref}"${id ? "" : ' class="stwSelected"'}>${name}${await closable(session, element.uuid)}</dt>`;
@@ -94,7 +95,7 @@ class STWTabs extends STWContent {
     }
 	});
  }
-<\/script>`;
+<\/script>${scripts || ""}`;
 
 		async function closable(session2, id2) {
 			const tab = STWIndex.get(id2);

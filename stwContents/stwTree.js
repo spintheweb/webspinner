@@ -25,10 +25,10 @@ class STWTree extends STWContent {
 		const fields = records.fields;
 		const layout = this.getLayout(session, "f".repeat(fields.length));
 		const initialPlaceholders = new Map(session.placeholders);
-		initialPlaceholders.set("@@stwOrigin", this.uuid);
+		initialPlaceholders.set("@@stworigin", this.uuid);
 		for (const [key, value] of Object.entries(records.rows[0]))
 			if (value === null || typeof value !== "object")
-				initialPlaceholders.set(`@@${key}`, String(value ?? ""));
+				initialPlaceholders.set(`@@${key.toLowerCase()}`, String(value ?? ""));
 		const { settings } = await layout.render(fields, initialPlaceholders, session, "", this.uuid);
 		const pathField = String(settings.get("key") || "path");
 		if (!this.isHierarchicalData(records.rows) && !fields.includes(pathField))
@@ -36,10 +36,10 @@ class STWTree extends STWContent {
 		const treeData = this.isHierarchicalData(records.rows) ? records.rows[0] : this.buildTreeFromPaths(records.rows, pathField);
 		const renderNode = async (node, depth = 0) => {
 			const placeholders = new Map(session.placeholders);
-			placeholders.set("@@stwOrigin", this.uuid);
+			placeholders.set("@@stworigin", this.uuid);
 			for (const [key, value] of Object.entries(node))
 				if (value === null || typeof value !== "object")
-					placeholders.set(`@@${key}`, String(value ?? ""));
+					placeholders.set(`@@${key.toLowerCase()}`, String(value ?? ""));
 			const hasChildren = node.children?.length > 0;
 			const toggle = depth ? `<span style="display:inline-block;width:${0.75 * depth}rem"></span>${hasChildren ? `<i class="fa-light fa-angle-down"></i> ` : ""}` : "";
 			const html = (await layout.render(fields, placeholders, session, "", this.uuid)).HTML;

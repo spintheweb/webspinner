@@ -16,6 +16,7 @@ import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWText extends STWContent {
 	constructor(content) {
@@ -46,7 +47,7 @@ class STWText extends STWContent {
 	}
 
 	async render(_request, session, records) {
-		const layoutValue = this.layout?.get(session.lang);
+		const layoutValue = localizedValue(this.layout, session);
 		let layoutText = typeof layoutValue === "string" ? layoutValue : layoutValue?.toString?.() ?? "";
 		if (!layoutText) {
 			if (this.contentType === "application/json") {
@@ -57,12 +58,13 @@ class STWText extends STWContent {
 				return "";
 			}
 		} else
-			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${this.develop(session)}${layoutText}</article>`;
+			layoutText = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${this.cssClass || "stwText"}">${layoutText}</article>`;
 
 		if (records?.rows?.length) {
 			return records.rows.map((row) => {
-				const mergedObj = { ...Object.fromEntries(session.placeholders), ...row };
-				const mergedMap = new Map(Object.entries(mergedObj).map(([k, v]) => [k, String(v)]));
+				const mergedMap = new Map(session.placeholders);
+				for (const [key, value] of Object.entries(row))
+					mergedMap.set(`@@${key.toLowerCase()}`, String(value));
 				return WBPL(layoutText, mergedMap);
 			}).join("");
 		}

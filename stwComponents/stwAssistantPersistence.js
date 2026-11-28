@@ -102,7 +102,7 @@ function validateChanges(element, locale, changes) {
 	const definition = serializeSTWElement(element);
 	definition.children = [];
 	const shadow = element instanceof STWContent ? new element.constructor(definition) : new STWElement(definition);
-	shadow.update({ lang: locale }, changes);
+	shadow.update({ placeholders: new Map([["@@stwlanguage", locale]]) }, changes);
 	for (const field of ["name", "slug", "description"]) {
 		if (field in changes) shadow[field].set(locale, changes[field]);
 	}

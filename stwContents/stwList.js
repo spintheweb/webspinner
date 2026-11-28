@@ -18,13 +18,13 @@ class STWList extends STWContent {
 		super(content);
 	}
 
-	async render(request, session, records) {
+	async render(request, session, records, contentPlaceholders = session.placeholders) {
 		if (!records.fields.length || !records.rows.length)
 			return "";
 
-		const placeholders = new Map(session.placeholders);
-		placeholders.set("@@stwOrigin", this.uuid);
-		records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
+		const placeholders = new Map(contentPlaceholders);
+		placeholders.set("@@stworigin", this.uuid);
+		records.fields.forEach((field) => placeholders.set(`@@${field.toLowerCase()}`, records.rows[0]?.[field] || ""));
 		const layout = this.getLayout(session, "f".repeat(records.fields.length));
 		let { settings, HTML: body } = await layout.render(records.fields, placeholders, session, "li", this.uuid, `stwFA${this.uuid}`);
 		
@@ -33,7 +33,7 @@ class STWList extends STWContent {
 		while (true) {
 			if (++row >= records.rows.length || row >= rows)
 				break;
-			records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[row]?.[field] || ""));
+			records.fields.forEach((field) => placeholders.set(`@@${field.toLowerCase()}`, records.rows[row]?.[field] || ""));
 			body += (await layout.render(records.fields, placeholders, session, "li", this.uuid, `stwFA${this.uuid}`)).HTML;
 		}
 

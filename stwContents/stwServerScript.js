@@ -155,7 +155,7 @@ class STWServerScript extends STWContent {
 	async render(req, session, records) {
 		const code = this._extractCode(session);
 		if (!code) {
-			console.warn(`ServerScript \${this.uuid} has no layout.javascript for lang \${session.lang}`);
+			console.warn(`ServerScript ${this.uuid} has no layout.javascript for lang ${session.placeholders.get("@@stwlanguage")}`);
 			return JSON.stringify({ ok: false, error: "No script found" });
 		}
 		try {
@@ -188,7 +188,7 @@ class STWServerScript extends STWContent {
     * For ServerScript, layout is stored as raw javascript, not parsed as WBLL.
     */
 	_extractCode(session) {
-		const layoutWrapper = this.layout?.get(session.lang);
+		const layoutWrapper = this.getLayout(session);
 		if (!layoutWrapper) return null;
 		return layoutWrapper.wbll || null;
 	}

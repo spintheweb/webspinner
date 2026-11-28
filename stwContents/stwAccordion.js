@@ -12,6 +12,7 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 import { newId } from "../stwComponents/stwIds.js";
 
 class STWAccordion extends STWContent {
@@ -41,7 +42,7 @@ class STWAccordion extends STWContent {
 		this.options.forEach((option, i) => {
 			const element = session.portal.find(session, option.ref || "");
 			if (element instanceof STWContent && (element.isVisible(session) & 1)) {
-				const name = option.name.get(session.lang) || (element ? element.localize(session, "name") : option.ref);
+				const name = localizedValue(option.name, session) || (element ? element.localize(session, "name") : option.ref);
 				const contentSearch = option.parameters ? `${search}${search ? "&" : "?"}${option.parameters.replace(/^[?&]/, "")}` : search;
 				body += `<dt data-ref="${element.uuid}"><i class="fa-light fa-angle-${i > 0 ? "right" : "down"}"></i>${name}</dt><dd><article id="${newId("c")}" href="${option.ref}${contentSearch}"><i class="fa-light fa-loader fa-spin stwLoading"></i></article></dd>`;
 			}

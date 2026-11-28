@@ -1,4 +1,4 @@
-body.stwStudioPage #frame {
+.stwStudioPage #frame {
 	--stw-frame-columns: minmax(0, var(--stw-left-width, 20rem)) var(--stw-left-bar-width, 1px) minmax(0, 1fr) var(--stw-right-bar-width, 1px) minmax(0, var(--stw-right-width, 20rem));
 	min-height: 0;
 }
@@ -109,13 +109,4 @@ body.stwStudioPage #frame {
 	max-width: 100%;
 	max-height: 100%;
 	object-fit: contain;
-}
-
-.stwDevelop {
-	cursor: pointer;
-	position: absolute;
-	background-color: CanvasText;
-	color: Canvas;
-	line-height: 1.25rem;
-	border-radius: 0.25rem;
 }

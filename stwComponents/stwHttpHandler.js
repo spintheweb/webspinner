@@ -22,6 +22,33 @@ import { verifyAction } from "./stwActionToken.js";
 
 async function handleHttp(request, session, sessionId, rotateSession) {
 	const pathname = new URL(request.url).pathname;
+
+	const languageMatch = pathname.match(/^\/stw\/language\/([A-Za-z0-9_-]+)$/);
+	if (languageMatch) {
+		const language = languageMatch[1];
+		const supported = STWPortal.instance.langs.includes(language);
+		const defaultLanguage = session.placeholders.get("@@stwdefaultlanguage") || "en";
+		const referer = request.headers.get("referer");
+		let destination = "/";
+		let url, page;
+		if (referer && URL.canParse(referer)) {
+			url = new URL(referer);
+			if (url.origin === new URL(request.url).origin) {
+				destination = url.href;
+				if (url.pathname !== "/") page = STWPortal.instance.find(session, url.pathname);
+			}
+		}
+		session.setLanguage(supported ? language : defaultLanguage, true);
+		if (page && ["Page", "Area"].includes(page.type)) {
+			url.pathname = page.pathname(session);
+			destination = url.href;
+		}
+		return secureResponse(null, {
+			status: 303,
+			headers: { Location: destination }
+		});
+	}
+
 	if (pathname === "/wbol" || pathname.startsWith("/wbol/")) {
 		return await handleWbolApi(request, session);
 	}
@@ -33,7 +60,12 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 		else if (element?.type === "Page" || element?.type === "Area" || element?.type === "Portal")
 			response = await element.serve(request, session);
 		else if (element?.type && session.sockets.size > 0) {
-			const res = await element.serve(request, session);
+			let res;
+			try {
+				res = await element.serve(request, session);
+			} catch (error) {
+				res = await element.errorResponse(error, session);
+			}
 			if (res.status === 200) {
 				const text = await res.text();
 				for (const ws of session.sockets.values()) {
@@ -138,7 +170,7 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 				};
 				const result = await actionRouter.execute(ctx);
 				if (!result.ok && result.error) {
-					session.placeholders.set("ERROR", result.error.message);
+					session.placeholders.set("error", result.error.message);
 					if (["stwinsert", "stwupdate", "stwdelete"].includes(ctx.action) ||
 						ctx.action === "stwsubmit" && ctx.args?.length > 0) {
 						console.error(`Action ${ctx.action} failed:`, result.error.message);
@@ -146,7 +178,7 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 					}
 				}
 				if (result.data) {
-					session.placeholders.set("RESULT", JSON.stringify(result.data));
+					session.placeholders.set("result", JSON.stringify(result.data));
 				}
 				let replacementSession;
 				if (result.rotateSession) {

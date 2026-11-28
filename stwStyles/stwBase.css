@@ -11,30 +11,10 @@
 	color: var(--on-special) !important;
 }
 
-.stwError {
-	font-size: small;
-	padding: var(--padding-reduced) !important;
-	margin: var(--padding-reduced);
-	background-color: var(--error);
-	color: white;
-}
-
 .stwNoData {
 	border: thin solid var(--special);
 	border-radius: 0.5rem;
 	padding: 0.5rem;
-}
-
-.stwError h1 {
-	color: white;
-	line-height: 1.5rem;
-	border-bottom: thin solid white;
-	padding-bottom: 0.5rem;
-}
-
-.stwError>pre {
-	white-space: pre-wrap;
-	word-break: break-word;
 }
 
 .stwLoading {

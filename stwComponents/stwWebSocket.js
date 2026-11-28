@@ -21,8 +21,11 @@ import { STWArea } from "../stwElements/stwArea.js";
 import { STWPage } from "../stwElements/stwPage.js";
 import { newId } from "./stwIds.js";
 import { debugLog } from "./stwConfig.js";
+import { PlaceholderMap } from "./stwWBPL.js";
 import { WebSocket } from "ws";
 import { registerStudioConnection } from "./stwStudioEvents.js";
+import { negotiateLanguage } from "./stwLocalization.js";
+
 const SESSION_CLEANUP_GRACE_PERIOD_MS = 3e4;
 
 function handleWebSocket(request, socket, session, stwSessions) {
@@ -31,12 +34,14 @@ function handleWebSocket(request, socket, session, stwSessions) {
 	const prev = session.sockets.get(tabId);
 	session.sockets.set(tabId, socket);
 	const unregisterStudioConnection = registerStudioConnection(socket, session);
+
 	if (prev && prev !== socket && prev.readyState === WebSocket.OPEN) {
 		try {
 			prev.close(1e3, "superseded");
 		} catch {
 		}
 	}
+
 	socket.on("message", async (message) => {
 		const data = JSON.parse(message.toString());
 		const url2 = new URL(data.resource, request.url);
@@ -47,8 +52,19 @@ function handleWebSocket(request, socket, session, stwSessions) {
 		const requestSession = data.method === "HEAD"
 			? session
 			: Object.assign(Object.create(Object.getPrototypeOf(session)), session);
-		if (requestSession !== session) requestSession.placeholders = new Map(session.placeholders);
+		if (requestSession !== session) requestSession.placeholders = new PlaceholderMap(session.placeholders);
 		requestSession.setPlaceholders(syntheticRequest);
+		if (data.method === "HEAD") {
+			const preferred = Array.isArray(data.options.langs) && data.options.langs.length
+				? data.options.langs
+				: data.options.lang ? [data.options.lang] : [];
+			session.langs = preferred.length ? preferred : ["en"];
+			if (!session.languageExplicit) {
+				const language = negotiateLanguage(session.portal.langs, preferred, session.placeholders.get("@@stwdefaultlanguage"));
+				session.setLanguage(language, false);
+			}
+			session.tz = data.options.tz || "UTC";
+		}
 		let resourcesToProcess = [];
 		let element = STWPortal.instance.find(requestSession, data.resource);
 		if (element instanceof STWArea) {
@@ -69,9 +85,6 @@ function handleWebSocket(request, socket, session, stwSessions) {
 				resourcesToProcess = [data.resource];
 			}
 		} else if (data.method === "HEAD") {
-			session.langs = data.options.langs || ["en"];
-			session.setLanguage(STWPortal.instance.langs.includes(data.options.lang) ? data.options.lang : session.langs.find((lang) => STWPortal.instance.langs.includes(lang.substring(0, 2)))?.substring(0, 2) || "en");
-			session.tz = data.options.tz || "UTC";
 			socket.send(JSON.stringify({
 				method: "AUTH",
 				canStudio: session.roles.some((role) => ["leaddeveloper", "developer", "seo"].includes(role))
@@ -84,7 +97,6 @@ function handleWebSocket(request, socket, session, stwSessions) {
 			return;
 		}
 		const finalData = [];
-		let processCount = resourcesToProcess.length;
 		for (const resource of resourcesToProcess) {
 			const found = STWPortal.instance.find(requestSession, resource);
 			if (!found) {
@@ -98,20 +110,18 @@ function handleWebSocket(request, socket, session, stwSessions) {
 						data.method === "PATCH" && data.options.sections?.includes(content.section) ? content : void 0
 					);
 					if (response.status === 200) {
-						finalData.push(await response.json());
+						const result = await response.json();
+						finalData.push(result);
 					} else {
 						finalData.push({ method: "DELETE", id: content.uuid });
 					}
 				} catch (error) {
-					if (typeof data.options?.studioBlockToken !== "string") throw error;
-					console.error("Could not render the Studio editor:", error);
-					finalData.push({ method: "STW_EDITOR_ERROR" });
+					const result = await (await content.errorResponse(error, requestSession)).json();
+					finalData.push(result);
 				}
 			}
-			if (!--processCount) {
-				send(finalData, data.options);
-			}
 		}
+		send(finalData, data.options);
 		function send(payload, options) {
 			payload.sort((a, b) => {
 				if (a.section === b.section) {

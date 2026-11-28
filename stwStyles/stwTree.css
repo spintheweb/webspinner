@@ -1,30 +1,30 @@
 .stwTree ul {
-    list-style-type: none;
-    padding-left: 0;
+	list-style-type: none;
+	padding-left: 0;
 }
 
 .stwTree li {
-    cursor: pointer;
-    white-space: nowrap;
+	cursor: pointer;
+	white-space: nowrap;
 }
 
 .stwTree li > div {
-    padding: var(--padding-reduced);
+	padding: var(--padding-reduced);
 }
 
 .stwTree li > div:hover {
-  background-color: var(--special-hover);
-  color: var(--on-special);
+	background-color: var(--special-hover);
+	color: var(--on-special);
 }
 
 .stwTree li:focus-within .stwSelected {
-  background-color: initial;
+	background-color: initial;
 }
 
 .stwTree .stwSelected {
-  background-color: var(--special) !important;
-  color: var(--on-special) !important;
+	background-color: var(--special) !important;
+	color: var(--on-special) !important;
 }
 .stwTree .stwSelected a {
-  color: inherit !important;
+	color: inherit !important;
 }

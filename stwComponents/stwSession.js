@@ -16,6 +16,7 @@
  */
 import { getCookies } from "./stwNode.js";
 import { debugLog, envGet, readBooleanSetting } from "./stwConfig.js";
+import { PlaceholderMap } from "./stwWBPL.js";
 
 class STWSession {
 	sessionId;
@@ -25,7 +26,6 @@ class STWSession {
 	name; // Full name
 	loginId; // Persistent user ID
 	roles; // Roles played by the user. IMPORTANT: Security revolves around this aspect!
-	lang; // Preferred user language (this language is used to render contents based on the accepted and available portal languages)
 	langs; // Accepted user languages (Accept-Language)
 	tz; // Timezone of the user
 	placeholders;
@@ -42,26 +42,28 @@ class STWSession {
 		this.name = "Guest";
 		this.loginId = "-3";
 		this.roles = ["guest"];
-		this.placeholders = new Map();
-		this.setLanguage("en");
+		this.placeholders = new PlaceholderMap();
+		this.portal = portal;
+		this.setLanguage(portal?.langs?.[0] || "en", false);
 		this.setApplicationPlaceholders();
 		this.langs = ["en"];
 		this.tz = "UTC";
 		this.setLoginPlaceholders();
 		this.dev = false;
-		this.portal = portal;
 		this.states = new Map();
 		this.sockets = new Map();
 		debugLog(`${(new Date()).toISOString()}: New session ${JSON.stringify(this.remoteAddr)} [${this.sessionId}]`);
 	}
 
-	setLanguage(language) {
-		this.lang = language;
+	setLanguage(language, explicit) {
 		this.placeholders.set("@@stwlanguage", language);
+		this.placeholders.set("@@stwdefaultlanguage", this.portal?.langs?.[0] || "en");
+		if (explicit !== undefined)
+			this.languageExplicit = explicit;
 	}
 
 	setApplicationPlaceholders() {
-		this.placeholders.set("@@stwALLOW_AI", readBooleanSetting("ALLOW_AI") ? "true" : "false");
+		this.placeholders.set("@@stwallow_ai", readBooleanSetting("ALLOW_AI") ? "true" : "false");
 	}
 
 	/**
@@ -70,7 +72,7 @@ class STWSession {
     * @returns The value of placeholder
     */
 	getPlaceholder(name) {
-		return this.placeholders.get(name) || "";
+		return this.placeholders.get(name.toLowerCase()) || "";
 	}
 
 	/**
@@ -93,21 +95,22 @@ class STWSession {
     */
 	setPlaceholders(obj, value = "") {
 		if (obj instanceof Request) {
+			const language = this.placeholders.get("@@stwlanguage");
 			this.placeholders.clear();
 			const url = new URL(obj.url);
-			url.searchParams.forEach((value2, key) => this.placeholders.set(`@${key}`, value2));
+			url.searchParams.forEach((value2, key) => this.placeholders.set(`@${key.toLowerCase()}`, value2));
 			const cookies = getCookies(obj.headers);
-			Object.keys(cookies).forEach((key) => this.placeholders.set(`@${key}`, cookies[key]));
+			Object.keys(cookies).forEach((key) => this.placeholders.set(`@${key.toLowerCase()}`, cookies[key]));
 			this.placeholders.set("@@query_string", url.search.slice(1));
 			for (const [key, value2] of obj.headers)
-				this.placeholders.set(`@@${key}`, value2);
+				this.placeholders.set(`@@${key.toLowerCase()}`, value2);
 			this.setLoginPlaceholders();
-			this.setLanguage(this.lang);
+			this.setLanguage(language);
 			this.setApplicationPlaceholders();
 		} else if (typeof obj === "string")
-			this.placeholders.set(`@@${obj}`, value);
+			this.placeholders.set(`@@${obj.toLowerCase()}`, value);
 		else
-			Object.keys(obj).forEach((key) => this.placeholders.set(`@@${key}`, obj[key]));
+			Object.keys(obj).forEach((key) => this.placeholders.set(`@@${key.toLowerCase()}`, obj[key]));
 	}
 }
 

@@ -23,12 +23,13 @@ class STWTable extends STWContent {
 			return "";
 
 		const placeholders = new Map(session.placeholders);
-		placeholders.set("@@stwOrigin", this.uuid);
+		placeholders.set("@@stworigin", this.uuid);
 		placeholders.set("@@stwuuid", this.uuid);
-		if (placeholders.has(`@stwO${this.uuid}`))
-			placeholders.set("@stworderby", placeholders.get(`@stwO${this.uuid}`) || "");
+		const orderKey = `@stwo${Buffer.from(this.uuid, "utf8").toString("hex")}`;
+		if (placeholders.has(orderKey))
+			placeholders.set("@stworderby", placeholders.get(orderKey) || "");
 
-		records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[0]?.[field] || ""));
+		records.fields.forEach((field) => placeholders.set(`@@${field.toLowerCase()}`, records.rows[0]?.[field] || ""));
 		const layout = this.getLayout(session, "lf".repeat(records.fields.length));
 		let { settings, HTML: body } = await layout.render(records.fields, placeholders, session, "thead", this.uuid);
 		let row = 0, rows = Number(settings.get("rows"));
@@ -38,7 +39,7 @@ class STWTable extends STWContent {
 			body += (await layout.render(records.fields, placeholders, session, "tbody", this.uuid)).HTML;
 			if (++row >= records.rows.length || row >= rows)
 				break;
-			records.fields.forEach((field) => placeholders.set(`@@${field}`, records.rows[row]?.[field] || ""));
+			records.fields.forEach((field) => placeholders.set(`@@${field.toLowerCase()}`, records.rows[row]?.[field] || ""));
 		}
 		body += `</tbody><tfoot>${(await layout.render(records.fields, placeholders, session, "tfoot", this.uuid)).HTML}</tfoot>`;
 
@@ -75,7 +76,8 @@ class STWTable extends STWContent {
 		orderby = event.target.closest(".stwOrderBy")?.dataset.orderby || "";
 		if (orderby) orderby += event.target.classList.contains("fa-angle-down") ? " desc" : " asc";
     }
-    document.cookie = \`stwO\${id}=\${orderby}; path=/\`;
+    const orderKey = Array.from(new TextEncoder().encode(id), byte => byte.toString(16).padStart(2, "0")).join("");
+    document.cookie = \`stwo\${orderKey}=\${orderby}; path=/\`;
 	});
  }
 <\/script>`;

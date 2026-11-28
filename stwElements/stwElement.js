@@ -22,6 +22,7 @@ import { STWFactory } from "../stwComponents/stwFactory.js";
 import { STWIndex } from "./stwIndex.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { newId } from "../stwComponents/stwIds.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWElement {
 	uuid;
@@ -81,10 +82,10 @@ class STWElement {
 	localize(session, name, value = "") {
 		if (value) {
 			value = name === "slug" ? normalizeSlug(value) : value;
-			this[name].set(session.lang, value);
+			this[name].set(session.placeholders.get("@@stwlanguage"), value);
 			return value;
 		}
-		return this[name].get(session.lang) || this[name].keys().next().value || "undefined";
+		return localizedValue(this[name], session) ?? "undefined";
 	}
 	toLocalizedJSON(session) {
 		return {
@@ -175,7 +176,7 @@ class STWElement {
 	updateLocalizedField(session, field, value) {
 		if (typeof value === "string") {
 			if (field === "name" || field === "slug") this.localize(session, field, value);
-			else this[field].set(session.lang, value);
+			else this[field].set(session.placeholders.get("@@stwlanguage"), value);
 			return;
 		}
 		if (typeof value !== "object" || value === null || Array.isArray(value)) return;

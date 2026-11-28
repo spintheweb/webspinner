@@ -37,7 +37,8 @@ class STWPage extends STWElement {
 	}
 
 	/**
-    * Given a page, determine all visible contents from the page and its ancestors.
+    * Given a page, determine its visible, sectioned contents and those of its ancestors.
+    * Unsectioned contents are loaded only when embedded or explicitly requested.
     * An area with inheritContents=false includes its own direct contents but stops
     * content collection before its parent.
     * 
@@ -46,7 +47,7 @@ class STWPage extends STWElement {
     */
 	contents(session, recurse = true) {
 		if (!(this.isVisible(session) & 1)) return [];
-		const contents = this.children.filter((content) => !/(modal|modeless)/.test(content.section) && content.isVisible(session) & 1).map((content) => content.uuid);
+		const contents = this.children.filter((content) => content.section && !/(modal|modeless)/.test(content.section) && content.isVisible(session) & 1).map((content) => content.uuid);
 		if (recurse)
 			climb(this.parent, contents, recurse);
 		return contents;

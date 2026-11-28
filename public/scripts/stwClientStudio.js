@@ -141,22 +141,6 @@ function _stwOpenContentEditor(uuid) {
 	}
 }
 
-function _stwOpenElementEditor(anchor) {
-	const type = anchor.dataset.stwEditorType;
-	const uuid = anchor.dataset.stwEditorUuid;
-	const resource = {
-		Portal: "/stws/edit/edit-portal",
-		Area: "/stws/edit/edit-area",
-		Page: "/stws/edit/edit-page",
-		Content: "/stws/edit/edit-content"
-	}[type];
-	if (!resource) {
-		window.alert(`No Studio editor is available for ${type || "this element"}.`);
-		return;
-	}
-	_stwSendEditorRequest(resource, uuid);
-}
-
 function _stwStudioSearchMatcher(query, regex, matchCase, wholeWord) {
 	const pattern = regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const source = wholeWord ? `(?<![\\p{L}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{N}_])` : pattern;
@@ -277,7 +261,7 @@ async function _stwStudioSearch(control) {
 		if (current !== stwStudioSearchGenerations.get(article)) return;
 		const ids = entries.filter((_node, index) => matches[index]).map(node => node.uuid);
 		_stwStudioShowSearchResults(article, ids, language);
-		status.textContent = ids.length ? `${ids.length} result${ids.length === 1 ? "" : "s"}` : "No results.";
+		status.textContent = "";
 	} catch (error) {
 		if (current === stwStudioSearchGenerations.get(article))
 			status.textContent = error instanceof Error ? error.message : String(error);
@@ -520,6 +504,7 @@ function _stwHandleNavClick(event) {
 		}
 	}
 	if (!a) return;
+	if (a.dataset?.stwEditor !== undefined) return;
 	const href = a.getAttribute("href");
 	if (!href) return;
 	let target;

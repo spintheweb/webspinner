@@ -1,0 +1,9 @@
+[*.css]
+indent_style = tab
+indent_size = 3
+tab_width = 3
+
+[*.js]
+indent_style = tab
+indent_size = 3
+tab_width = 3

@@ -13,6 +13,7 @@
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWScript extends STWContent {
 	constructor(content) {
@@ -28,7 +29,7 @@ class STWScript extends STWContent {
 			id: this.uuid,
 			section: this.section,
 			sequence: this.sequence,
-			body: this.layout.get(_session.lang)
+			body: localizedValue(this.layout, _session)
 		};
 		
 		return new Promise((resolve) => {

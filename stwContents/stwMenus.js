@@ -12,6 +12,7 @@
  */
 import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
+import { localizedValue } from "../stwComponents/stwLocalization.js";
 import { newId } from "../stwComponents/stwIds.js";
 import { WBPL } from "../stwComponents/stwWBPL.js";
 
@@ -49,14 +50,14 @@ class STWMenus extends STWContent {
 		let body = "";
 		const layout = this.getLayout(session);
 		const placeholders = new Map(session.placeholders);
-		placeholders.set("@@stwOrigin", this.uuid);
+		placeholders.set("@@stworigin", this.uuid);
 		const firstRender = await layout.render([], placeholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const settings = firstRender.settings;
 
 		this.options.forEach(option => { subrender(option); });
 		if (settings.has("vertical"))
-			return `<nav><menu><li style="width:3rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>`;
-		return `<nav><menu>${body}</menu></nav>`;
+			return `<nav><menu><li style="width:3rem"><div><i class="fa-light fa-bars"></i></div><menu>${body}</menu></li></menu></nav>${firstRender.scripts || ""}`;
+		return `<nav><menu>${body}</menu></nav>${firstRender.scripts || ""}`;
 
 		function subrender(option, iteration = false) {
 			let element = session.portal.find(session, option.ref || "");
@@ -79,7 +80,7 @@ class STWMenus extends STWContent {
 				href += `${href.includes("?") ? "&" : "?"}${parameters.replace(/^[?&]/, "")}`;
 			}
 
-			const name = WBPL(option?.name.get(session.lang) || element?.localize(session, "name") || href || "-", placeholders);
+			const name = WBPL(localizedValue(option?.name, session) || element?.localize(session, "name") || href || "-", placeholders);
 
 			if (name === "-" && settings.has("vertical"))
 				body += "<li><hr></li>";

@@ -4,7 +4,7 @@
 	xsi:schemaLocation="https://spintheweb.org/schemas/wbol.xsd ../public/schemas/wbol.xsd
 							  https://spintheweb.org/schemas/wbol.xsd /schemas/wbol.xsd"
 	uuid="wGGpiW7IjjrFqapqVuZopW"
-	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en">
+	mainpage="pGGpiXMKLBB9JzXmwCV1IY" langs="en it fr de nl">
 	<visibility>
 		<role id="root" />
 		<role id="administrator" />
@@ -118,9 +118,9 @@
 					<name>
 						<text xml:lang="en" slug="customer"><![CDATA[Customer]]></text>
 					</name>
-					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customerNumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customerNumber' AS UNSIGNED)]]></query>
+					<query connector="mysqlsample"><![CDATA[SELECT * FROM customers WHERE '@customernumber' REGEXP '^[0-9]+$' AND customerNumber = CAST('@customernumber' AS UNSIGNED)]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-fw fa-user"></i> @@customerName' ')>>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-fw fa-user"></i> @@customername' ')>>
 							l('Contact last name')\tf\n
 							l('Contact name')\tf\n
 							l\tf]]></text>
@@ -186,6 +186,7 @@
 					</name>
 					<layout>
 						<text xml:lang="en"><![CDATA[<h2>Welcome to the Spin the Web Labs</h2><h3>What is WBOL (Webbase Ontology Language)?</h3><spn>While <strong>HTML (HyperText Markup Language)</strong> describes the structure and content of a single web page and is interpreted and rendered by <i>client-side browsers</i>, <strong>WBOL (Webbase Ontology Language)</strong> describes the architecture, composition and function of an entire web portal and is interpreted and rendered by <i>server-side webspinners</i>.</span>]]></text>
+						<text xml:lang="it"><![CDATA[<h2>Benvenuti nei Laboratori di Spin the Web</h2><h3>Che cos'è WBOL (Webbase Ontology Language)?</h3><spn>Mentre <strong>HTML (HyperText Markup Language)</strong> descrive la struttura e il contenuto di una singola pagina web ed è interpretato e visualizzato dai <i>browser lato client</i>, <strong>WBOL (Webbase Ontology Language)</strong> descrive l'architettura, la composizione e la funzione di un intero portale web ed è interpretato e visualizzato dai <i>webspinner lato server</i>.</span>]]></text>
 					</layout>
 					<visibility>
 						<role id="guest" visibility="true" />

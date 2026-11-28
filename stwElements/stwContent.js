@@ -22,9 +22,10 @@ import { normalizeSlug, STWElement } from "./stwElement.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 import { debugLog } from "../stwComponents/stwConfig.js";
-import { isProtectedWebbaselet } from "../stwComponents/stwWebbaselets.js";
+import { localizedEntry, localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWContent extends STWElement {
+	#layoutErrors = new Map();
 	type;
 	cssClass;
 	section;
@@ -54,7 +55,8 @@ class STWContent extends STWElement {
 				try {
 					this.layout.set(lang, new STWLayout(wbll));
 				} catch (error) {
-					throw SyntaxError(`${this.type} (${this.name.entries().next().value}) \xA7${this.section}.${this.sequence} [${this.uuid}] \u2514 Layout: ${error.message}`);
+					this.layout.set(lang, { wbll });
+					this.#layoutErrors.set(lang, new SyntaxError(`${this.type} (${this.name.entries().next().value}) \xA7${this.section}.${this.sequence} [${this.uuid}] \u2514 Layout: ${error.message}`));
 				}
 			}
 		} else if (content.layout) {
@@ -72,28 +74,27 @@ class STWContent extends STWElement {
 			connector: this.connector,
 			command: this.query,
 			params: this.params,
-			layout: this.layout.get(session.lang),
+			layout: localizedValue(this.layout, session),
 			contentType: this.contentType
 		};
 	}
 
 	getLayout(session, defaultLayout = "") {
-		let layout = this.layout?.get(session.lang);
-		if (!layout || layout.justSettings && defaultLayout) {
-			layout = new STWLayout((layout?.wbll || "") + defaultLayout);
-			this.layout = new Map();
-			this.layout.set(session.lang, layout);
-		}
-		return layout;
+		const [language, selected] = localizedEntry(this.layout, session) || [];
+		const layoutError = this.#layoutErrors.get(language);
+		if (layoutError) throw layoutError;
+		if (!selected || selected.justSettings && defaultLayout)
+			return new STWLayout((selected?.wbll || "") + defaultLayout);
+		return selected;
 	}
 
 	localize(session, name, value = "") {
 		if (value) {
 			value = name === "slug" ? normalizeSlug(value) : value;
-			this[name].set(session.lang, value);
+			this[name].set(session.placeholders.get("@@stwlanguage"), value);
 			return value;
 		}
-		return this[name].get(session.lang) || "";
+		return localizedValue(this[name], session) ?? "";
 	}
 
 	/**
@@ -131,44 +132,32 @@ class STWContent extends STWElement {
 				`${(new Date()).toISOString()}: \u251C\u2500 ${this.pathname(session)}  ${this.type}@${this.section ? `${this.section}.${this.sequence}` : "embedded"} [${this.uuid}]`
 			);
 		}
-		let settings, HTML, records, renderingError = false;
-		const layout = this.getLayout(session);
+		let settings, HTML, records;
 		try {
+			const layout = this.getLayout(session);
 			records = await STWConnectors.command(session, this);
 			records.fields = records.fields.filter((field) => !field.toLowerCase().startsWith("stw"));
 			const placeholders = new Map(session.placeholders);
+			placeholders.set("@@stwrows", String(records.rows.length));
 			if (records.rows.length)
 				records.fields.forEach((field) => {
 					const value = records.rows[0]?.[field];
-					placeholders.set(`@@${field}`, value === 0 ? "0" : value || "");
+					placeholders.set(`@@${field.toLowerCase()}`, value === 0 ? "0" : value || "");
 				});
 			settings = (await layout.render(records.fields, placeholders, session)).settings;
 			if (settings.get("visible") === "false")
 				return secureResponse(null, { status: 204 });
-			HTML = await this.render(request, session, records);
+			HTML = await this.render(request, session, records, placeholders);
 			if (HTML?.includes("data-stw-action-token") && !/<form\b/i.test(HTML)) {
 				HTML = `<form id="stwFA${this.uuid}"><input type="hidden" name="stwOrigin" value="${this.uuid}"></form>${HTML}`;
 			}
 			if (!HTML) {
 				HTML = settings.has("nodata") ? `<article id="${this.uuid}" data-sequence="${this.sequence}" class="stwNoData">${settings.get("nodata") || ""}</article>` : "";
 			} else {
-				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">\n${this.develop(session, ref)}${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption")}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n<section>${HTML}</section>\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
+				HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="${(ref || this).cssClass || "stw" + this.type}">\n${settings.has("caption") ? `<h1${collapsible()}>${settings.get("caption")}${closable(this.section)}</h1>` : ""}\n${settings.has("header") ? `<header>${settings.get("header") || ""}</header>` : ""}\n<section>${HTML}</section>\n${settings.has("footer") ? `<footer>${settings.get("footer") || ""}</footer>` : ""}\n</article>`;
 			}
 		} catch (error) {
-			renderingError = true;
-			const safeStringify = (obj) => {
-				const keys = ["subtype", "cssClass", "section", "sequence", "connector", "command", "params", "layout"];
-				const filtered = {};
-				for (const key of keys) {
-					filtered[key] = obj[key];
-				}
-				return JSON.stringify(filtered, null, 2);
-			};
-			let dev = "";
-			if (session.dev && (this.isVisible(session, "developer") & 1) && !isProtectedWebbaselet(this) && !this.pathname(session).startsWith("/stws"))
-				dev = `<i class="fa-light fa-fw fa-pen-to-square" onclick='_stwOpenContentEditor("${this.uuid}")'></i>`;
-
-			HTML = `<article tabindex="0" id="${this.uuid}" data-sequence="${this.sequence}" class="stwError">${dev}\n<h1><i class="fa-light fa-bug"></i> Error${closable("modal")}</h1>\n<header>${error.message}</header>\n<section><pre>${safeStringify(this)}</pre></section>\n</article>`;
+			return this.errorResponse(error, session, ref);
 		}
 		const data = {
 			method: "PUT",
@@ -176,7 +165,7 @@ class STWContent extends STWElement {
 			id: this.uuid,
 			section: (ref || this).section,
 			sequence: (ref || this).sequence,
-			error: renderingError,
+			error: false,
 			body: HTML
 		};
 		return secureResponse(JSON.stringify(data), { headers: { "Content-Type": this.contentType } });
@@ -186,6 +175,16 @@ class STWContent extends STWElement {
 		function closable(section) {
 			return ["modal", "modeless"].includes(section) ? ` <i class="fa-light fa-xmark" onclick="this.closest('dialog').close()" style="float:right; cursor:pointer;"></i>` : "";
 		}
+	}
+
+	async errorResponse(error, session, ref) {
+		const { errorContent } = await import("../stwContents/stwError.js");
+		return errorContent.serve(null, session, {
+			content: this,
+			section: (ref || this).section,
+			sequence: (ref || this).sequence,
+			error
+		});
 	}
 
 	async render(_request, _session, _record) {
@@ -206,18 +205,9 @@ class STWContent extends STWElement {
 		this.contentType = data.contentType ?? this.contentType;
 		if (layout !== undefined) {
 			this.layout ??= new Map();
-			this.layout.set(session.lang, layout);
+			this.layout.set(session.placeholders.get("@@stwlanguage"), layout);
+			this.#layoutErrors.delete(session.placeholders.get("@@stwlanguage"));
 		}
-	}
-
-	// When the cookie _stwdevelop=true allow opening content editors
-	develop(session, content) {
-		content = content || this;
-		if (isProtectedWebbaselet(content))
-			return "";
-		if (session.dev && (content.isVisible(session, "developer") & 1))
-			return `<span ${session.placeholders.get("@_stwdevelop") === "true" ? "" : "hidden "}class="stwDevelop" onclick='_stwOpenContentEditor("${content.uuid}")'><i class="fa-light fa-pen-to-square"></i></span>`;
-		return "";
 	}
 }
 

@@ -42,6 +42,8 @@ sync `../schemas/wbol.xsd` to `public/schemas/wbol.xsd`.
 
 Set `ALLOW_DEV=true` to enable developer access and `ALLOW_ROOT=true` to enable root access. Both default to `false`; disabled roles are removed from authenticated sessions. `ALLOW_DEV=false` removes the `developer`, `leaddeveloper`, and `seo` roles and prevents Studio from loading. `ALLOW_AI` also defaults to `false`; set it to `true` to enable Studio assistant requests and proposal application.
 
+Content rendering errors are logged. Developer sessions see an error dialog and rendering continues; other sessions do not see error details and rendering stops for the current request.
+
 `DEPLOYED` defaults to `true`. In deployed installations, the Studio webbaselet is hidden from the webbase tree and the Common webbaselet is visible but read-only. Both project-managed webbaselets are protected from editing because updates overwrite them. Set `DEPLOYED=false` for local development to view and edit both webbaselets; Studio still requires `ALLOW_DEV=true`. Restart after changing these settings.
 
 With `DEPLOYED=false`, Node connector scripts run directly with Webspinner's OS permissions and environment, without a launcher or timeout. They can access Webspinner's credentials and files; use this mode only in a trusted development environment. Deployed installations require a restricted launcher.

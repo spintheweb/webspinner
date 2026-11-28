@@ -248,18 +248,6 @@ function stwStartWebsocket() {
 			return;
 		}
 
-		if (data.error === true) {
-			if (data.placeholder) document.getElementById(data.placeholder)?.remove();
-			const topDocument = window.self !== window.top ? window.top.document : document;
-			topDocument.body.insertAdjacentHTML("beforeend", `<dialog onclose="this.remove()">${data.body}</dialog>`);
-			const dialog = topDocument.body.lastElementChild;
-			if (typeof data.studioBlockToken === "string")
-				dialog.dataset.stwBlockToken = data.studioBlockToken;
-			dialog.showModal();
-			_stwMakeDialogDraggable(dialog);
-			return;
-		}
-
 		if (data.placeholder) {
 			const placeholder = document.getElementById(data.placeholder);
 			placeholder?.insertAdjacentHTML("afterend", data.body);
@@ -335,7 +323,7 @@ function stwStartWebsocket() {
 }
 
 // --- Lazy editor loader utilities ---
-const _stwLoaded = { jquery: false, summernote: false, ace: false };
+const _stwLoaded = { quill: false, ace: false };
 const _stwLoading = {};
 
 function _stwLoadScript(src) {
@@ -448,17 +436,12 @@ function _stwLoadStyle(href) {
 	return _stwLoading[href];
 }
 
-window.stwLoadSummernote = async function stwLoadSummernote() {
-	if (_stwLoaded.summernote) return Promise.resolve();
-	const jqueryCdn = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js";
-	const snCss = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css";
-	const snJs = "https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.js";
-	const ensureJq = window.jQuery ? Promise.resolve() : _stwLoadScript(jqueryCdn).then(() => {
-		_stwLoaded.jquery = true;
-	});
-	await Promise.all([ensureJq, _stwLoadStyle(snCss)]);
-	await _stwLoadScript(snJs);
-	_stwLoaded.summernote = true;
+window.stwLoadQuill = async function stwLoadQuill() {
+	if (_stwLoaded.quill) return Promise.resolve();
+	const quillCss = "https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.3/quill.snow.min.css";
+	const quillJs = "https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.3/quill.min.js";
+	await Promise.all([_stwLoadStyle(quillCss), _stwLoadScript(quillJs)]);
+	_stwLoaded.quill = true;
 };
 
 window.stwLoadAce = function stwLoadAce() {
@@ -501,34 +484,49 @@ function _stwInitializeEditor(textarea) {
 	const initializing = (async () => {
 		const format = textarea.dataset.stwEditor;
 		if (format === "wysiwyg") {
-			await window.stwLoadSummernote();
+			await window.stwLoadQuill();
 			if (!textarea.isConnected || _stwEditors.get(textarea) !== initializing) return;
-			const input = window.jQuery(textarea);
-			input.summernote({
-				callbacks: {
-					onChange(contents) {
-						if (textarea.value !== contents) {
-							textarea.value = contents;
-							textarea.dispatchEvent(new Event("input", { bubbles: true }));
-						}
-					}
+			const host = document.createElement("div");
+			host.className = "stwWysiwyg";
+			textarea.insertAdjacentElement("afterend", host);
+			const editor = new window.Quill(host, {
+				theme: "snow",
+				modules: {
+					toolbar: [
+						[{ header: [1, 2, 3, false] }],
+						["bold", "italic", "underline", "strike"],
+						["blockquote", "code-block"],
+						[{ list: "ordered" }, { list: "bullet" }],
+						["link", "clean"]
+					]
 				}
 			});
-			const host = textarea.nextElementSibling;
+			editor.root.innerHTML = textarea.value;
+			editor.on("text-change", () => {
+				const contents = editor.root.innerHTML;
+				if (textarea.value !== contents) {
+					textarea.value = contents;
+					textarea.dispatchEvent(new Event("input", { bubbles: true }));
+				}
+			});
 			const sync = () => {
-				if (input.summernote("code") !== textarea.value)
-					input.summernote("code", textarea.value);
+				if (editor.root.innerHTML !== textarea.value)
+					editor.root.innerHTML = textarea.value;
 			};
 			textarea.addEventListener("input", sync);
+			const previousDisplay = textarea.style.display;
+			textarea.style.display = "none";
 			const unwatch = _stwWatchEditor(textarea, host, () => {
-				input.summernote(textarea.disabled || textarea.readOnly ? "disable" : "enable");
-			}, () => input.summernote("focus"));
+				editor.enable(!(textarea.disabled || textarea.readOnly));
+			}, () => editor.focus());
 			const unreset = _stwSyncEditorReset(textarea, sync);
 			return () => {
 				unwatch();
 				unreset();
 				textarea.removeEventListener("input", sync);
-				input.summernote("destroy");
+				editor.disable();
+				host.remove();
+				textarea.style.display = previousDisplay;
 			};
 		}
 		await window.stwLoadAce();
@@ -537,6 +535,10 @@ function _stwInitializeEditor(textarea) {
 		host.className = "stwCodeeditor";
 		textarea.insertAdjacentElement("afterend", host);
 		const editor = window.ace.edit(host);
+		const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+		const updateTheme = () => editor.setTheme(`ace/theme/${colorScheme.matches ? "tomorrow_night" : "textmate"}`);
+		updateTheme();
+		colorScheme.addEventListener("change", updateTheme);
 		editor.session.setMode(`ace/mode/${format}`);
 		editor.setValue(textarea.value, -1);
 		editor.session.on("change", () => {
@@ -561,6 +563,7 @@ function _stwInitializeEditor(textarea) {
 			unwatch();
 			unreset();
 			resizeObserver.disconnect();
+			colorScheme.removeEventListener("change", updateTheme);
 			textarea.removeEventListener("input", sync);
 			editor.destroy();
 			host.remove();

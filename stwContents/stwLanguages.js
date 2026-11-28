@@ -1,8 +1,8 @@
 /**
  * @fileoverview Defines the language selector content element.
  *
- * Renders links for the portal's configured languages and suppresses output
- * when the portal exposes only one language.
+ * Renders the active language and links for the other configured languages.
+ * Suppresses output when the portal exposes only one language.
  *
  * @author Giancarlo
  * @version 1.0.0
@@ -26,7 +26,9 @@ class STWLanguages extends STWContent {
 	}
 
 	async render(_req, session) {
-		return `<nav>${session.portal.langs.reduce((langs, lang) => `${langs}<a href="/stw/language/${lang}">${lang.toUpperCase()}</a> `, "")}</nav>`;
+		return `<nav>${session.portal.langs.map(lang => lang === session.placeholders.get("@@stwlanguage")
+			? `<strong aria-current="true">${lang.toUpperCase()}</strong>`
+			: `<a href="/stw/language/${lang}">${lang.toUpperCase()}</a>`).join(" ")}</nav>`;
 	}
 }
 

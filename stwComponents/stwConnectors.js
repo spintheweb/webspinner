@@ -27,6 +27,14 @@ import { isDeployed } from "./stwWebbaselets.js";
 
 const reservedConnectorIds = new Set(["json", "wbol", "assistant", "names", "reconnect"]);
 
+function connectorErrorMessage(error) {
+	if (error instanceof AggregateError && !error.message && error.errors.length)
+		return error.errors.map(connectorErrorMessage).join("; ");
+	if (error instanceof Error)
+		return error.message || error.code || error.name;
+	return String(error);
+}
+
 function assertConnectorId(id) {
 	if (typeof id !== "string" || !/^[A-Za-z0-9_-]+$/.test(id) || reservedConnectorIds.has(id)) {
 		throw new TypeError("Invalid or reserved connector ID");
@@ -52,6 +60,8 @@ function validateConnectorIdentities(configurations) {
 class STWConnectors {
 	static connectors = new Map();
 	static #initializationPromise = null;
+	static #initializationError = null;
+	static #connectorErrors = new Map();
 	static connectorConfigs = new Map();
 	static async getConfigurations() {
 		const path = envGet("CONNECTORS") || "./.data/connectors.json";
@@ -121,12 +131,14 @@ class STWConnectors {
 		}
 		this.connectors.clear();
 		this.connectorConfigs.clear();
+		this.#connectorErrors.clear();
+		this.#initializationError = null;
 		this.#initializationPromise = null;
 		if (closeErrors.length > 0) {
 			throw new AggregateError(closeErrors, "One or more database connections could not be closed");
 		}
 	}
-	static initialize(strict = false) {
+	static async initialize(strict = false) {
 		if (!this.#initializationPromise) {
 			this.#initializationPromise = (async () => {
 				let connectors = [];
@@ -134,13 +146,12 @@ class STWConnectors {
 					connectors = JSON.parse(readFileSync(envGet("CONNECTORS") || "./.data/connectors.json", "utf8"));
 					validateConnectorIdentities(connectors);
 				} catch (error) {
-					if (strict) throw error;
+					this.#initializationError = error;
 					console.error(
 						`Error reading connectors.json: ${error instanceof Error ? error.message : String(error)}`
 					);
 					return;
 				}
-				const initializationErrors = [];
 				for (const settings of connectors) {
 					try {
 						if (SQL_CONNECTOR_TYPES.has(settings.type) || settings.type === "mongodb") {
@@ -173,24 +184,22 @@ class STWConnectors {
 								throw new TypeError(`Unsupported connector type: ${settings.type}`);
 						}
 					} catch (error) {
-						if (strict) {
-							initializationErrors.push(new Error(
-								`Connector "${settings.id}" failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
-								{ cause: error }
-							));
-						}
+						this.#connectorErrors.set(settings.id, new Error(
+							`Connector "${settings.id}" failed to initialize: ${connectorErrorMessage(error)}`,
+							{ cause: error }
+						));
 						console.error(
-							`Error processing connector configuration: ${error instanceof Error ? error.message : String(error)}`
+							`Error processing connector configuration: ${connectorErrorMessage(error)}`
 						);
 						continue;
 					}
 				}
-				if (strict && initializationErrors.length) {
-					throw new AggregateError(initializationErrors, "One or more connectors failed to initialize");
-				}
 			})();
 		}
-		return this.#initializationPromise;
+		await this.#initializationPromise;
+		if (strict && this.#initializationError) throw this.#initializationError;
+		if (strict && this.#connectorErrors.size)
+			throw new AggregateError([...this.#connectorErrors.values()], "One or more connectors failed to initialize");
 	}
 	static async connectDatabase(settings) {
 		return await createDatabaseConnection(settings);
@@ -222,7 +231,7 @@ class STWConnectors {
 		return await this.execute(session, content, options);
 	}
 	static async command(session, content) {
-		return await this.execute(session, content);
+		return await this.execute(session, content, { throwOnError: true });
 	}
 	static async executeBoundCommand(connector, query, values = []) {
 		if (!connector) throw new TypeError("Connector ID is required");
@@ -252,12 +261,12 @@ class STWConnectors {
 			const settings = this.connectorConfigs.get(name);
 			if (!settings) return null;
 			try {
-				const reconnected = await createDatabaseConnection(settings);
+				const reconnected = await this.connectDatabase(settings);
 				this.connectors.set(name, reconnected);
 				return reconnected;
 			} catch (error) {
-				console.warn(`MySQL reconnect failed for connector "${name}": ${error instanceof Error ? error.message : String(error)}`);
-				return null;
+				console.warn(`MySQL reconnect failed for connector "${name}": ${connectorErrorMessage(error)}`);
+				throw new Error(`Connector "${name}" failed to reconnect: ${connectorErrorMessage(error)}`, { cause: error });
 			}
 		}
 	}
@@ -288,7 +297,7 @@ class STWConnectors {
 			}
 			const values = [];
 			const query = command.replace(/(['"])(@@[A-Za-z0-9_$.]+)\1|(@@[A-Za-z0-9_$.]+)/g, (match, quote, quoted, plain) => {
-				const name = quoted || plain;
+				const name = (quoted || plain).toLowerCase();
 				if (!session.placeholders.has(name)) return match;
 				values.push(session.placeholders.get(name));
 				return sqlPlaceholder(configuration.type, values.length - 1);
@@ -381,6 +390,10 @@ class STWConnectors {
 			}
 			await this.initialize();
 			const configuration = STWConnectors.connectors.get(content.connector) || {};
+			if (!configuration.type) {
+				const initializationError = this.#connectorErrors.get(content.connector) || this.#initializationError;
+				if (initializationError) throw initializationError;
+			}
 			connectorType = configuration.type;
 			if ("type" in configuration && configuration.type === "api") {
 				records = await fetchAPIData(session, content, configuration);

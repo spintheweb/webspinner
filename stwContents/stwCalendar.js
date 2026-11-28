@@ -22,10 +22,10 @@ class STWCalendar extends STWContent {
 		const fields = records.fields;
 		const firstRow = records.rows[0];
 		const firstPlaceholders = new Map(session.placeholders);
-		firstPlaceholders.set("@@stwOrigin", this.uuid);
+		firstPlaceholders.set("@@stworigin", this.uuid);
 		if (firstRow)
 			for (const [name, value] of Object.entries(firstRow))
-				firstPlaceholders.set(`@@${name}`, String(value));
+				firstPlaceholders.set(`@@${name.toLowerCase()}`, String(value));
 		const layout = this.getLayout(session, "lf\\r".repeat(fields.length));
 		const firstRender = await layout.render(fields, firstPlaceholders, session, "", this.uuid, `stwFA${this.uuid}`);
 		const settings = firstRender.settings;
@@ -38,9 +38,9 @@ class STWCalendar extends STWContent {
 			if (row === firstRow)
 				return firstRender.HTML;
 			const rowPlaceholders = new Map(session.placeholders);
-			rowPlaceholders.set("@@stwOrigin", this.uuid);
+			rowPlaceholders.set("@@stworigin", this.uuid);
 			for (const [name, value] of Object.entries(row))
-				rowPlaceholders.set(`@@${name}`, String(value));
+				rowPlaceholders.set(`@@${name.toLowerCase()}`, String(value));
 			return (await layout.render(fields, rowPlaceholders, session, "", this.uuid, `stwFA${this.uuid}`)).HTML;
 		};
 
@@ -92,12 +92,12 @@ class STWCalendar extends STWContent {
 			const daysInMonth = lastDay.getDate();
 			const firstDayOfWeek = getFirstDayOfWeek(session);
 			const weekDays = [];
-			const locale = session.lang || "en";
+			const locale = session.placeholders.get("@@stwlanguage");
 			for (let i = 0; i < 7; i++) {
 				const day = new Date(Date.UTC(2023, 0, 1 + (i + firstDayOfWeek) % 7));
 				weekDays.push(day.toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" }));
 			}
-			const monthName = today.toLocaleDateString(session.lang, { month: "long", year: "numeric" });
+			const monthName = today.toLocaleDateString(locale, { month: "long", year: "numeric" });
 			body += `<div class="stwCalendarMonthHeader">${monthName}</div>`;
 			body += `<table><thead><tr>`;
 			for (const wd of weekDays) body += `<th>${wd}</th>`;
@@ -124,7 +124,7 @@ class STWCalendar extends STWContent {
 }
 
 function getFirstDayOfWeek(session) {
-	const locale = new Intl.Locale(session.langs?.[0] || session.lang || "en");
+	const locale = new Intl.Locale(session.langs?.[0] || session.placeholders.get("@@stwlanguage"));
 	const firstDay = locale.weekInfo?.firstDay ?? locale.getWeekInfo?.().firstDay;
 	if (firstDay) return firstDay % 7;
 	const sundayRegions = new Set(["CA", "IL", "JP", "MX", "PH", "US"]);

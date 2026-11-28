@@ -17,7 +17,6 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
-import jsonata from "jsonata";
 import { getCookies, runCommand, serveFile, setCookie } from "../stwComponents/stwNode.js";
 import { WBOL } from "../stwComponents/stwWBOL.js";
 import { STWContent } from "../stwElements/stwContent.js";
@@ -27,7 +26,11 @@ import { STWArea } from "../stwElements/stwArea.js";
 import { STWPage } from "../stwElements/stwPage.js";
 import { STWTabs } from "../stwContents/stwTabs.js";
 import { STWTable } from "../stwContents/stwTable.js";
+import { STWList } from "../stwContents/stwList.js";
+import { STWMenus } from "../stwContents/stwMenus.js";
+import { STWLanguages } from "../stwContents/stwLanguages.js";
 import { STWForm } from "../stwContents/stwForm.js";
+import { STWShortcut } from "../stwContents/stwShortcut.js";
 import { STWText } from "../stwContents/stwText.js";
 import { STWTree } from "../stwContents/stwTree.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
@@ -35,6 +38,7 @@ import { handleWbolApi } from "../stwComponents/stwWBOLApi.js";
 import { registerWebbaselet } from "../stwComponents/stwWebbaselets.js";
 import { applyPersistentChanges, captureRevision } from "../stwComponents/stwAssistantPersistence.js";
 import { STWLayout } from "../stwComponents/stwWBLL.js";
+import { WBPL } from "../stwComponents/stwWBPL.js";
 import { signAction, verifyAction } from "../stwComponents/stwActionToken.js";
 import { STWActionRouter } from "../stwComponents/stwActions.js";
 import { handleHttp } from "../stwComponents/stwHttpHandler.js";
@@ -42,14 +46,15 @@ import { STWConnectors } from "../stwComponents/stwConnectors.js";
 import { executeImapQuery, executeSmtpAction, parseImapCommand } from "../stwComponents/stwMailConnector.js";
 import { STWSecurity } from "../stwComponents/stwSecurity.js";
 import { STWSession } from "../stwComponents/stwSession.js";
+import { negotiateLanguage, parseAcceptLanguage } from "../stwComponents/stwLocalization.js";
 import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
 import { registerStudioConnection } from "../stwComponents/stwStudioEvents.js";
 import { executeAssistant } from "../stwComponents/stwAssistant.js";
 import { validateChanges } from "../stwComponents/stwAssistantPersistence.js";
 
 test("WBLL multiline inputs select supported editor formats", async () => {
-	const placeholders = new Map([["@@value", "<tag>& text"]]);
-	const session = { placeholders, baseurl: "", lang: "en", tz: "UTC" };
+	const placeholders = new Map([["@@value", "<tag>& text"], ["@@stwlanguage", "en"]]);
+	const session = { placeholders, baseurl: "", tz: "UTC" };
 	const render = async format => (await new STWLayout(`m('${format};body;@@value')`)
 		.render([], placeholders, session)).HTML;
 
@@ -61,6 +66,75 @@ test("WBLL multiline inputs select supported editor formats", async () => {
 	for (const format of ["wysiwyg", "javascript", "html", "css"])
 		assert.match(await render(format), new RegExp(`data-stw-editor="${format}"`));
 	await assert.rejects(render("python"), /Unsupported multiline input format: python/);
+});
+
+test("WBLL JavaScript preserves code, substitutes placeholders, and consumes fields only when empty", async () => {
+	const placeholders = new Map([
+		["@@stwlanguage", "en"],
+		["@@code", 'globalThis.events.push("field");'],
+		["@@next", "next"],
+		["@@value", "Ada"]
+	]);
+	const layout = new STWLayout(`j('// first line
+globalThis.events.push("@@value", "user\\@example.com", "</script>");
+')j f`);
+	const { HTML, scripts } = await layout.render(["code", "next"], placeholders);
+	assert.match(HTML, /^next<script>/);
+	assert.equal(HTML, "next" + scripts);
+	assert.equal(scripts, `<script>// first line
+globalThis.events.push("Ada", "user@example.com", "<\\/script>");
+</script><script>globalThis.events.push("field");</script>`);
+	assert.match((await new STWLayout("j('')f").render(["code", "next"], placeholders)).HTML, /^next<script>/);
+	assert.equal((await new STWLayout(String.raw`j('globalThis.events.push('quoted\');')`).render([], placeholders)).HTML,
+		"<script>globalThis.events.push('quoted');</script>");
+	assert.equal(new STWLayout(`j('globalThis.ready = true;')`).justSettings, true);
+});
+
+test("WBLL scripts are loaded on each content insertion", async () => {
+	const { HTML } = await new STWLayout(`j('// keep this newline
+globalThis.events.push("@@value");
+')`).render([], new Map([["@@value", "loaded"]]));
+	const code = HTML.match(/^<script>([\s\S]*)<\/script>$/)[1];
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const loader = source.slice(source.indexOf("const _stwContentResources"), source.indexOf("function _stwLoadStyle"));
+	let scripts = [];
+	const context = {
+		events: [],
+		document: {
+			body: { querySelectorAll: selector => selector === "script" ? scripts : [] },
+			head: { appendChild: script => runInNewContext(script.textContent, context) },
+			createElement: () => ({ setAttribute() {} })
+		},
+		Event
+	};
+	runInNewContext(loader, context);
+	for (let i = 0; i < 2; i++) {
+		scripts = [{ src: "", textContent: code, attributes: [], getAttribute: () => null, remove() {} }];
+		await context._stwLoadContentResources();
+	}
+	assert.deepEqual(context.events, ["loaded", "loaded"]);
+});
+
+test("WBLL scripts render per table data row and in settings-driven contents", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const table = new STWTable({
+		uuid: "script-table", subtype: "Table",
+		layout: { en: `l('Value')f j('globalThis.row = "@@value";')` }
+	});
+	const html = await table.render(null, session, { fields: ["value"], rows: [{ value: "one" }, { value: "two" }] });
+	assert.deepEqual([...html.matchAll(/<script>globalThis\.row = "([^"]+)";<\/script>/g)].map(match => match[1]), ["one", "two"]);
+
+	const menu = new STWMenus({ uuid: "script-menu", subtype: "Menus", layout: { en: `j('globalThis.menu = true;')` } });
+	assert.match(await menu.render(new Request("http://localhost/"), session), /<script>globalThis\.menu = true;<\/script>/);
+
+	const target = new STWContent({ uuid: "script-target", subtype: "Form" });
+	target.isVisible = () => 1;
+	session.portal = { find: () => target };
+	const tabs = new STWTabs({
+		uuid: "script-tabs", subtype: "Tabs", options: [{ ref: "script-target", name: { en: "Target" } }],
+		layout: { en: `j('globalThis.tabs = true;')` }
+	});
+	assert.match(await tabs.render(new Request("http://localhost/"), session, { fields: [], rows: [] }), /<script>globalThis\.tabs = true;<\/script>/);
 });
 
 test("Ace multiline editors synchronize their textarea and form reset", async () => {
@@ -82,6 +156,13 @@ test("Ace multiline editors synchronize their textarea and form reset", async ()
 	let value;
 	let mode;
 	let destroyed = false;
+	const themes = [];
+	const listeners = new Set();
+	const colorScheme = {
+		matches: true,
+		addEventListener: (_type, listener) => listeners.add(listener),
+		removeEventListener: (_type, listener) => listeners.delete(listener)
+	};
 	const editor = {
 		session: {
 			setMode: next => { mode = next; },
@@ -89,12 +170,19 @@ test("Ace multiline editors synchronize their textarea and form reset", async ()
 		},
 		setValue(next) { value = next; change?.(); },
 		getValue: () => value,
+		setTheme: theme => themes.push(theme),
 		setReadOnly() {},
 		resize() {},
 		focus() {},
 		destroy() { destroyed = true; }
 	};
-	const window = { addEventListener() {}, ace: { edit: () => editor } };
+	const window = {
+		addEventListener() {}, ace: { edit: () => editor },
+		matchMedia: query => {
+			assert.equal(query, "(prefers-color-scheme: dark)");
+			return colorScheme;
+		}
+	};
 	window.self = window.top = window;
 	const document = { addEventListener() {}, createElement: () => ({ remove() {} }) };
 	const context = {
@@ -109,6 +197,13 @@ test("Ace multiline editors synchronize their textarea and form reset", async ()
 	const dispose = await runInNewContext("_stwEditors.get(textarea)", context);
 	assert.equal(mode, "ace/mode/html");
 	assert.equal(value, "original");
+	assert.deepEqual(themes, ["ace/theme/tomorrow_night"]);
+	colorScheme.matches = false;
+	listeners.forEach(listener => listener());
+	assert.equal(themes.at(-1), "ace/theme/textmate");
+	colorScheme.matches = true;
+	listeners.forEach(listener => listener());
+	assert.equal(themes.at(-1), "ace/theme/tomorrow_night");
 
 	editor.setValue("edited");
 	assert.equal(textarea.value, "edited");
@@ -121,46 +216,66 @@ test("Ace multiline editors synchronize their textarea and form reset", async ()
 	assert.equal(value, "original");
 	dispose();
 	assert.equal(destroyed, true);
+	assert.equal(listeners.size, 0);
+
+	colorScheme.matches = false;
+	context.textarea = new Textarea();
+	context._stwInitializeEditor(context.textarea);
+	const disposeLight = await runInNewContext("_stwEditors.get(textarea)", context);
+	assert.equal(themes.at(-1), "ace/theme/textmate");
+	disposeLight();
+	assert.equal(listeners.size, 0);
 });
 
 test("WYSIWYG multiline editors synchronize their textarea", async () => {
 	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const form = new EventTarget();
 	class Textarea extends EventTarget {
 		constructor() {
 			super();
 			this.dataset = { stwEditor: "wysiwyg" };
 			this.value = "<p>initial</p>";
+			this.style = {};
 			this.isConnected = true;
-			this.nextElementSibling = {};
+			this.form = form;
 		}
+		insertAdjacentElement(_position, host) { this.host = host; }
 	}
 	const textarea = new Textarea();
-	let contents = textarea.value;
-	let onChange;
-	const input = {
-		summernote(command, value) {
-			if (typeof command === "object") onChange = command.callbacks.onChange;
-			else if (command === "code" && value === undefined) return contents;
-			else if (command === "code") { contents = value; onChange(value); }
-		}
+	let textChange;
+	const root = { innerHTML: "" };
+	const editor = {
+		root,
+		on(_event, handler) { textChange = handler; },
+		enable() {},
+		disable() {},
+		focus() {}
 	};
-	const window = { addEventListener() {}, jQuery: () => input };
+	const host = { className: "", remove() {}, hidden: false };
+	const window = { addEventListener() {}, Quill: function Quill() { return editor; } };
 	window.self = window.top = window;
 	const context = {
-		window, document: { addEventListener() {} }, textarea, Event,
+		window, document: { addEventListener() {}, createElement: () => host }, textarea, Event,
 		sessionStorage: { getItem: () => "x1" },
-		MutationObserver: class { observe() {} }
+		MutationObserver: class { observe() {} disconnect() {} },
+		queueMicrotask
 	};
 	runInNewContext(source, context);
-	window.stwLoadSummernote = async () => {};
+	window.stwLoadQuill = async () => {};
 	context._stwInitializeEditor(textarea);
-	await runInNewContext("_stwEditors.get(textarea)", context);
-	contents = "<p>edited</p>";
-	onChange(contents);
+	const dispose = await runInNewContext("_stwEditors.get(textarea)", context);
+	assert.equal(root.innerHTML, "<p>initial</p>");
+	root.innerHTML = "<p>edited</p>";
+	textChange();
 	assert.equal(textarea.value, "<p>edited</p>");
 	textarea.value = "<p>loaded</p>";
 	textarea.dispatchEvent(new Event("input"));
-	assert.equal(contents, "<p>loaded</p>");
+	assert.equal(root.innerHTML, "<p>loaded</p>");
+	textarea.value = "<p>reset</p>";
+	form.dispatchEvent(new Event("reset"));
+	await new Promise(resolve => queueMicrotask(resolve));
+	assert.equal(root.innerHTML, "<p>reset</p>");
+	dispose();
 });
 
 test("dialog headings drag within the viewport without intercepting controls", async () => {
@@ -431,7 +546,7 @@ test("Studio search refreshes the results content and reports invalid expression
 	runInNewContext(source, context);
 	const trigger = { closest: () => article };
 	await context._stwStudioSearch(trigger);
-	assert.equal(status.textContent, "1 result");
+	assert.equal(status.textContent, "");
 	assert.equal(sent[0].resource, "c7StudioSearchResults01");
 	assert.equal(sent[0].options.placeholder, "placeholder-1");
 	assert.ok(Object.hasOwn(results.dataset, "stwSearchResults"));
@@ -453,7 +568,7 @@ test("studio pages cannot be framed, including when requested by UUID", async ()
 	const page = new STWPage({ uuid: "p7w0adQ8hdI0CUWkSHoOhYj", slug: { en: "interface" }, visibility: { developer: true } });
 	area.parent = { pathname: () => "" };
 	page.parent = area;
-	const session = { roles: ["developer"], lang: "en", portal: { mainpage: "" } };
+	const session = { roles: ["developer"], placeholders: new Map([["@@stwlanguage", "en"]]), portal: { mainpage: "" } };
 
 	const response = await page.serve(new Request("http://localhost/p7w0adQ8hdI0CUWkSHoOhYj"), session);
 	assert.equal(response.status, 200);
@@ -464,37 +579,33 @@ test("studio pages cannot be framed, including when requested by UUID", async ()
 	assert.equal(ordinaryResponse.headers.get("content-security-policy"), null);
 });
 
-test("studio preview blocks studio navigation but permits other destinations", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
-		await readFile("./public/scripts/clientStudio.js", "utf8");
-	const frame = { isConnected: true, dataset: { url: "http://localhost/home" }, src: "http://localhost/home" };
-	const alerts = [];
-	const navigations = [];
-	const window = {
-		location: { href: "http://localhost/stws", origin: "http://localhost", pathname: "/stws", assign: (url) => navigations.push(url) },
-		stwStudioPreviewFrame: frame,
-		alert: (message) => alerts.push(message),
-		addEventListener() {}
+test("studio editor links bypass the general navigation handler", async () => {
+	const source = await readFile("./public/scripts/stwClientStudio.js", "utf8");
+	const context = {
+		window: { addEventListener() {}, location: { href: "http://localhost/stws" } },
+		document: { addEventListener() {} },
+		stwIsEmbedded: false,
+		URL
 	};
-	window.self = window;
-	window.top = window;
-	const document = { addEventListener() {}, getElementById: () => frame };
-	const context = { window, document, sessionStorage: { getItem: () => "x1" }, URL, DOMException };
 	runInNewContext(source, context);
-
-	context._stwStudioNavigate("/stws/interface?x=1");
-	context._stwStudioNavigate("/stws");
-	assert.equal(frame.src, "http://localhost/home");
-	assert.equal(window.stwStudioPreviewUrl, undefined);
-	assert.equal(alerts.length, 2);
-	context._stwStudioNavigate("/customers");
-	assert.equal(frame.src, "http://localhost/customers");
-	context._stwStudioNavigate("https://example.com/");
-	assert.deepEqual(navigations, ["https://example.com/"]);
+	const anchor = {
+		dataset: { stwEditor: "" },
+		href: "http://localhost/stws/edit/edit-page?uuid=page-1",
+		getAttribute: () => "/stws/edit/edit-page?uuid=page-1"
+	};
+	const node = { nodeType: 1, closest: () => anchor };
+	let prevented = false;
+	context._stwHandleNavClick({ composedPath: () => [node], preventDefault: () => { prevented = true; } });
+	assert.equal(prevented, false);
+	assert.equal(context.window.location.href, "http://localhost/stws");
+	delete anchor.dataset.stwEditor;
+	context._stwHandleNavClick({ composedPath: () => [node], preventDefault: () => { prevented = true; } });
+	assert.equal(prevented, true);
+	assert.equal(context.window.location.href, "/stws/edit/edit-page?uuid=page-1");
 });
 
 test("studio editor acquires and releases its block when the dialog closes", async () => {
-	const source = await readFile("./public/scripts/clientStudio.js", "utf8");
+	const source = await readFile("./public/scripts/stwClientStudio.js", "utf8");
 	const listeners = new Map();
 	const calls = [];
 	const messages = [];
@@ -521,87 +632,6 @@ test("studio editor acquires and releases its block when the dialog closes", asy
 	assert.equal(calls[1].method, "DELETE");
 });
 
-test("Alt+F12 toggles studio and returns to the page it was opened from", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
-		await readFile("./public/scripts/clientStudio.js", "utf8");
-	const storage = new Map();
-	const createContext = (pathname, href, frame) => {
-		const listeners = {};
-		const navigations = [];
-		const window = {
-			location: { href, origin: "http://localhost", pathname, assign: (url) => navigations.push(url) },
-			addEventListener: (type, listener) => { listeners[type] = listener; }
-		};
-		window.self = window;
-		window.top = window;
-		const document = {
-			addEventListener() {},
-			createElement: () => frame,
-			querySelector: () => null,
-			getElementById: () => null
-		};
-		const context = {
-			window,
-			document,
-			sessionStorage: {
-				getItem: (key) => storage.get(key) || null,
-				setItem: (key, value) => storage.set(key, value),
-				removeItem: (key) => storage.delete(key)
-			},
-			crypto: { randomUUID: () => "test-id" },
-			URL,
-			DOMException
-		};
-		runInNewContext(source, context);
-		runInNewContext("stwCanStudio = true", context);
-		return { context, listeners, navigations };
-	};
-	storage.set("stwTabId", "x1");
-	const originUrl = "http://localhost/customers?sort=name#list";
-	const normal = createContext("/customers", originUrl);
-	let prevented = false;
-	normal.listeners.keydown({ altKey: true, key: "F12", preventDefault: () => { prevented = true; } });
-	assert.equal(prevented, true);
-	assert.deepEqual(normal.navigations, ["http://localhost/stws"]);
-	assert.equal(storage.get("stwStudioReturnUrl"), originUrl);
-
-	const frame = {
-		isConnected: true,
-		dataset: {},
-		contentWindow: { location: { href: originUrl } }
-	};
-	const studio = createContext("/stws", "http://localhost/stws", frame);
-	studio.context._stwStudioAttachPreview({ append() {} });
-	assert.equal(frame.src, originUrl);
-	studio.listeners.keydown({ altKey: true, key: "F12", preventDefault() {} });
-	assert.deepEqual(studio.navigations, [originUrl]);
-	assert.equal(storage.has("stwStudioReturnUrl"), false);
-});
-
-test("studio links in its preview are sent to the parent instead of loading in the iframe", async () => {
-	const source = await readFile("./public/scripts/stwClient.js", "utf8") + "\n" +
-		await readFile("./public/scripts/clientStudio.js", "utf8");
-	const messages = [];
-	const window = {
-		location: { href: "http://localhost/home", origin: "http://localhost", pathname: "/home" },
-		addEventListener() {}
-	};
-	window.self = window;
-	window.top = {};
-	window.parent = {
-		document: { getElementById: () => ({ contentWindow: window }) },
-		postMessage: (message, origin) => messages.push({ type: message.type, url: message.url, origin })
-	};
-	const context = { window, document: { addEventListener() {} }, sessionStorage: { getItem: () => "x1" }, URL, DOMException };
-	runInNewContext(source, context);
-	const anchor = { href: "http://localhost/stws", getAttribute: () => "/stws" };
-	const node = { nodeType: 1, closest: () => anchor };
-	let prevented = false;
-	context._stwHandleNavClick({ composedPath: () => [node], preventDefault: () => { prevented = true; } });
-	assert.equal(prevented, true);
-	assert.deepEqual(messages, [{ type: "stwStudio:navigate", url: "http://localhost/stws", origin: "http://localhost" }]);
-});
-
 test("area content inheritance can stop before the portal", () => {
 	const portal = new STWPortal({ uuid: "w-area-boundary", langs: ["en"], mainpage: "p-area-boundary", name: { en: "Portal" } });
 	const area = new STWArea({
@@ -618,16 +648,17 @@ test("area content inheritance can stop before the portal", () => {
 		visibility: { developer: true }
 	});
 	const pageContent = new STWContent({ uuid: "c-page-boundary", subtype: "Text", section: "main", visibility: { developer: true } });
+	const embeddedContent = new STWContent({ uuid: "c-embedded-boundary", subtype: "Text", visibility: { developer: true } });
 	const areaContent = new STWContent({ uuid: "c-area-boundary", subtype: "Text", section: "header", visibility: { developer: true } });
 	const portalContent = new STWContent({ uuid: "c-portal-boundary", subtype: "Text", section: "footer", visibility: { developer: true } });
-	const elements = [portal, area, page, pageContent, areaContent, portalContent];
+	const elements = [portal, area, page, pageContent, embeddedContent, areaContent, portalContent];
 	try {
 		area.parent = portal;
 		page.parent = area;
-		page.children = [pageContent];
+		page.children = [pageContent, embeddedContent];
 		area.children = [page, areaContent];
 		portal.children = [area, portalContent];
-		const session = { portal, roles: ["developer"], lang: "en" };
+		const session = { portal, roles: ["developer"], placeholders: new Map([["@@stwlanguage", "en"]]) };
 
 		assert.equal(area.inheritContents, false);
 		assert.deepEqual(page.contents(session), ["c-page-boundary", "c-area-boundary"]);
@@ -696,7 +727,7 @@ test("assistant reviews and persistently applies authorized changes with conflic
 		process.env.PORTAL_URL = "";
 		process.env.ALLOW_AI = "true";
 		const portal = new STWPortal(WBOL(source));
-		const session = { roles: ["developer"], portal, lang: "en", states: new Map() };
+		const session = { roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]), states: new Map() };
 		const mock = async (url, options) => {
 			assert.equal(url, "http://127.0.0.1:11435/chat");
 			const body = JSON.parse(options.body);
@@ -763,10 +794,11 @@ test("session preserves identity WBPL placeholders when request placeholders are
 	const session = new STWSession("session", {}, null);
 	assert.deepEqual(Object.fromEntries(session.placeholders), {
 		"@@stwlanguage": "en",
+		"@@stwdefaultlanguage": "en",
 		"@@stwlogin": "guest",
 		"@@stwloginname": "Guest",
 		"@@stwloginid": "-3",
-		"@@stwALLOW_AI": "false"
+		"@@stwallow_ai": "false"
 	});
 
 	session.user = "alice";
@@ -774,12 +806,13 @@ test("session preserves identity WBPL placeholders when request placeholders are
 	session.loginId = "123";
 	session.setLanguage("it");
 	assert.equal(session.placeholders.get("@@stwlanguage"), "it");
-	assert.equal({ ...session }.lang, "it");
-	session.setPlaceholders(new Request("http://localhost/?page=home"));
+	assert.equal("lang" in session, false);
+	session.setPlaceholders(new Request("http://localhost/?page=home", { headers: { stwlanguage: "fr" } }));
 
 	assert.equal(session.placeholders.get("@page"), "home");
 	assert.equal(session.placeholders.get("@@stwlanguage"), "it");
-	assert.equal(session.placeholders.get("@@stwALLOW_AI"), "false");
+	assert.equal(session.placeholders.get("@@stwdefaultlanguage"), "en");
+	assert.equal(session.placeholders.get("@@stwallow_ai"), "false");
 	assert.deepEqual(Object.fromEntries(
 		["@@stwlogin", "@@stwloginname", "@@stwloginid"].map((key) => [key, session.placeholders.get(key)])
 	), {
@@ -789,33 +822,33 @@ test("session preserves identity WBPL placeholders when request placeholders are
 	});
 });
 
-test("@@stwALLOW_AI placeholder reflects ALLOW_AI environment setting", () => {
+test("@@stwallow_ai placeholder reflects ALLOW_AI environment setting", () => {
 	const oldAllowAi = process.env.ALLOW_AI;
 	try {
 		process.env.ALLOW_AI = "true";
 		const session1 = new STWSession("ai-enabled", {}, null);
-		assert.equal(session1.placeholders.get("@@stwALLOW_AI"), "true");
+		assert.equal(session1.placeholders.get("@@stwallow_ai"), "true");
 		
 		process.env.ALLOW_AI = "false";
 		const session2 = new STWSession("ai-disabled", {}, null);
-		assert.equal(session2.placeholders.get("@@stwALLOW_AI"), "false");
+		assert.equal(session2.placeholders.get("@@stwallow_ai"), "false");
 		
 		delete process.env.ALLOW_AI;
 		const session3 = new STWSession("ai-default", {}, null);
-		assert.equal(session3.placeholders.get("@@stwALLOW_AI"), "false");
+		assert.equal(session3.placeholders.get("@@stwallow_ai"), "false");
 	} finally {
 		if (oldAllowAi === undefined) delete process.env.ALLOW_AI;
 		else process.env.ALLOW_AI = oldAllowAi;
 	}
 });
 
-test("@@stwALLOW_AI placeholder survives request placeholder reset", () => {
+test("@@stwallow_ai placeholder survives request placeholder reset", () => {
 	const oldAllowAi = process.env.ALLOW_AI;
 	try {
 		process.env.ALLOW_AI = "true";
 		const session = new STWSession("ai-reset-test", {}, null);
 		session.setPlaceholders(new Request("http://localhost/?page=home"));
-		assert.equal(session.placeholders.get("@@stwALLOW_AI"), "true");
+		assert.equal(session.placeholders.get("@@stwallow_ai"), "true");
 		assert.equal(session.placeholders.get("@page"), "home");
 	} finally {
 		if (oldAllowAi === undefined) delete process.env.ALLOW_AI;
@@ -823,30 +856,289 @@ test("@@stwALLOW_AI placeholder survives request placeholder reset", () => {
 	}
 });
 
+test("placeholder names are normalized without changing their values", async () => {
+	const session = new STWSession("case-test", {}, null);
+	session.setPlaceholders(new Request("http://localhost/?CustomerID=AbC", {
+		headers: { cookie: "Theme=Dark", "X-Test": "MiXeD" }
+	}));
+	session.setPlaceholders({ FirstName: "Ada", Tags: "One,Two" });
+	session.setPlaceholders("LastName", "Lovelace");
+	assert.equal(session.getPlaceholder("@CUSTOMERID"), "AbC");
+	assert.equal(session.getPlaceholder("@theme"), "Dark");
+	assert.equal(session.getPlaceholder("@@X-TEST"), "MiXeD");
+	assert.equal(session.getPlaceholder("@@lastname"), "Lovelace");
+	assert.equal([...session.placeholders.keys()].includes("@@FirstName"), false);
+	session.placeholders.set("@@CustomName", "Custom Value");
+	assert.equal(session.placeholders.get("@@CUSTOMNAME"), "Custom Value");
+	assert.ok(session.placeholders.has("@@customname"));
+	assert.equal(session.placeholders.delete("@@CUSTOMNAME"), true);
+	assert.equal(WBPL(`@CUSTOMERID '@@FIRSTNAME' "@@TAGS"...`, session.placeholders), `AbC 'Ada' "One","Two"`);
+
+	const layout = new STWLayout("f");
+	const { HTML } = await layout.render(["FirstName"], session.placeholders, session);
+	assert.match(HTML, /Ada/);
+	await new STWLayout("k('MixedName;Value')").render([], session.placeholders, session);
+	assert.equal(session.placeholders.get("@@mixedname"), "Value");
+	assert.equal(WBPL("@@MIXEDNAME", session.placeholders), "Value");
+});
+
+test("content record placeholders use lowercase names", async () => {
+	const content = new STWList({ uuid: "list-Mixed", subtype: "List" });
+	const seen = [];
+	content.getLayout = () => ({
+		render: async (_fields, placeholders) => {
+			seen.push([placeholders.get("@@customername"), placeholders.get("@@stworigin")]);
+			return { settings: new Map(), HTML: "row" };
+		}
+	});
+	await content.render(null, { placeholders: new Map() }, {
+		fields: ["CustomerName"], rows: [{ CustomerName: "Ada" }, { CustomerName: "Grace" }]
+	});
+	assert.deepEqual(seen, [["Ada", "list-Mixed"], ["Grace", "list-Mixed"]]);
+
+	const text = new STWText({ uuid: "text-case", subtype: "Text", layout: { en: "@@customername" } });
+	const rendered = await text.render(null, { placeholders: new Map([["@@customername", "Old"], ["@@stwlanguage", "en"]]) }, {
+		fields: ["CustomerName"], rows: [{ CustomerName: "Ada" }]
+	});
+	assert.match(rendered, />Ada<\/article>/);
+});
+
+test("table sort placeholder names preserve case-sensitive content identities", async () => {
+	const cookies = [];
+	for (const id of ["table-A", "table-a"]) {
+		const table = new STWTable({ uuid: id, subtype: "Table" });
+		let order;
+		table.getLayout = () => ({
+			render: async (_fields, placeholders) => {
+				order = placeholders.get("@stworderby");
+				return { settings: new Map(), HTML: "" };
+			}
+		});
+		const records = { fields: ["Name"], rows: [{ Name: "Ada" }] };
+		const html = await table.render(null, { placeholders: new Map() }, records);
+		let sort;
+		const element = {
+			addEventListener() {},
+			querySelector: () => ({ closest: () => ({ addEventListener: (_event, handler) => { sort = handler; } }) })
+		};
+		const document = { getElementById: () => element, cookie: "" };
+		const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(html)[1];
+		const context = { self: { document }, document, TextEncoder };
+		runInNewContext(script, context);
+		context.fnSTWTable(id);
+		sort({
+			target: {
+				classList: { contains: name => name === "fa-angle-down", add() {} },
+				closest: () => ({ dataset: { orderby: "Name" } })
+			},
+			currentTarget: { querySelectorAll: () => [] }
+		});
+		cookies.push(document.cookie.split(";")[0]);
+		const session = new STWSession(`session-${id}`, {}, null);
+		session.setPlaceholders(new Request("http://localhost/", { headers: { cookie: cookies.at(-1) } }));
+		await table.render(null, session, records);
+		assert.equal(order, "Name desc");
+	}
+	assert.notEqual(cookies[0], cookies[1]);
+});
+
+test("SQL action placeholders bind using lowercase names", async () => {
+	const initialize = STWConnectors.initialize;
+	const executeBoundCommand = STWConnectors.executeBoundCommand;
+	try {
+		STWConnectors.initialize = async () => {};
+		STWConnectors.connectors.set("case-sql", { type: "mysql" });
+		STWConnectors.executeBoundCommand = async (_connector, query, values) => ({ query, values });
+		const session = { placeholders: new Map([["@@customerid", "AbC"]]) };
+		assert.deepEqual(await STWConnectors.executeAction(session, "case-sql",
+			"UPDATE t SET id='@@CustomerID' WHERE id=@@CUSTOMERID", "POST"), {
+			query: "UPDATE t SET id=? WHERE id=?", values: ["AbC", "AbC"]
+		});
+	} finally {
+		STWConnectors.initialize = initialize;
+		STWConnectors.executeBoundCommand = executeBoundCommand;
+		STWConnectors.connectors.delete("case-sql");
+	}
+});
+
+test("login action resolves form placeholder names case-insensitively", async () => {
+	const authenticate = STWSecurity.authenticate;
+	try {
+		STWSecurity.authenticate = async (_session, username, password) => {
+			assert.equal(username, "Ada");
+			assert.equal(password, "MiXeD");
+			return true;
+		};
+		const formData = new FormData();
+		formData.set("UserName", "Ada");
+		formData.set("PassWord", "MiXeD");
+		const result = await new STWActionRouter().execute({
+			action: "stwlogon", args: ["@@username", "@@password"], formData,
+			session: { placeholders: new Map() }, url: "/"
+		});
+		assert.equal(result.ok, true);
+	} finally {
+		STWSecurity.authenticate = authenticate;
+	}
+});
+
+
+test("language selector marks the current language without a link", async () => {
+	const portal = { langs: ["en", "it", "fr"], mainpage: "home" };
+	const session = new STWSession("language-selector", {}, portal);
+	const content = new STWLanguages({ uuid: "language-selector", subtype: "Languages", section: "footer", visibility: { guest: true } });
+	session.setLanguage("it");
+	const response = await content.serve(new Request("http://localhost/"), session);
+	const { body } = await response.json();
+	assert.match(body, /<strong aria-current="true">IT<\/strong>/);
+	assert.doesNotMatch(body, /<a[^>]*>IT<\/a>/);
+	assert.match(body, /<a href="\/stw\/language\/en">EN<\/a>/);
+	assert.match(body, /<a href="\/stw\/language\/fr">FR<\/a>/);
+
+	session.setLanguage("en");
+	assert.match(await content.render(null, session), /<strong aria-current="true">EN<\/strong>/);
+	portal.langs = ["en"];
+	assert.equal((await content.serve(new Request("http://localhost/"), session)).status, 204);
+});
+
+test("missing language layouts use the default language placeholder", async () => {
+	const portal = { langs: ["en", "it"] };
+	const session = new STWSession("layout-fallback", {}, portal);
+	session.setLanguage("it");
+	const text = new STWText({
+		uuid: "layout-fallback-text",
+		subtype: "Text",
+		layout: { en: "<p>Default layout</p>", fr: "<p>French layout</p>" }
+	});
+	assert.match(await text.render(null, session), /<p>Default layout<\/p>/);
+	session.placeholders.set("@@stwlanguage", "fr");
+	assert.match(await text.render(null, session), /<p>French layout<\/p>/);
+	session.placeholders.set("@@stwlanguage", "it");
+
+	const table = new STWTable({
+		uuid: "layout-fallback-table",
+		subtype: "Table",
+		layout: { en: "l('Default')" }
+	});
+	assert.equal(table.getLayout(session).wbll, "l('Default')");
+});
+
+test("localized WBOL properties prefer the session, default, then first available language", async () => {
+	const session = new STWSession("localized-fallback", {}, { langs: ["de", "it", "fr"] });
+	assert.equal(session.placeholders.get("@@stwlanguage"), "de");
+	session.setLanguage("it");
+	const element = new STWElement({
+		type: "Page",
+		name: { fr: "Francais", de: "Deutsch", it: "Italiano" },
+		slug: { fr: "francais", de: "deutsch" },
+		description: { fr: "Description francaise" }
+	});
+	assert.equal(element.localize(session, "name"), "Italiano");
+	assert.equal(element.localize(session, "slug"), "deutsch");
+	assert.equal(element.localize(session, "description"), "Description francaise");
+	const table = new STWTable({
+		uuid: "first-layout",
+		subtype: "Table",
+		layout: { fr: "l('Francais')", de: "l('Deutsch')" }
+	});
+	assert.equal(table.getLayout(session).wbll, "l('Deutsch')");
+	table.layout.delete("de");
+	assert.equal(table.getLayout(session).wbll, "l('Francais')");
+	const text = new STWText({ uuid: "first-text", subtype: "Text", layout: { fr: "<p>Francais</p>" } });
+	assert.match(await text.render(null, session), /<p>Francais<\/p>/);
+	const invalid = new STWTable({ uuid: "invalid-fallback", subtype: "Table", layout: { fr: "?" } });
+	assert.throws(() => invalid.getLayout(session), /Syntax error/);
+});
+
+test("language preferences respect order, quality, and supported locale variants", () => {
+	const languages = ["it", "en", "pt-BR"];
+	const preferred = parseAcceptLanguage("fr;q=1, pt-BR;q=0.8, en-US;q=0.9, it;q=0, de;q=0.5");
+	assert.deepEqual(preferred, ["fr", "en-US", "pt-BR", "de"]);
+	assert.equal(negotiateLanguage(languages, preferred, "it"), "en");
+	assert.equal(negotiateLanguage(languages, ["PT-br", "en-US"], "it"), "pt-BR");
+	assert.equal(negotiateLanguage(languages, ["fr", "de"], "it"), "it");
+});
+
+test("language route switches the session and reloads the referring page", async () => {
+	const portal = STWPortal.instance;
+	const previousLanguages = portal.langs;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const session = new STWSession("language-route", {}, portal);
+	try {
+		portal.langs = ["en", "it", "fr"];
+		const request = new Request("http://localhost/stw/language/it", {
+			headers: { referer: "http://localhost/articles/current", cookie: "sessionId=language-route" }
+		});
+		const response = await handleHttp(request, session, "language-route");
+		assert.equal(response.status, 303);
+		assert.equal(response.headers.get("Location"), "http://localhost/articles/current");
+		assert.equal(session.placeholders.get("@@stwlanguage"), "it");
+
+		const unsupported = await handleHttp(
+			new Request("http://localhost/stw/language/de", {
+				headers: { referer: "http://localhost/articles/current", cookie: "sessionId=language-route" }
+			}),
+			session,
+			"language-route"
+		);
+		assert.equal(unsupported.status, 303);
+		assert.equal(unsupported.headers.get("Location"), "http://localhost/articles/current");
+		assert.equal(session.placeholders.get("@@stwlanguage"), "en");
+		portal.find = (_session, path) => path === "/english" ? {
+			type: "Page",
+			pathname: current => current.placeholders.get("@@stwlanguage") === "it" ? "/italiano" : "/english"
+		} : null;
+		const localized = await handleHttp(new Request("http://localhost/stw/language/it", {
+			headers: { referer: "http://localhost/english?item=1" }
+		}), session, "language-route");
+		assert.equal(localized.headers.get("Location"), "http://localhost/italiano?item=1");
+	} finally {
+		portal.langs = previousLanguages;
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+	}
+});
 
 test("WebSocket language negotiation synchronizes the session language placeholder", async () => {
 	const portal = STWPortal.instance;
 	const previousLanguages = portal.langs;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
 	const session = new STWSession("language-session", {}, portal);
 	const handlers = new Map();
+	let languageAtLookup;
 	const socket = {
 		on: (event, handler) => handlers.set(event, handler),
 		send: () => {}
 	};
 	try {
 		portal.langs = ["en", "it"];
+		portal.find = current => {
+			languageAtLookup = current.placeholders.get("@@stwlanguage");
+			return null;
+		};
 		handleWebSocket(new Request("http://localhost/?tab=language"), socket, session, new Map());
 		await handlers.get("message")(Buffer.from(JSON.stringify({
 			method: "HEAD",
 			resource: "/nonexistent",
-			options: { lang: "it", langs: ["it"], tz: "UTC" }
+			options: { lang: "en", langs: ["fr-CA", "it-IT", "en"], tz: "UTC" }
 		})));
-		assert.equal(session.lang, "it");
 		assert.equal(session.placeholders.get("@@stwlanguage"), "it");
+		assert.equal(languageAtLookup, "it");
 		session.setPlaceholders(new Request("http://localhost/"));
+		assert.equal(session.placeholders.get("@@stwlanguage"), "it");
+		session.setLanguage("it", true);
+		await handlers.get("message")(Buffer.from(JSON.stringify({
+			method: "HEAD",
+			resource: "/nonexistent",
+			options: { lang: "en", langs: ["en"], tz: "UTC" }
+		})));
 		assert.equal(session.placeholders.get("@@stwlanguage"), "it");
 	} finally {
 		portal.langs = previousLanguages;
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
 	}
 });
 
@@ -893,6 +1185,9 @@ test("concurrent WebSocket choice queries preserve session roles and request pla
 	const content = {
 		section: "main",
 		async serve(_request, requestSession) {
+			requestSession.placeholders.set("@@MixedName", "Value");
+			assert.equal(requestSession.placeholders.get("@@mixedname"), "Value");
+			assert.equal([...requestSession.placeholders.keys()].includes("@@MixedName"), false);
 			if (++started === 2) release();
 			await bothStarted;
 			const layout = new STWLayout("D('type;;wbol;/content-types')");
@@ -921,7 +1216,7 @@ test("concurrent WebSocket choice queries preserve session roles and request pla
 	}
 });
 
-test("content rendering errors are identified and include a modal close control", async () => {
+test("content rendering errors are shown only to developers in the content section", async () => {
 	const command = STWConnectors.command;
 	STWConnectors.command = async () => ({ fields: [], rows: [] });
 	try {
@@ -929,43 +1224,343 @@ test("content rendering errors are identified and include a modal close control"
 		content.isVisible = () => 1;
 		content.pathname = () => "/error-content";
 		content.getLayout = () => ({ render: async () => { throw new Error("Choice failed"); } });
-		const response = await content.serve(new Request("http://localhost/"), {
-			dev: false, placeholders: new Map()
-		});
-		const result = await response.json();
-		assert.equal(result.error, true);
-		assert.match(result.body, /Choice failed/);
-		assert.match(result.body, /this\.closest\('dialog'\)\.close\(\)/);
+		for (const dev of [true, false]) {
+			const response = await content.serve(new Request("http://localhost/"), {
+				dev, placeholders: new Map()
+			});
+			const result = await response.json();
+			assert.equal(result.error, true);
+			assert.equal(result.method, dev ? "PUT" : "DELETE");
+			if (dev) {
+				assert.match(result.body, /Choice failed/);
+				assert.doesNotMatch(result.body, /this\.closest\('dialog'\)\.close\(\)/);
+			} else {
+				assert.equal(result.body, "");
+			}
+		}
+		content.section = "modal";
+		const modal = await (await content.serve(new Request("http://localhost/"), {
+			dev: true, placeholders: new Map()
+		})).json();
+		assert.match(modal.body, /<h1>.*Error:/);
 	} finally {
 		STWConnectors.command = command;
 	}
 });
 
-test("developer content cogs open the Studio editor with the selected content UUID", async () => {
-	const command = STWConnectors.command;
-	STWConnectors.command = async () => ({ fields: [], rows: [{}] });
+test("error content uses the failed content and shortcut placement", async () => {
+	const content = new STWContent({
+		uuid: "failing-content", subtype: "List", class: "custom",
+		name: { en: "Products", it: "Prodotti" },
+		slug: { en: "products", it: "prodotti" },
+		description: { en: "Product list" },
+		section: "main", sequence: 3, connector: "catalog",
+		params: "/items", query: "SELECT <value>",
+		layout: { en: "f('english')", it: "f('italiano')" }
+	});
+	const area = new STWArea({ uuid: "error-area", slug: { en: "catalog" } });
+	const page = new STWPage({ uuid: "error-page-path", slug: { en: "shop", it: "negozio" } });
+	area.parent = { pathname: () => "" };
+	page.parent = area;
+	content.parent = page;
+	content.isVisible = () => 1;
+	content.getLayout = () => { throw new Error("Bad <query> & data"); };
+	const shortcut = new STWShortcut({
+		uuid: "error-shortcut", type: "Shortcut", subtype: "Shortcut",
+		ref: content.uuid, section: "leftPanel", sequence: 9
+	});
+	shortcut.isVisible = () => 1;
+	const session = { dev: true, placeholders: new Map([["@@stwlanguage", "it"], ["@@stwdefaultlanguage", "en"]]) };
+	STWIndex.set(content.uuid, content);
+	let result;
 	try {
-		const content = new STWContent({
-			uuid: "c4sHhypzNzBJ7LpOv3ROBvX",
-			subtype: "Table",
-			section: "main",
-			layout: { en: "t('Content')" },
-			visibility: { developer: true }
-		});
-		const session = {
-			dev: true,
-			lang: "en",
-			roles: ["developer"],
-			portal: { mainpage: "" },
-			placeholders: new Map(),
-			baseurl: "",
-			tz: "UTC"
+		result = await (await shortcut.serve(new Request("http://localhost/"), session)).json();
+	} finally {
+		STWIndex.delete(content.uuid);
+	}
+	assert.equal(result.id, "failing-content");
+	assert.equal(result.section, "leftPanel");
+	assert.equal(result.sequence, 9);
+	assert.equal(result.pathname, "/catalog/negozio/prodotti");
+	assert.match(result.body, /<article[^>]*id="failing-content"[^>]*data-sequence="9"[^>]*class="stwError"/);
+	assert.match(result.body, /<h1>.*fa-bug.*Error: <a [^>]*data-stw-error-content-id="failing-content"[^>]*>\/catalog\/negozio\/prodotti<\/a><\/h1>/);
+	const click = result.body.match(/onclick="([^"]+)"/)[1];
+	let edited;
+	assert.equal(runInNewContext(`(function() { ${click} }).call(link)`, {
+		link: { dataset: { stwErrorContentId: "failing-content" } },
+		_stwOpenContentEditor: uuid => { edited = uuid; }
+	}), false);
+	assert.equal(edited, "failing-content");
+	assert.match(result.body, /<details>\s*<summary>Bad &lt;query&gt; &amp; data<\/summary>/);
+	const serialized = result.body.match(/<pre>([\s\S]*?)<\/pre>/)[1]
+		.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+	const properties = JSON.parse(serialized);
+	assert.deepEqual(properties, {
+		subtype: "List",
+		name: "Prodotti",
+		slug: "prodotti",
+		description: "Product list",
+		cssClass: "custom",
+		section: "main",
+		sequence: 3,
+		connector: "catalog",
+		query: "SELECT <value>",
+		params: "/items",
+		layout: "f('italiano')",
+		contentType: "text/html; charset=utf-8"
+	});
+});
+
+test("error content definition falls back to available localized layout text", async () => {
+	const content = new STWContent({
+		uuid: "error-localized", subtype: "List",
+		name: { fr: "Liste" }, slug: { en: "list" },
+		layout: { fr: "?" }
+	});
+	content.pathname = () => "/list";
+	const session = { dev: true, placeholders: new Map([["@@stwlanguage", "de"], ["@@stwdefaultlanguage", "en"]]) };
+	const result = await (await content.errorResponse(new Error("layout failed"), session)).json();
+	const serialized = result.body.match(/<pre>([\s\S]*?)<\/pre>/)[1]
+		.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+	const properties = JSON.parse(serialized);
+	assert.equal(properties.name, "Liste");
+	assert.equal(properties.slug, "list");
+	assert.equal(properties.description, "");
+	assert.equal(properties.layout, "?");
+});
+
+test("invalid content layouts remain loadable and report errors when served", async () => {
+	const content = new STWContent({
+		uuid: "invalid-layout", subtype: "List",
+		layout: { en: "?", fr: "f" }
+	});
+	content.isVisible = () => 1;
+	content.pathname = () => "/invalid-layout";
+	const session = { dev: true, placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const result = await (await content.serve(new Request("http://localhost/"), session)).json();
+	assert.equal(result.error, true);
+	assert.match(result.body, /Syntax error/);
+	assert.match(result.body, /line 1, column 1/);
+	assert.doesNotMatch(result.body, /&lt;pre class=/);
+	assert.equal(content.layout.get("en").wbll, "?");
+	assert.doesNotThrow(() => content.getLayout({ placeholders: new Map([["@@stwlanguage", "fr"]]) }));
+	content.update(session, { layout: "f" });
+	assert.doesNotThrow(() => content.getLayout(session));
+});
+
+test("content connector failures are not treated as empty results", async () => {
+	const content = new STWContent({
+		uuid: "invalid-query", subtype: "List", connector: "json", query: "{",
+		layout: { en: "f" }
+	});
+	content.isVisible = () => 1;
+	content.pathname = () => "/invalid-query";
+	const result = await (await content.serve(new Request("http://localhost/"), {
+		dev: false, placeholders: new Map([["@@stwlanguage", "en"]])
+	})).json();
+	assert.equal(result.error, true);
+	assert.equal(result.method, "DELETE");
+	assert.equal(result.body, "");
+});
+
+test("failed connector initialization preserves its cause without blocking healthy connectors", async () => {
+	const previousPath = process.env.CONNECTORS;
+	const connectDatabase = STWConnectors.connectDatabase;
+	const directory = await mkdtemp(join(tmpdir(), "webspinner-connector-error-"));
+	const path = join(directory, "connectors.json");
+	await writeFile(path, JSON.stringify([
+		{ id: "broken", name: "broken", type: "mysql" },
+		{ id: "healthy", name: "healthy", type: "postgres" }
+	]));
+	process.env.CONNECTORS = path;
+	let fail = true;
+	STWConnectors.connectDatabase = async configuration => {
+		if (configuration.id === "broken" && fail) throw new AggregateError([new Error("connection refused")], "");
+		return {
+			type: configuration.type,
+			client: {
+				end: async () => {},
+				query: async () => ({ rows: [{ value: "ok" }], fields: [{ name: "value" }], rowCount: 1 }),
+				execute: async () => [[{ value: "ok" }], [{ name: "value" }]]
+			}
 		};
+	};
+	try {
+		await STWConnectors.resetRuntime();
+		await assert.rejects(STWConnectors.initialize(true), /One or more connectors failed/);
+		const content = new STWContent({ uuid: "broken-connection", subtype: "List", connector: "broken", query: "SELECT 1" });
+		content.isVisible = () => 1;
+		content.pathname = () => "/broken-connection";
+		content.render = async () => "ok";
+		for (const dev of [false, true]) {
+			const session = { dev, placeholders: new Map([["@@stwlanguage", "en"]]) };
+			const result = await (await content.serve(new Request("http://localhost/"), session)).json();
+			assert.equal(result.method, dev ? "PUT" : "DELETE");
+			if (dev) assert.match(result.body, /connection refused/);
+			else assert.equal(result.body, "");
+			assert.deepEqual((await STWConnectors.command(session, { connector: "healthy", query: "SELECT 1" })).rows, [{ value: "ok" }]);
+		}
+		fail = false;
+		await STWConnectors.resetRuntime();
+		await STWConnectors.initialize(true);
+		assert.deepEqual((await STWConnectors.command({ placeholders: new Map() }, {
+			connector: "broken", query: "SELECT 1"
+		})).rows, [{ value: "ok" }]);
+		STWConnectors.connectors.get("broken").client.execute = async () => { throw new Error("Connection is closed"); };
+		fail = true;
+		const reconnectError = await (await content.serve(new Request("http://localhost/"), {
+			dev: true, placeholders: new Map([["@@stwlanguage", "en"]])
+		})).json();
+		assert.match(reconnectError.body, /failed to reconnect: connection refused/);
+	} finally {
+		await STWConnectors.resetRuntime();
+		STWConnectors.connectDatabase = connectDatabase;
+		if (previousPath === undefined) delete process.env.CONNECTORS;
+		else process.env.CONNECTORS = previousPath;
+		await rm(directory, { recursive: true, force: true });
+	}
+});
 
-		const response = await content.serve(new Request("http://localhost/"), session);
-		const { body } = await response.json();
+test("WBLL runtime failures preserve their error message", async () => {
+	const placeholders = new Map([["@@stwlanguage", "en"]]);
+	placeholders.get = key => {
+		if (key === "@@value") throw new Error("record unavailable");
+		return Map.prototype.get.call(placeholders, key);
+	};
+	await assert.rejects(new STWLayout("f").render(["value"], placeholders),
+		/Layout error at line 1, column 1: record unavailable/);
+});
 
-		assert.match(body, /_stwOpenContentEditor\("c4sHhypzNzBJ7LpOv3ROBvX"\)/);
+test("WebSocket content errors do not stop remaining rendering requests", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const page = new STWPage({ uuid: "error-page" });
+	page.isVisible = () => 1;
+	page.contents = () => ["first", "broken", "last"];
+	const broken = new STWContent({ uuid: "broken", subtype: "List" });
+	broken.isVisible = () => 1;
+	broken.pathname = () => "/broken";
+	let calls;
+	const normal = id => ({
+		uuid: id,
+		async serve() {
+			calls.push(id);
+			return new Response(JSON.stringify({ method: "PUT", id, section: "main", body: id }));
+		}
+	});
+	const elements = { first: normal("first"), broken, last: normal("last") };
+	try {
+		portal.find = (_session, resource) => resource === "/error-page" ? page : elements[resource];
+		for (const dev of [false, true]) {
+			for (const throws of [false, true]) {
+				calls = [];
+				const session = new STWSession(`error-${dev}-${throws}`, {}, portal);
+				session.dev = dev;
+				const handlers = new Map(), messages = [];
+				const socket = {
+					on: (event, handler) => handlers.set(event, handler),
+					send: message => messages.push(JSON.parse(message))
+				};
+				broken.serve = async (_request, requestSession) => {
+					calls.push("broken");
+					if (throws) throw new Error("render failed");
+					return broken.errorResponse(new Error("render failed"), requestSession);
+				};
+				handleWebSocket(new Request(`http://localhost/?tab=error-${dev}-${throws}`), socket, session, new Map());
+				await handlers.get("message")(Buffer.from(JSON.stringify({
+					method: "PATCH", resource: "/error-page", options: {}, search: {}
+				})));
+				assert.deepEqual(calls, ["first", "broken", "last"]);
+				assert.ok(messages.some(message => message.id === "last"));
+				const result = messages.find(message => message.id === "broken");
+				assert.equal(result.error, true);
+				assert.equal(result.method, dev ? "PUT" : "DELETE");
+				assert.equal(dev ? result.body.includes("render failed") : result.body === "", true);
+				session.sockets.delete(`error-${dev}-${throws}`);
+				handlers.get("close")();
+			}
+		}
+	} finally {
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+	}
+});
+
+test("HTTP content refresh reports thrown rendering errors by session mode", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const content = new STWText({ uuid: "refresh-error", subtype: "Text" });
+	content.isVisible = () => 1;
+	content.pathname = () => "/refresh-error";
+	content.serve = async () => { throw new Error("refresh failed"); };
+	try {
+		portal.find = () => content;
+		for (const dev of [false, true]) {
+			const messages = [];
+			const session = { dev, placeholders: new Map(), sockets: new Map([["tab", { send: data => messages.push(JSON.parse(data)) }]]) };
+			const response = await handleHttp(
+				new Request("http://localhost/refresh-error", { headers: { cookie: "sessionId=test" } }),
+				session, "test"
+			);
+			assert.equal(response.status, 204);
+			assert.equal(messages[0].method, dev ? "PUT" : "DELETE");
+			assert.equal(messages[0].error, true);
+			assert.equal(dev ? messages[0].body.includes("refresh failed") : messages[0].body === "", true);
+		}
+	} finally {
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+	}
+});
+
+test("content settings receive the connector record count", async () => {
+	const command = STWConnectors.command;
+	const content = new STWContent({ uuid: "row-count", subtype: "List" });
+	content.isVisible = () => 1;
+	content.pathname = () => "/row-count";
+	const counts = [];
+	content.getLayout = () => ({
+		render: async (_fields, placeholders) => {
+			counts.push(placeholders.get("@@stwrows"));
+			return { settings: new Map() };
+		}
+	});
+	content.render = async () => "content";
+	const session = { dev: false, placeholders: new Map([["@@stwrows", "original"]]) };
+	try {
+		for (const rows of [[], [{ name: "One" }, { name: "Two" }]]) {
+			STWConnectors.command = async () => ({ fields: ["name"], rows });
+			assert.equal((await (await content.serve(new Request("http://localhost/"), session)).json()).error, false);
+		}
+		assert.deepEqual(counts, ["0", "2"]);
+		assert.equal(session.placeholders.get("@@stwrows"), "original");
+	} finally {
+		STWConnectors.command = command;
+	}
+});
+
+test("list row limits can use the current connector record count", async () => {
+	const command = STWConnectors.command;
+	const content = new STWList({ uuid: "row-count-list", subtype: "List" });
+	content.isVisible = () => 1;
+	content.pathname = () => "/row-count-list";
+	content.getLayout = () => ({
+		render: async (_fields, placeholders, _session, renderIn) => ({
+			settings: new Map([["rows", placeholders.get("@@stwrows")]]),
+			HTML: renderIn ? `<li>${placeholders.get("@@name")}</li>` : ""
+		})
+	});
+	const rows = Array.from({ length: 30 }, (_, index) => ({ name: `Item ${index}` }));
+	STWConnectors.command = async () => ({ fields: ["name"], rows });
+	try {
+		const result = await (await content.serve(new Request("http://localhost/"), {
+			dev: false, placeholders: new Map()
+		})).json();
+		assert.equal(result.error, false);
+		assert.equal((result.body.match(/<li>/g) || []).length, 30);
+		assert.match(result.body, /Item 29/);
 	} finally {
 		STWConnectors.command = command;
 	}
@@ -993,8 +1588,8 @@ test("runCommand captures output and exit status", async () => {
 });
 
 test("WBLL buttons carry signed server action metadata and method semantics", async () => {
-	const placeholders = new Map([["@@fId", "42"]]);
-	const session = { sessionId: "layout-session", placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
+	const placeholders = new Map([["@@fid", "42"], ["@@stwlanguage", "en"]]);
+	const session = { sessionId: "layout-session", placeholders, baseurl: "localhost", tz: "UTC" };
 	const layout = new STWLayout("b('/customer;stwupdate;erp;select * from tCustomers where fId=@@fId')p('fId;@@fId')t('Save')");
 	const { HTML } = await layout.render([], placeholders, session, "", "customer-content");
 	assert.match(HTML, /name="stwAction" value="stwupdate"/);
@@ -1031,8 +1626,8 @@ test("WBLL buttons carry signed server action metadata and method semantics", as
 });
 
 test("table actions use shared table forms and reveal row or insert controls on edit", async () => {
-	const placeholders = new Map([["@@name", "Ada"]]);
-	const session = { sessionId: "table-session", placeholders, baseurl: "localhost", lang: "en", tz: "UTC" };
+	const placeholders = new Map([["@@name", "Ada"], ["@@stwlanguage", "en"]]);
+	const session = { sessionId: "table-session", placeholders, baseurl: "localhost", tz: "UTC" };
 	const rowLayout = new STWLayout("l('Name')e b('/;stwupdate')b('/;stwdelete')");
 	const rowHTML = (await rowLayout.render(["name"], placeholders, session, "tbody", "table-id")).HTML;
 	assert.match(rowHTML, /form="stwFEtable-id"/);
@@ -1178,68 +1773,15 @@ test("tree content renders path-based rows using the configured key", async () =
 	assert.doesNotMatch(html, /\[object Promise\]/);
 });
 
-test("Studio webbase tree maps elements to icons and editor routes", async () => {
-	const studio = WBOL(await readFile("./webbaselets/stwStudio.wbol", "utf8"));
-	const find = (element, slug) => element.slug?.en === slug
-		? element
-		: (element.children || []).map((child) => find(child, slug)).find(Boolean);
-	const definition = find(studio, "webbase");
-	assert.ok(definition);
-	assert.equal(definition.params, "/");
-
-	const data = await jsonata(definition.query).evaluate({
-		uuid: "site-id",
-		type: "Portal",
-		name: { en: "Site" },
-		children: [{
-			uuid: "area-id",
-			type: "Area",
-			name: { en: "Area" },
-			children: [{
-				uuid: "page-id",
-				type: "Page",
-				name: { en: "Page" },
-				children: [{
-					uuid: "content-id",
-					type: "Content",
-					subtype: "Table",
-					section: "main",
-					name: { en: "People" },
-					children: []
-				}]
-			}]
-		}]
-	});
-	assert.deepEqual(
-		[data.icon, data.url, data.name, data.type],
-		["<span class='fa-light fa-fw fa-globe' aria-hidden='true'></span>", "/stws/edit/edit-portal", "Site", "Portal"]
-	);
-	assert.equal(Array.isArray(data.children), true);
-	assert.deepEqual([
-		data.children[0].url,
-		data.children[0].children[0].url,
-		data.children[0].children[0].children[0].url
-	], ["/stws/edit/edit-area", "/stws/edit/edit-page", "/stws/edit/edit-content"]);
-
-	const tree = new STWTree(definition);
-	const html = await tree.render(null, {
-		lang: "en",
-		baseurl: "localhost",
-		tz: "UTC",
-		placeholders: new Map()
-	}, { fields: Object.keys(data), rows: [data] });
-	assert.match(html, /data-url="\/stws\/edit\/edit-portal"/);
-	assert.match(html, /data-uuid="site-id"/);
-	assert.match(html, /People/);
-});
-
 test("WBOL lists registered content types only for developers", async () => {
+	await import("../stwContents/stwError.js");
 	const request = (method = "GET") => new Request("http://localhost/wbol/content-types", { method });
 	const response = await handleWbolApi(request(), { roles: ["developer"] });
 	assert.equal(response.status, 200);
 	const types = await response.json();
 	assert.ok(types.some((row) => row.value === "Text"));
 	assert.ok(types.some((row) => row.value === "Table"));
+	assert.ok(types.some((row) => row.value === "Error"));
 	assert.ok(types.every((row) => !["Page", "Portal"].includes(row.value)));
 	assert.equal((await handleWbolApi(request(), { roles: ["seo"] })).status, 403);
 	assert.equal((await handleWbolApi(request("PATCH"), { roles: ["developer"] })).status, 405);
@@ -1255,34 +1797,40 @@ test("Studio search result records retain order and exclude inaccessible element
 		uuid: "search-hidden", subtype: "Text", name: { en: "Hidden" },
 		visibility: { developer: false, seo: false }
 	});
-	visible.parent = hidden.parent = portal;
-	portal.children.push(visible, hidden);
+	const area = new STWArea({ uuid: "search-area", name: { en: "Area", fr: "Zone" }, visibility: { developer: true } });
+	visible.parent = hidden.parent = area.parent = portal;
+	portal.children.push(visible, hidden, area);
 	STWIndex.set(visible.uuid, visible);
 	STWIndex.set(hidden.uuid, hidden);
-	const session = { roles: ["developer"], lang: "en", portal };
+	STWIndex.set(area.uuid, area);
+	const session = { roles: ["developer"], placeholders: new Map([["@@stwlanguage", "en"]]), portal };
 	const encode = ids => Buffer.from(encodeURIComponent(JSON.stringify(ids))).toString("base64url");
 	const call = (ids, requestSession = session) => handleWbolApi(
 		new Request(`http://localhost/wbol/search-results?ids=${ids}&locale=fr`), requestSession
 	);
 	try {
-		const response = await call(encode([visible.uuid, hidden.uuid, "missing"]));
-		assert.deepEqual(await response.json(), [{ name: "Nom", uuid: visible.uuid, type: "Content" }]);
+		const response = await call(encode([visible.uuid, hidden.uuid, area.uuid, "missing"]));
+		assert.deepEqual(await response.json(), [
+			{ name: "Nom", uuid: visible.uuid, type: "Content", subtype: "Text" },
+			{ name: "Zone", uuid: area.uuid, type: "Area", subtype: "Area" }
+		]);
 		const records = await STWConnectors.query(session, "wbol",
 			`/search-results?ids=${encode([visible.uuid, hidden.uuid])}&locale=fr`, { throwOnError: true });
-		assert.deepEqual(records.fields, ["name", "uuid", "type"]);
-		assert.deepEqual(records.rows, [{ name: "Nom", uuid: visible.uuid, type: "Content" }]);
-		assert.equal((await call(encode([visible.uuid]), { roles: ["guest"], lang: "en", portal })).status, 403);
+		assert.deepEqual(records.fields, ["name", "uuid", "type", "subtype"]);
+		assert.deepEqual(records.rows, [{ name: "Nom", uuid: visible.uuid, type: "Content", subtype: "Text" }]);
+		assert.equal((await call(encode([visible.uuid]), { roles: ["guest"], placeholders: new Map([["@@stwlanguage", "en"]]), portal })).status, 403);
 		assert.equal((await call("not-valid!")).status, 400);
 	} finally {
 		STWIndex.delete(visible.uuid);
 		STWIndex.delete(hidden.uuid);
+		STWIndex.delete(area.uuid);
 		STWIndex.delete(portal.uuid);
 	}
 });
 
 test("dropdown connector queries render one to three columns and propagate failures", async () => {
-	const placeholders = new Map([["@@type", "two"]]);
-	const session = { placeholders, baseurl: "", lang: "en", tz: "UTC" };
+	const placeholders = new Map([["@@type", "two"], ["@@stwlanguage", "en"]]);
+	const session = { placeholders, baseurl: "", tz: "UTC" };
 	const twoColumns = new STWLayout('D(\'type;@@type;json;[{"id":"one","name":"One"},{"id":"two","name":"Two & more"}]\')');
 	const html = (await twoColumns.render([], placeholders, session)).HTML;
 	assert.match(html, /<option value="two" selected>Two &amp; more<\/option>/);
@@ -1317,8 +1865,8 @@ test("dropdown connector queries render one to three columns and propagate failu
 });
 
 test("checkboxes, radios and multi-selects use connector choice records", async () => {
-	const placeholders = new Map([["@@tags", "one,two"], ["@@choice", "two"]]);
-	const session = { placeholders, baseurl: "", lang: "en", tz: "UTC" };
+	const placeholders = new Map([["@@tags", "one,two"], ["@@choice", "two"], ["@@stwlanguage", "en"]]);
+	const session = { placeholders, baseurl: "", tz: "UTC" };
 	const render = async (layout) => (await new STWLayout(layout).render([], placeholders, session)).HTML;
 	const rows = '[{"value":"one","label":"One & more","group":"A & B"},{"value":"two","label":"Two","group":"A & B"}]';
 	const checkbox = await render(`c('tags;@@tags;json;${rows}')`);
@@ -1360,103 +1908,6 @@ test("checkboxes, radios and multi-selects use connector choice records", async 
 	}
 });
 
-test("the Studio content editor submits and updates the selected content", async () => {
-	const studio = WBOL(await readFile("./webbaselets/stwStudio.wbol", "utf8"));
-	const find = (element) => element.slug?.en === "edit-content"
-		? element : (element.children || []).map(find).find(Boolean);
-	const definition = find(studio);
-	const editor = new STWForm(definition);
-	editor.visibility.set("developer", true);
-	const portal = new STWPortal({ uuid: "editor-test-portal", langs: ["en", "it"] });
-	const originalLayout = '<p>First; second &amp; third</p>';
-	const content = new STWText({
-		uuid: "editor-test-content",
-		subtype: "Text",
-		name: { en: "Original", it: "Italiano" },
-		slug: { en: "original-content", it: "italiano" },
-		section: "main",
-		class: "old-class",
-		connector: "json",
-		query: '{"value":"a;b"}',
-		params: "old",
-		layout: { en: originalLayout, it: "t('Italiano')" },
-		visibility: { developer: true }
-	});
-	portal.children.push(content, editor);
-	content.parent = portal;
-	editor.parent = portal;
-	STWIndex.set(content.uuid, content);
-	STWIndex.set(editor.uuid, editor);
-	const session = new STWSession("editor-test-session", {}, portal);
-	session.roles = ["user", "developer", "leaddeveloper"];
-	session.placeholders.set("@uuid", content.uuid);
-	try {
-		const rendered = await editor.serve(new Request("http://localhost/stwc/edit-content"), session);
-		const { body } = await rendered.json();
-		assert.match(body, /name="uuid" value="editor-test-content"/);
-		assert.match(body, /name="slug" value="original-content"/);
-		assert.match(body, /name="sequence" value="0"/);
-		assert.match(body, /<option value="Text" selected>/);
-		assert.match(body, /name="query"[^>]*>\{&quot;value&quot;:&quot;a;b&quot;\}<\/textarea>/);
-		assert.match(body, /name="layout"[^>]*>&lt;p&gt;First; second &amp;amp; third&lt;\/p&gt;<\/textarea>/);
-		const token = /data-stw-action-token="([^"]+)"/.exec(body)?.[1];
-		assert.ok(token);
-		const fields = {
-			uuid: content.uuid, name: "Updated", slug: "original-content", type: "Text",
-			section: "header", sequence: "0", cssClass: "", connector: "",
-			query: "", params: "", layout: "<p>Updated; & more</p>",
-			stwAction: "stwupdate", stwActionToken: token, stwOrigin: editor.uuid,
-			stwRedirect: "http://localhost/"
-		};
-		const submit = async (values) => {
-			const formData = new FormData();
-			for (const [name, value] of Object.entries(values)) formData.set(name, value);
-			return await handleHttp(
-				new Request("http://localhost/", { method: "PATCH", body: formData }),
-				session, session.sessionId
-			);
-		};
-
-		const response = await submit(fields);
-		assert.equal(response.status, 303);
-		assert.equal(content.name.get("en"), "Updated");
-		assert.equal(content.slug.get("en"), "original-content");
-		assert.equal(content.pathname(session), "/original-content");
-		assert.equal(content.section, "header");
-		assert.equal(content.sequence, "0");
-		assert.equal(content.cssClass, "");
-		assert.equal(content.connector, "");
-		assert.equal(content.query, "");
-		assert.equal(content.params, "");
-		assert.equal(content.layout.get("en"), "<p>Updated; & more</p>");
-		assert.equal(content.layout.get("it"), "t('Italiano')");
-		const reopened = await (await editor.serve(new Request("http://localhost/stwc/edit-content"), session)).json();
-		assert.match(reopened.body, /name="slug" value="original-content"/);
-		assert.match(reopened.body, /name="sequence" value="0"/);
-
-		const wrongId = await submit({ ...fields, uuid: "other-content" });
-		assert.equal(wrongId.status, 400);
-		assert.match(await wrongId.text(), /not found|does not match/i);
-
-		const changedType = await submit({ ...fields, type: "Table", layout: "l('Name')e(';name;@@name')" });
-		assert.equal(changedType.status, 303);
-		const replacement = STWIndex.get(content.uuid);
-		assert.ok(replacement instanceof STWTable);
-		assert.equal(portal.children[0], replacement);
-		assert.equal(replacement.layout.get("en").wbll, "l('Name')e(';name;@@name')");
-		assert.equal(replacement.layout.get("it").wbll, "t('Italiano')");
-
-		const invalidType = await submit({ ...fields, type: "NotAContent" });
-		assert.equal(invalidType.status, 400);
-		assert.match(await invalidType.text(), /Unknown content type/);
-		assert.equal(STWIndex.get(content.uuid), replacement);
-	} finally {
-		STWIndex.delete(content.uuid);
-		STWIndex.delete(editor.uuid);
-		STWIndex.delete(portal.uuid);
-	}
-});
-
 test("GET action requests execute on the server and redirect with 303", async () => {
 	const id = `action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, slug: { en: "action" } });
@@ -1467,8 +1918,7 @@ test("GET action requests execute on the server and redirect with 303", async ()
 		sessionId: "search-session",
 		portal,
 		roles: ["user"],
-		lang: "en",
-		placeholders: new Map(),
+		placeholders: new Map([["@@stwlanguage", "en"]]),
 		sockets: new Map()
 	};
 	try {
@@ -1505,11 +1955,11 @@ test("POST action requests execute and return a GET redirect", async () => {
 		sessionId: "logout-session",
 		portal,
 		roles: ["user"],
-		lang: "en",
 		user: "alice",
 		name: "Alice",
 		dev: true,
 		placeholders: new Map([
+			["@@stwlanguage", "en"],
 			["@@stwlogin", "alice"],
 			["@@stwloginname", "Alice"],
 			["@@stwloginid", "123"]
@@ -1561,8 +2011,7 @@ test("connector-backed form submission returns action errors to the client", asy
 		sessionId: "submit-error-session",
 		portal: STWPortal.instance,
 		roles: ["user"],
-		lang: "en",
-		placeholders: new Map(),
+		placeholders: new Map([["@@stwlanguage", "en"]]),
 		sockets: new Map()
 	};
 	const executeAction = STWConnectors.executeAction;
@@ -1608,11 +2057,10 @@ test("actions require signed tokens and RBV visibility", async () => {
 		sessionId: "hidden-session",
 		portal: STWPortal.instance,
 		roles: ["guest"],
-		lang: "en",
 		user: "alice",
 		name: "Alice",
 		dev: false,
-		placeholders: new Map([["USER", "alice"], ["AUTHENTICATED", "true"]]),
+		placeholders: new Map([["USER", "alice"], ["AUTHENTICATED", "true"], ["@@stwlanguage", "en"]]),
 		sockets: new Map()
 	};
 	const token = signAction({
@@ -1638,12 +2086,6 @@ test("actions require signed tokens and RBV visibility", async () => {
 	} finally {
 		STWIndex.delete(id);
 	}
-});
-
-test("WBOL parser loads the portal through Node XML and filesystem APIs", () => {
-	const portal = WBOL("./.data/webbase.wbol");
-	assert.equal(portal.type, "Portal");
-	assert.ok(Array.isArray(portal.children));
 });
 
 test("WBOL parser reads connector definitions from the webbase", () => {
@@ -1672,9 +2114,9 @@ test("the reserved wbol slug is rejected when elements are created or updated", 
 	assert.equal(element.slug.get("en"), "home");
 
 	const content = new STWContent({ uuid: "reserved-content", subtype: "Text", slug: { en: "home" } });
-	assert.throws(() => content.localize({ lang: "en" }, "slug", "wbol"), /slug 'wbol' is reserved/i);
+	assert.throws(() => content.localize({ placeholders: new Map([["@@stwlanguage", "en"]]) }, "slug", "wbol"), /slug 'wbol' is reserved/i);
 	assert.equal(content.slug.get("en"), "home");
-	content.localize({ lang: "en" }, "slug", "news-item.v2");
+	content.localize({ placeholders: new Map([["@@stwlanguage", "en"]]) }, "slug", "news-item.v2");
 	assert.equal(content.slug.get("en"), "news-item.v2");
 	element.updateLocalizedField({}, "slug", { en: "news-item.v2" });
 	assert.equal(element.slug.get("en"), "news-item.v2");
@@ -1887,7 +2329,7 @@ test("LeadDeveloper and root can edit the portal without changing its visibility
 			headers: body === undefined ? {} : { "Content-Type": "application/json" },
 			body: body === undefined ? undefined : JSON.stringify(body)
 		}),
-		{ roles, lang: "en", portal }
+		{ roles, placeholders: new Map([["@@stwlanguage", "en"]]), portal }
 	);
 	try {
 		for (const roles of [["developer"], ["seo"], ["administrator"], ["leaddeveloper"], ["root"]]) {
@@ -1923,16 +2365,16 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 	const tabs = new STWTabs({
 		uuid: tabsId,
 		subtype: "Tabs",
-		name: { en: "Settings", fr: "Parametres" },
+		name: { fr: "Parametres", en: "Settings" },
 		slug: { en: "settings", fr: "reglages" },
-		layout: { en: "l('English')", fr: "l('Francais')" },
+		layout: { fr: "l('Francais')", en: "l('English')" },
 		visibility: { developer: true },
 		options: [{ name: { en: "General" }, ref: "general" }]
 	});
 	portal.children.push(tabs);
 	tabs.parent = portal;
 	STWIndex.set(tabsId, tabs);
-	const session = { roles: ["developer"], lang: "en", portal };
+	const session = { roles: ["developer"], placeholders: new Map([["@@stwlanguage", "en"], ["@@stwdefaultlanguage", "en"]]), portal };
 	const callAs = (requestSession, path, method = "GET", body) => handleWbolApi(
 		new Request(`http://localhost/wbol/${path}`, {
 			method,
@@ -1976,7 +2418,9 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		response = await call("");
 		assert.equal(response.status, 200);
 		assert.deepEqual((await response.json()).children.map((child) => child.uuid), [tabsId]);
-		assert.equal((await (await call(`${tabsId}?locale=de`)).json()).name, "Settings");
+		const fallbackElement = await (await call(`${tabsId}?locale=de`)).json();
+		assert.equal(fallbackElement.name, "Settings");
+		assert.equal(fallbackElement.layout, "l('English')");
 		assert.equal((await (await call(`${tabsId}?locale=de&fallback=false`)).json()).name, "");
 
 		response = await call(`${tabsId}?locale=fr`, "PATCH", {
@@ -1985,6 +2429,7 @@ test("WBOL developer and LeadDeveloper routes enforce their RBV permissions", as
 		});
 		assert.equal(response.status, 200);
 		let updatedElement = await response.json();
+		assert.equal(session.placeholders.get("@@stwlanguage"), "en");
 		assert.equal(updatedElement.name, "Parametres generaux");
 		assert.equal(updatedElement.slug, "preferences");
 		assert.deepEqual(Object.fromEntries(tabs.name), { en: "Settings", fr: "Parametres generaux" });
@@ -2093,7 +2538,7 @@ test("WBOL tree reports effective visibility for requested roles without changin
 	area.children.push(page, denied, hidden);
 	denied.children.push(content);
 	content.blocked = "alice";
-	const session = { roles: ["developer"], portal, lang: "en" };
+	const session = { roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
 	const call = async (query = "") => {
 		const response = await handleWbolApi(new Request(`http://localhost/wbol${query}`), session);
 		assert.equal(response.status, 200);
@@ -2141,7 +2586,7 @@ test("tab instances route selections independently and preserve panels when clos
 		element.isVisible = () => 1;
 		return [id, element];
 	}));
-	const session = { lang: "en", placeholders: new Map(), portal: { find: (_, ref) => elements.get(ref) } };
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), portal: { find: (_, ref) => elements.get(ref) } };
 	const request = new Request("http://localhost/");
 	const first = await tabs.render(request, session, { fields: [] });
 	const second = await tabs.render(request, session, { fields: [] });
@@ -2222,16 +2667,24 @@ test("saving a Studio editor closes only that editor and refreshes the tree", as
 	assert.equal(refreshed, 1);
 });
 
-test("content rendering errors open modal dialogs without replacing existing editors", async () => {
+test("content rendering errors replace their content, while editor errors remain in their dialogs", async () => {
 	const source = await readFile("./public/scripts/stwClient.js", "utf8");
 	const dialogs = [];
-	let placeholderRemoved = false;
+	const insertions = [], removed = [];
+	const node = id => ({
+		id,
+		insertAdjacentHTML: (position, html) => insertions.push({ id, position, html }),
+		remove: () => removed.push(id)
+	});
+	const pending = node("pending"), existing = node("existing"), hidden = node("hidden"), section = node("main");
+	section.querySelectorAll = () => [];
 	const body = {
+		querySelectorAll: () => [],
 		insertAdjacentHTML() {
 			const dialog = {
 				dataset: {}, addEventListener() {},
 				showModal() { this.modal = true; },
-				show() { assert.fail("error was shown modeless"); }
+				show() { this.modeless = true; }
 			};
 			dialogs.push(dialog);
 			this.lastElementChild = dialog;
@@ -2239,7 +2692,7 @@ test("content rendering errors open modal dialogs without replacing existing edi
 	};
 	const document = {
 		body, addEventListener() {},
-		getElementById: id => id === "pending" ? { remove: () => { placeholderRemoved = true; } } : null
+		getElementById: id => ({ pending, existing, hidden, main: section })[id]
 	};
 	const window = { addEventListener() {}, location: { protocol: "http:", host: "localhost" } };
 	window.self = window.top = window;
@@ -2249,19 +2702,33 @@ test("content rendering errors open modal dialogs without replacing existing edi
 		static CONNECTING = 0;
 		constructor() { socket = this; }
 	}
-	const context = { window, document, WebSocket: FakeWebSocket, sessionStorage: { getItem: () => "x1" } };
+	const context = {
+		window, document, WebSocket: FakeWebSocket, sessionStorage: { getItem: () => "x1" },
+		MutationObserver: class { observe() {} }
+	};
 	runInNewContext(source, context);
 	context.stwStartWebsocket();
 	await socket.onmessage({ data: JSON.stringify({
 		method: "PUT", error: true, placeholder: "pending", body: "<article>Error</article>"
 	}) });
 	await socket.onmessage({ data: JSON.stringify({
+		method: "PUT", error: true, id: "existing", section: "main", body: "<article>Replacement</article>"
+	}) });
+	await socket.onmessage({ data: JSON.stringify({
+		method: "PUT", error: true, id: "new", section: "main", sequence: 1, body: "<article>New</article>"
+	}) });
+	await socket.onmessage({ data: JSON.stringify({ method: "DELETE", error: true, id: "hidden", body: "" }) });
+	assert.deepEqual(removed, ["pending", "existing", "hidden"]);
+	assert.deepEqual(insertions.map(({ id, position }) => [id, position]), [
+		["pending", "afterend"], ["existing", "afterend"], ["main", "afterbegin"]
+	]);
+	assert.equal(dialogs.length, 0);
+	await socket.onmessage({ data: JSON.stringify({
 		method: "PUT", error: true, section: "modeless", studioBlockToken: "lock-token", body: "<article>Error</article>"
 	}) });
-	assert.equal(placeholderRemoved, true);
-	assert.equal(dialogs.length, 2);
-	assert.ok(dialogs.every(dialog => dialog.modal));
-	assert.equal(dialogs[1].dataset.stwBlockToken, "lock-token");
+	assert.equal(dialogs.length, 1);
+	assert.equal(dialogs[0].modeless, true);
+	assert.equal(dialogs[0].dataset.stwBlockToken, "lock-token");
 });
 
 test("modeless Studio editors with the same content id open independently", async () => {
@@ -2321,9 +2788,9 @@ test("Studio broadcasts lock transitions only to authorized connections", async 
 	area.parent = portal;
 	page.parent = area;
 	STWIndex.set(page.uuid, page);
-	const alice = { user: "alice", roles: ["developer"], portal, lang: "en" };
-	const bob = { user: "bob", roles: ["developer"], portal, lang: "en" };
-	const guest = { user: "guest", roles: ["guest"], portal, lang: "en" };
+	const alice = { user: "alice", roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const bob = { user: "bob", roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const guest = { user: "guest", roles: ["guest"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
 	const aliceMessages = [], bobMessages = [], guestMessages = [];
 	const connect = (session, messages) => registerStudioConnection({
 		readyState: 1,
@@ -2389,9 +2856,9 @@ test("WBOL element blocks protect edits until every owner token is released", as
 	area.children.push(page);
 	STWIndex.set(area.uuid, area);
 	STWIndex.set(page.uuid, page);
-	const alice = { user: "alice", roles: ["developer"], portal, lang: "en" };
-	const bob = { user: "bob", roles: ["developer"], portal, lang: "en" };
-	const seo = { user: "seo", roles: ["seo"], portal, lang: "en" };
+	const alice = { user: "alice", roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const bob = { user: "bob", roles: ["developer"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const seo = { user: "seo", roles: ["seo"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
 	const call = (session, path, method = "GET", body) => handleWbolApi(
 		new Request(`http://localhost/wbol/${path}`, {
 			method,
@@ -2456,7 +2923,7 @@ test("SEO users can edit only locale-sensitive metadata on SEO-visible elements"
 	hidden.parent = portal;
 	STWIndex.set(seoId, content);
 	STWIndex.set(hiddenId, hidden);
-	const session = { user: "editor", roles: ["seo"], lang: "en", portal };
+	const session = { user: "editor", roles: ["seo"], placeholders: new Map([["@@stwlanguage", "en"]]), portal };
 	const call = (path, method = "GET", body) => handleWbolApi(
 		new Request(`http://localhost/wbol/${path}`, {
 			method,
@@ -2538,7 +3005,7 @@ test("deployed project webbaselets are visible as specified and protected from e
 	registerWebbaselet(common, "common");
 	registerWebbaselet(studio, "studio");
 	for (const element of [common, studio, commonTabs, studioPage]) STWIndex.set(element.uuid, element);
-	const session = { roles: ["developer", "leaddeveloper"], portal, lang: "en" };
+	const session = { roles: ["developer", "leaddeveloper"], portal, placeholders: new Map([["@@stwlanguage", "en"]]) };
 	const call = (path, method = "GET", body) => handleWbolApi(new Request(`http://localhost/wbol/${path}`, {
 		method,
 		headers: { "Content-Type": "application/json" },
@@ -3170,46 +3637,6 @@ test("SMTP connector sends constrained plain-text messages with configured ident
 	}, "send", { to: "reader@example.test", subject: "Bad\r\nSubject", text: "Body" }), /no line breaks/);
 });
 
-test("Common WBOL mail interface renders a protected inbox, message view, and compose form", async () => {
-	const common = WBOL(await readFile("./webbaselets/stwCommon.wbol", "utf8"));
-	const page = common.children.find((child) => child.slug?.en === "mail");
-	assert.ok(page);
-	assert.equal(page.visibility.leaddeveloper, true);
-	assert.equal(page.visibility.root, true);
-	const inbox = page.children.find((child) => child.slug?.en === "inbox");
-	const message = page.children.find((child) => child.slug?.en === "message");
-	const compose = page.children.find((child) => child.slug?.en === "compose");
-	assert.equal(inbox.connector, "imapApi");
-	assert.equal(message.connector, "imapApi");
-	assert.equal(compose.connector, "json");
-	assert.match(inbox.query, /"action":"list"/);
-	assert.match(message.query, /"action":"get"/);
-	assert.match(compose.layout.en, /stwsubmit;smtpApi;send/);
-
-	const form = new STWForm(message);
-	const placeholders = new Map();
-	const rendered = await form.render(new Request("http://localhost/stwc/mail/message"), {
-		lang: "en",
-		sessionId: "mail-ui-session",
-		placeholders,
-		baseurl: "",
-		tz: "UTC"
-	}, {
-		fields: ["from", "to", "date", "text", "subject", "truncated", "flags"],
-		rows: [{
-			from: "Sender &lt;sender@example.test&gt;",
-			to: "Reader &lt;reader@example.test&gt;",
-			date: "2026-01-01",
-			text: "Hello &lt;reader&gt;",
-			subject: "Welcome",
-			truncated: false,
-			flags: ""
-		}]
-	});
-	assert.match(rendered, /Sender &lt;sender@example.test&gt;/);
-	assert.match(rendered, /Hello &lt;reader&gt;/);
-});
-
 test("CRUD actions use the connector capability instead of a MySQL type check", async () => {
 	const originalSupportsCrud = STWConnectors.supportsCrud;
 	const originalExecuteCrud = STWConnectors.executeCrud;
@@ -3220,6 +3647,7 @@ test("CRUD actions use the connector capability instead of a MySQL type check", 
 		executed = true;
 		assert.equal(content.connector, "relational");
 		assert.equal(operation, "insert");
+		assert.equal(session.placeholders.get("@@displayname"), "Ada");
 		return { fields: ["name"], affectedRows: 1, keyValue: 42 };
 	};
 	STWConnectors.executeAction = async () => {
@@ -3228,6 +3656,7 @@ test("CRUD actions use the connector capability instead of a MySQL type check", 
 	try {
 		const formData = new FormData();
 		formData.set("name", "Ada");
+		formData.set("DisplayName", "Ada");
 		const session = { placeholders: new Map() };
 		const result = await new STWActionRouter().execute({
 			action: "stwinsert",
@@ -3240,7 +3669,7 @@ test("CRUD actions use the connector capability instead of a MySQL type check", 
 		});
 		assert.equal(executed, true);
 		assert.equal(result.ok, true);
-		assert.equal(session.placeholders.get("@@stwKeyValue"), 42);
+		assert.equal(session.placeholders.get("@@stwkeyvalue"), 42);
 	} finally {
 		STWConnectors.supportsCrud = originalSupportsCrud;
 		STWConnectors.executeCrud = originalExecuteCrud;

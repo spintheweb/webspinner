@@ -28,9 +28,9 @@ class STWForm extends STWContent {
 		for (const row of records.rows) {
 			records.fields.forEach((field) => {
 				const value = row[field];
-				placeholders.set(`@@${field}`, value === 0 ? "0" : value || "");
+				placeholders.set(`@@${field.toLowerCase()}`, value === 0 ? "0" : value || "");
 			});
-			placeholders.set("@@stwOrigin", this.uuid);
+			placeholders.set("@@stworigin", this.uuid);
 			const rendered = await layout.render(records.fields, placeholders, session, "", this.uuid);
 			body += rendered.HTML;
 			hasEmbeddedContent ||= rendered.hasEmbeddedContent;

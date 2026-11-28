@@ -1,0 +1,26 @@
+.stwError {
+	padding: var(--padding-reduced) !important;
+	margin: var(--padding-reduced);
+	background-color: var(--error);
+	color: white;
+}
+
+.stwError h1 {
+	color: white;
+	line-height: 1.5rem;
+	border-bottom: thin solid white;
+	padding-bottom: 0.5rem;
+}
+
+.stwError h1 a {
+	color: inherit;
+}
+
+.stwError section pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.stwError dd {
+	margin: var(--padding);
+}

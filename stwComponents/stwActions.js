@@ -14,6 +14,7 @@
  */
 import { STWConnectors } from "./stwConnectors.js";
 import { STWSecurity } from "./stwSecurity.js";
+import { localizedValue } from "./stwLocalization.js";
 
 /**
  * @typedef {object} ActionContext
@@ -152,7 +153,7 @@ class STWActionRouter {
 	async handleCrud(ctx, operation) {
 		const { content, formData } = ctx;
 		const actionName = operation[0].toUpperCase() + operation.slice(1);
-		ctx.session.placeholders.set("@@stwKeyValue", "");
+		ctx.session.placeholders.set("@@stwkeyvalue", "");
 		const fail = (name, message, error) => ({
 			ok: false,
 			error: { name, message, ...(error?.stack ? { stack: error.stack } : {}) }
@@ -169,7 +170,7 @@ class STWActionRouter {
 			if (await STWConnectors.supportsCrud(connector)) {
 				let key = content?.key;
 				if (!key) {
-					const wbll = content?.layout?.get(ctx.session.lang)?.wbll || "";
+					const wbll = localizedValue(content?.layout, ctx.session)?.wbll || "";
 					const settings = /\\s\('([^']*)'\)/.exec(wbll)?.[1] || "";
 					key = /\bkey="([^"]+)"/.exec(settings)?.[1] ||
 						/\bWHERE\s+(?:[A-Za-z0-9_$]+\s*\.\s*)?`?([A-Za-z0-9_$]+)`?\s*=/i.exec(query)?.[1];
@@ -179,7 +180,7 @@ class STWActionRouter {
 				const method = operation === "insert" ? "PUT" : operation === "update" ? "PATCH" : "DELETE";
 				result = await STWConnectors.executeAction(session, connector, query, method, fields);
 			}
-			ctx.session.placeholders.set("@@stwKeyValue", result.keyValue ?? "");
+			ctx.session.placeholders.set("@@stwkeyvalue", result.keyValue ?? "");
 			const data = operation === "insert"
 				? { inserted: result.fields, affectedRows: result.affectedRows }
 				: operation === "update"
@@ -238,7 +239,7 @@ class STWActionRouter {
 	}
 
 	/**
-	 * Executes a connector command or a sibling ServerScript/ShellScript.
+	 * Executes a connector command or a sibling ServerScript.
 	 *
 	 * A connector argument executes immediately. Without one, the requested
 	 * action is resolved against scripts belonging to the originating page.
@@ -259,14 +260,14 @@ class STWActionRouter {
 			return { ok: false, error: { name: "NoPage", message: "Content has no parent page" } };
 		}
 		const scriptContent = page.children.find(
-			(child) => (child.subtype === "ServerScript" || child.subtype === "ShellScript") && (child.localize?.(session, "slug") === ctx.action.split(";")[1] || child.localize?.(session, "name") === ctx.action)
+			(child) => child.subtype === "ServerScript" && (child.localize?.(session, "slug") === ctx.action.split(";")[1] || child.localize?.(session, "name") === ctx.action)
 		);
 		if (!scriptContent) {
 			return {
 				ok: false,
 				error: {
 					name: "NoScript",
-					message: `No ServerScript/ShellScript found for action: ${ctx.action}`
+					message: `No ServerScript found for action: ${ctx.action}`
 				}
 			};
 		}
@@ -404,9 +405,9 @@ function submittedFields(formData) {
 function actionSession(session, formData) {
 	const placeholders = new Map(session.placeholders);
 	for (const [name, value] of formData.entries()) {
-		if (!name.startsWith("stw") && typeof value === "string") {
-			placeholders.set(`@@${name}`, value);
-			placeholders.set(`@${name}`, value);
+		if (!name.toLowerCase().startsWith("stw") && typeof value === "string") {
+			placeholders.set(`@@${name.toLowerCase()}`, value);
+			placeholders.set(`@${name.toLowerCase()}`, value);
 		}
 	}
 	return { ...session, placeholders };
@@ -426,7 +427,8 @@ function actionValue(argument, fallbackName, formData, session) {
 	const value = argument || `@@${fallbackName}`;
 	const match = /^@@?(.+)$/.exec(value);
 	if (match) {
-		return formData.get(match[1])?.toString() ?? session.placeholders.get(value)?.toString() ?? "";
+		const field = [...formData.entries()].find(([name]) => name.toLowerCase() === match[1].toLowerCase());
+		return field?.[1].toString() ?? session.placeholders.get(value.toLowerCase())?.toString() ?? "";
 	}
 	return value;
 }

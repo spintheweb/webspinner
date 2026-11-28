@@ -1,3 +1,8 @@
-.stwList {
-    /* Content-specific styles using global color variables */
+.stwList ul, .stwList ol {
+	padding: 0;
+}
+
+.stwList li {
+	list-style: none;
+	padding: var(--padding-reduced);
 }

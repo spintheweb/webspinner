@@ -60,9 +60,16 @@ import { canDevelopElement, isDeployed, isProtectedWebbaselet, webbaseletKind } 
 import { isAbsolute } from "node:path";
 import { randomUUID } from "node:crypto";
 import { broadcastElementBlock } from "./stwStudioEvents.js";
+import { localizedValue as resolveLocalizedValue } from "./stwLocalization.js";
 
 const MAX_BODY_SIZE = 2 * 1024 * 1024;
 const elementBlocks = new Map();
+
+function withLocale(session, locale) {
+	const placeholders = new Map(session.placeholders);
+	placeholders.set("@@stwlanguage", locale);
+	return { ...session, placeholders };
+}
 
 async function handleWbolApi(request, session) {
 	const url = new URL(request.url);
@@ -86,7 +93,7 @@ async function handleWbolApi(request, session) {
 		}
 		if (!Array.isArray(ids) || ids.some(id => typeof id !== "string"))
 			return jsonResponse({ error: "Invalid search results" }, 400);
-		const localizedSession = { ...session, lang: locale };
+		const localizedSession = withLocale(session, locale);
 		const results = [];
 		for (const id of ids) {
 			const element = STWIndex.get(id);
@@ -98,7 +105,8 @@ async function handleWbolApi(request, session) {
 			results.push({
 				name: localizedValue(element, "name", localizedSession) || id,
 				uuid: id,
-				type: element instanceof STWContent ? "Content" : element.type
+				type: element instanceof STWContent ? "Content" : element.type,
+				subtype: element.subtype || element.type
 			});
 		}
 		return jsonResponse(results);
@@ -207,7 +215,7 @@ async function handleWbolApi(request, session) {
 			if (id && !developerVisible && !seoVisible) return jsonResponse({ error: "Forbidden" }, 403);
 			if (id) {
 				const locale = resolveEditingLocale(url, session);
-				const localizedSession = { ...session, lang: locale };
+				const localizedSession = withLocale(session, locale);
 				const result = developerVisible
 					? serializeLocalizedElement(element, localizedSession)
 					: serializeSeoElement(element, localizedSession);
@@ -336,7 +344,7 @@ async function handleWbolApi(request, session) {
 				moveTo = element.parent;
 				movePosition = position;
 			}
-			const localizedSession = { ...session, lang: locale };
+			const localizedSession = withLocale(session, locale);
 			if (moveTo && (blockedByOther(moveTo, session) || blockedByOther(element.parent, session)))
 				return jsonResponse({ error: "Element is blocked by another user" }, 409);
 			if (replacement) replacement.blocked = element.blocked;
@@ -439,7 +447,7 @@ function serializeLocalizedElement(element, session) {
 	if (element instanceof STWContent) {
 		result.type = element.type;
 		result.subtype = element.subtype || element.type;
-		const layout = element.layout?.get(session.lang);
+		const layout = resolveLocalizedValue(element.layout, session);
 		result.layout = typeof layout === "string" ? layout : layout?.wbll || "";
 	}
 	return result;
@@ -447,13 +455,12 @@ function serializeLocalizedElement(element, session) {
 
 function localizedValue(element, field, session) {
 	const values = element[field];
-	if (!(values instanceof Map)) return "";
-	return values.get(session.lang) || values.values().next().value || "";
+	return resolveLocalizedValue(values, session) ?? "";
 }
 
 function resolveEditingLocale(url, session) {
 	const locales = getSupportedLocales(session);
-	const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") : session.lang;
+	const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") : session.placeholders.get("@@stwlanguage");
 	if (!locale || !locales.includes(locale)) {
 		throw new TypeError(`Unsupported editing locale: ${locale || ""}`);
 	}

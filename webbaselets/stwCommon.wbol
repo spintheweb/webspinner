@@ -4,7 +4,7 @@
 	xsi:schemaLocation="https://spintheweb.org/schemas/wbol.xsd ../public/schemas/wbol.xsd
 							  https://spintheweb.org/schemas/wbol.xsd /schemas/wbol.xsd"
 	uuid="a6T6S55WbZjerBB8QbSCr9y"
-	langs="en" version="1.0">
+	langs="en it fr de nl" version="1.0">
 	<name>
 		<text xml:lang="en" slug="stwc"><![CDATA[STW Commons]]></text>
 	</name>
@@ -175,7 +175,7 @@
 					</name>
 					<query connector="wbol" parameters="/configuration?fields=HOST,ALLOW_DEV"><![CDATA[$]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Configuration"')l('HOST=')\te(';HOST;@@HOST')\a('required placeholder="e.g. www.spintheweb.org"')\nl('ALLOW_DEV=')\tD('ALLOW_DEV;@@ALLOW_DEV;1;false;true')\nb(';stwupdate;wbol;/configuration')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Configuration"')l('HOST=')\te(';HOST;@@host')\a('required placeholder="e.g. www.spintheweb.org"')\nl('ALLOW_DEV=')\tD('ALLOW_DEV;@@allow_dev;1;false;true')\nb(';stwupdate;wbol;/configuration')t('Save')]]></text>
 					</layout>
 				</content>
 			</children>

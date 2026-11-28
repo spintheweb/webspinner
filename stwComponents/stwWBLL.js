@@ -52,8 +52,9 @@ class STWLayout {
 				/(\\r)/,
 				/(\\[aAs])(?:\('([^]*?)'\))/,
 				/(\\[nt])(?:\('([^]*?)'\))?/,
+				/(j)(?:\('((?:\\'|\\(?!')|[^\\])*?)'\))?/,
 				/(?:([aAcefhilLmoOpquwxyz]))(?:\('([^]*?)'\))?/,
-				/(?:([bdDnjrsStvk]))(?:\('([^]*?)'\))/,
+				/(?:([bdDnrsStvk]))(?:\('([^]*?)'\))/,
 				/\/\/.*$/,
 				/\/\*[^]*\*\//,
 				/(<+|>+)/,
@@ -66,13 +67,16 @@ class STWLayout {
 		let closed = false;
 		for (const expression of wbll.matchAll(SYMBOLS)) {
 			if (expression.groups?.error !== void 0)
-				throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${expression.input.slice(0, expression.index)}<i>\u22D9${expression.input.slice(expression.index)}</i></pre>`);
+				throw new SyntaxError(`Syntax error at ${layoutPosition(wbll, expression.index)}: unexpected ${JSON.stringify(expression.groups.error)}`);
 			const pattern = expression.filter((value, i2) => value !== void 0 && i2);
 			if (pattern[0]) {
 				if (["<", ">"].includes(pattern[0].at(0) ?? ""))
 					code.push(`WBLL.$mc(${(pattern[0].at(0) === "<" ? -1 : 1) * pattern[0].length}, ${expression.index}, runtime)`);
 				else {
-					const fragment = `${pattern[0].replace("\\", "$")}(${pattern[1] != null ? '"' + pattern[1].replace(/"/g, '\\"') + '"' : "null"}, ${expression.index}, runtime)`;
+					const argument = pattern[1] == null ? "null" : pattern[0] === "j"
+						? JSON.stringify(pattern[1].replace(/\\'(?=\))/g, "'"))
+						: '"' + pattern[1].replace(/"/g, '\\"') + '"';
+					const fragment = `${pattern[0].replace("\\", "$")}(${argument}, ${expression.index}, runtime)`;
 					if (pattern[0].match(/(p|q|\\a)/) || code.length && code[code.length - 1].match(/^WBLL\.[aAb]/) && pattern[0].match(/^[defintvxyzt]/) && !closed) {
 						code[code.length - 1] = code[code.length - 1] + `.${fragment}`;
 						closed = pattern[0].match(/^[defintvxyzt]/) !== null;
@@ -100,7 +104,7 @@ class STWLayout {
 		this.renderer = new AsyncFunction("WBLL", "WBPL", "runtime", code.join("").replaceAll(/(\n|\r|\t)/g, ""));
 	}
 
-	async render(fields, placeholders, session = { placeholders, baseurl: "", lang: "en", tz: "UTC" }, renderIn = "", contentId = "") {
+	async render(fields, placeholders, session = { placeholders: new Map([["@@stwlanguage", "en"], ...placeholders]), baseurl: "", tz: "UTC" }, renderIn = "", contentId = "") {
 		const runtime = {
 			Session: session,
 			Fields: fields,
@@ -109,9 +113,11 @@ class STWLayout {
 			Placeholders: placeholders,
 			HTML: "",
 			RenderIn: renderIn,
+			TableSection: renderIn,
 			Wrappers: [],
 			FldIndex: 0,
 			Settings: new Map(),
+			Scripts: [],
 			Actions: "", // Filtering, CRUD, Summary
 			ContentId: contentId,
 			Cols: 1,
@@ -159,18 +165,24 @@ class STWLayout {
 			if (renderIn === "tfoot" && !(runtime.Flags & FLAGS.stwsummary))
 				return { settings: runtime.Settings, HTML: "" };
 
+			const scripts = runtime.Scripts.join("");
 			return {
 				settings: runtime.Settings,
-				HTML: runtime.HTML,
+				HTML: runtime.HTML + scripts,
+				scripts,
 				hasEmbeddedContent: runtime.HasEmbeddedContent,
 				formFields: runtime.FormFields
 			};
-		} catch (_err) {
-			if (_err instanceof ChoiceQueryError || _err instanceof EmbedFetchError || _err instanceof EditorFormatError) throw _err;
-			const index = runtime.Index;
-			throw new SyntaxError(`<pre class="stwError">Syntax error:<br>${this.wbll.slice(0, index)}<i>\u22D9${this.wbll.slice(index)}</i></pre>`);
+		} catch (error) {
+			if (error instanceof ChoiceQueryError || error instanceof EmbedFetchError || error instanceof EditorFormatError) throw error;
+			throw new Error(`Layout error at ${layoutPosition(this.wbll, runtime.Index)}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
 		}
 	}
+}
+
+function layoutPosition(wbll, index) {
+	const lines = wbll.slice(0, index).split("\n");
+	return `line ${lines.length}, column ${lines.at(-1).length + 1}`;
 }
 
 //#region Symbols classes
@@ -829,9 +841,9 @@ function f(format, index, runtime) {
 	const symbol = new TextSymbol(void 0, void 0, runtime);
 	format = WBPL(format, runtime.Placeholders);
 	if (!isNaN(Number(symbol.text)))
-		symbol.text = formatNumber(Number(symbol.text), format, runtime.Session.lang);
+		symbol.text = formatNumber(Number(symbol.text), format, runtime.Session.placeholders.get("@@stwlanguage"));
 	else if (!Number.isNaN(Date.parse(symbol.text)))
-		symbol.text = formatDate(symbol.text, format, runtime.Session.lang, runtime.Session.tz);
+		symbol.text = formatDate(symbol.text, format, runtime.Session.placeholders.get("@@stwlanguage"), runtime.Session.tz);
 	return symbol;
 }
 function h(args, index, runtime) {
@@ -858,8 +870,9 @@ function i(args, index, runtime) {
 }
 function j(args, index, runtime) {
 	runtime.Index = index;
-	args = WBPL(args, runtime.Placeholders);
-	runtime.Settings.set("script", (runtime.Settings.get("script") || "") + args);
+	const code = WBPL(args || Field(runtime), runtime.Placeholders);
+	if (code && !["thead", "tfoot"].includes(runtime.TableSection))
+		runtime.Scripts.push(`<script>${code.replace(/<\/script/gi, "<\\/script")}</script>`);
 }
 function k(args, index, runtime) {
 	runtime.Index = index;
@@ -867,8 +880,9 @@ function k(args, index, runtime) {
 	const symbol = new TextSymbol(args, void 0, runtime);
 	const name = symbol.args[0];
 	if (name && !name.toLocaleLowerCase().startsWith("stw") || runtime.Fields[runtime.FldIndex]) {
-		runtime.Session.placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
-		runtime.Placeholders.set(`@@${name || runtime.Fields[runtime.FldIndex]}`, symbol.args[1]);
+		const placeholder = `@@${(name || runtime.Fields[runtime.FldIndex]).toLowerCase()}`;
+		runtime.Session.placeholders.set(placeholder, symbol.args[1]);
+		runtime.Placeholders.set(placeholder, symbol.args[1]);
 	}
 }
 function l(args, index, runtime) {
@@ -940,15 +954,15 @@ function v(args, index, runtime) {
 	args = WBPL(args, runtime.Placeholders);
 	const symbol = new TextSymbol(args, void 0, runtime);
 	if (!isNaN(Number(symbol.args[2])))
-		symbol.text = formatNumber(Number(symbol.args[2]), symbol.args[0], runtime.Session.lang);
+		symbol.text = formatNumber(Number(symbol.args[2]), symbol.args[0], runtime.Session.placeholders.get("@@stwlanguage"));
 	else if (!Number.isNaN(Date.parse(symbol.args[2])))
-		symbol.text = formatDate(symbol.args[2], symbol.args[0], runtime.Session.lang, runtime.Session.tz);
+		symbol.text = formatDate(symbol.args[2], symbol.args[0], runtime.Session.placeholders.get("@@stwlanguage"), runtime.Session.tz);
 	else
 		symbol.text = symbol.args[2] ?? "";
 	const name = symbol.args[1];
 	if (name && !name.toLowerCase().startsWith("stw")) {
-		runtime.Session.placeholders.set(`@@${name}`, symbol.args[2]);
-		runtime.Placeholders.set(`@@${name}`, symbol.args[2]);
+		runtime.Session.placeholders.set(`@@${name.toLowerCase()}`, symbol.args[2]);
+		runtime.Placeholders.set(`@@${name.toLowerCase()}`, symbol.args[2]);
 	}
 	return symbol;
 }
@@ -1108,7 +1122,7 @@ function Field(runtime, separator = "") {
 	if (runtime.FldIndex >= runtime.Fields.length)
 		return "";
 	const fieldName = runtime.Fields[runtime.FldIndex++] || "";
-	return `${separator ? fieldName + separator : ""}${runtime.Placeholders.get(`@@${fieldName}`)?.toString() || ""}`;
+	return `${separator ? fieldName + separator : ""}${runtime.Placeholders.get(`@@${fieldName.toLowerCase()}`)?.toString() || ""}`;
 }
 function isTruthy(val) {
 	if (!val || val === "false") return false;

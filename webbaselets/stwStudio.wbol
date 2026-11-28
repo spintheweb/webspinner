@@ -26,7 +26,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioPortalTabs00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-globe"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')o('c7StudioPortalTabs00001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c5TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -37,7 +37,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioAreaTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-folder"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')o('c7StudioAreaTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c4TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -48,7 +48,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioPageTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-page"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')o('c7StudioPageTabs000001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c3TC0s1xSa5NgDIgMyCdmzY" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -59,7 +59,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')o('c7StudioContentTabs0001')p('uuid;@uuid')p('stwBlockToken;@stwBlockToken')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption='<i class="fa-light fa-rectangle"></i> @@name'')o('c7StudioEditorLock00001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')o('c7StudioContentTabs0001')p('uuid;@uuid')p('stwBlockToken;@stwblocktoken')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioEditorLock00001" origin="a6T6S55WbZjerGVamxGi8kA" type="form">
@@ -67,7 +67,7 @@
 						<text xml:lang="en" slug="editor-lock"><![CDATA[Editor lock]]></text>
 					</name>
 					<layout>
-						<text xml:lang="en"><![CDATA[h('uuid;@uuid')\a('data-stw-block-token="@stwBlockToken"')]]></text>
+						<text xml:lang="en"><![CDATA[h('uuid;@uuid')\a('data-stw-block-token="@stwblocktoken"')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioPortalTabs00001" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs">
@@ -114,7 +114,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwblocktoken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Homepage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioAreaForm000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
@@ -124,7 +124,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwblocktoken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Mainpage')e(';mainpage;@@mainpage')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioPageForm000001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
@@ -134,7 +134,7 @@
 					<query connector="wbol" parameters="/@uuid"><![CDATA[$merge([$,
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
+						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')h('uuid;@@uuid')\a('data-stw-block-token="@stwblocktoken"')l('Name')e(';name;@@name')l('Slug')e(';slug;@@slug')l('Template')e(';template;@@template')\rb(';stwupdate;wbol;/@@uuid')t('Save')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioContentForm0001" origin="a6T6S55WbZjerGVamxGi8kA" type="form" class="stwForm stwCompact">
@@ -145,7 +145,7 @@
 						{"readonly": readonly = "true" or blocked != $stwlogin ? "true" : ""}])]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('key="uuid" {disabled=@@readonly}')
-h('uuid;@@uuid')\a('data-stw-block-token="@stwBlockToken"')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\n
+h('uuid;@@uuid')\a('data-stw-block-token="@stwblocktoken"')l('Name')e(';name;@@name')\tl('Slug')e(';slug;@@slug')\n
 l('Type')D('type;@@type;wbol;/content-types') \tl('Section')e(';section;@@section')\tl('Sequence')e(';sequence;@@sequence')\n
 l('Connector')d('connector;@@connector;wbol;/connectors/names')\tl('Parameters')e(';params;@@params')\n
 l('Command')m(';query;@@query')\n
@@ -409,7 +409,7 @@ l('Host')f
 						}
 					)]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="Edit connector"')h('id;@@id')l('Name')e(';name;@@name')\rl('Host')e(';host;@@host')\rl('User')e(';user;@@user')\rl('Database')e(';database;@@database')\rl('Content type')e(';contentType;@@contentType')\rl('From')e(';from;@@from')\rb('.;stwupdate;wbol;/connectors/@@id')t('Save')b('.;stwdelete;wbol;/connectors/@@id')t('Delete')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="Edit connector"')h('id;@@id')l('Name')e(';name;@@name')\rl('Host')e(';host;@@host')\rl('User')e(';user;@@user')\rl('Database')e(';database;@@database')\rl('Content type')e(';contentType;@@contenttype')\rl('From')e(';from;@@from')\rb('.;stwupdate;wbol;/connectors/@@id')t('Save')b('.;stwdelete;wbol;/connectors/@@id')t('Delete')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioConnectorNew001" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
@@ -419,7 +419,7 @@ l('Host')f
 					</name>
 					<query connector="json"><![CDATA[{"id":"","name":"","type":"api","host":"","user":"","database":"","contentType":"","from":"","passwordEnv":"","password":""}]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[\s('caption="New connector"')l('ID')e(';id;@@id')\a('required')\rl('Name')e(';name;@@name')\rl('Type')D('type;@@type;1;api;mysql;postgres;mssql;mongodb;node;imap;smtp')\rl('Host')e(';host;@@host')\rl('User')e(';user;@@user')\rl('Database')e(';database;@@database')\rl('Content type')e(';contentType;@@contentType')\rl('From')e(';from;@@from')\rl('Password environment variable')e(';passwordEnv;@@passwordEnv')\rl('Password')w('password')\rb('.;stwsubmit;wbol;/connectors')t('Create')]]></text>
+						<text xml:lang="en"><![CDATA[\s('caption="New connector"')l('ID')e(';id;@@id')\a('required')\rl('Name')e(';name;@@name')\rl('Type')D('type;@@type;1;api;mysql;postgres;mssql;mongodb;node;imap;smtp')\rl('Host')e(';host;@@host')\rl('User')e(';user;@@user')\rl('Database')e(';database;@@database')\rl('Content type')e(';contentType;@@contenttype')\rl('From')e(';from;@@from')\rl('Password environment variable')e(';passwordEnv;@@passwordenv')\rl('Password')w('password')\rb('.;stwsubmit;wbol;/connectors')t('Create')]]></text>
 					</layout>
 				</content>
 				<content uuid="c7StudioRoleList000001" origin="a6T6S55WbZjerGVamxGi8kA" type="table">
@@ -464,7 +464,7 @@ l('Host')f
 				<text xml:lang="en" slug="assistant"><![CDATA[AI Assistant]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('header="&emsp;AI ASSISTANT" visible="@@stwALLOW_AI" ')]]></text>
+				<text xml:lang="en"><![CDATA[\s('header="&emsp;AI ASSISTANT" visible="@@stwallow_ai" ')]]></text>
 			</layout>
 			<options>
 				<option ref="c7K3dAiAsstAsk000000002">
@@ -498,14 +498,33 @@ o('c7StudioSearchResults01')p('stwSearchLocale;@@stwlanguage')\a('data-stw-searc
 			<name>
 				<text xml:lang="en" slug="search-results"><![CDATA[Search results]]></text>
 			</name>
-			<query connector="wbol" parameters="/search-results?ids=@stwSearchIds&amp;locale=@stwSearchLocale"><![CDATA[$.{
-				"name": $replace($replace($replace(name, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"),
-				"uuid": uuid,
-				"type": type
-			}]]></query>
+			<query connector="wbol" parameters="/search-results?ids=@stwsearchids&amp;locale=@stwsearchlocale"><![CDATA[(
+				$icons := {
+					"Portal": "globe", "Area": "folder", "Page": "file-lines",
+					"Accordion": "bars-staggered", "Breadcrumbs": "chevrons-right",
+					"Calendar": "calendar-days", "Chart": "chart-column",
+					"ClientScript": "code", "Script": "code", "ServerScript": "server",
+					"Form": "rectangle-list",
+					"Geomap": "map-location-dot", "Graph": "diagram-project",
+					"Imagemap": "image", "Languages": "language", "List": "list",
+					"Menus": "bars", "Pivot": "table-cells", "Shortcut": "arrow-up-right-from-square",
+					"Table": "table", "Tabs": "window-restore", "Text": "align-left",
+					"Tree": "sitemap"
+				};
+				$.(
+					$icon := $lookup($icons, type = "Content" ? subtype : type);
+					{
+						"icon": "<i class='fa-light fa-fw fa-" & ($icon ? $icon : "rectangle") & "' aria-hidden='true'></i> ",
+						"url": "/stws/edit/edit-" & (type in ["Portal", "Area", "Page"] ? $lowercase(type) : "content"),
+						"uuid": uuid,
+						"name": $replace($replace($replace(name, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+					}
+				)
+			)]]></query>
 			<layout>
-				<text xml:lang="en"><![CDATA[\s('rows="9007199254740991" nodata=""')
-a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="event.preventDefault();_stwOpenElementEditor(this)"')f]]></text>
+				<text xml:lang="en"><![CDATA[
+\s('rows="@@stwrows" nodata="Nothing found" header="@@stwrows results"')
+fapf\a('data-stw-editor onclick="event.preventDefault();_stwSendEditorRequest('@@url','@@uuid' )"')]]></text>
 			</layout>
 		</content>
 		<content uuid="c6TC0s1xSa5SWiCO4UTvujX" origin="a6T6S55WbZjerGVamxGi8kA" type="accordion">
@@ -529,15 +548,6 @@ a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="e
 				<text xml:lang="en" slug="interface"><![CDATA[Studio Interface]]></text>
 			</name>
 			<children>
-				<content uuid="c7StudioDevelopToggle01" origin="a6T6S55WbZjerGVamxGi8kA" type="form"
-					section="header" sequence="1">
-					<name>
-						<text xml:lang="en" slug="interactive-mode"><![CDATA[Interactive mode]]></text>
-					</name>
-					<layout>
-						<text xml:lang="en"><![CDATA[l('Interactive mode&nbsp\;')\a('style="display:inline-block"')D('_stwdevelop;@_stwdevelop;1;false;true')\a('onchange="document.cookie=`_stwdevelop=${this.value}; Path=/; SameSite=Lax`;window.location.reload()"')]]></text>
-					</layout>
-				</content>
 				<content uuid="c6TC0s1xSa5NgDIgMyCdmzX" origin="a6T6S55WbZjerGVamxGi8kA" type="tabs"
 					section="leftPanel" sequence="2">
 					<name>
@@ -589,7 +599,7 @@ a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="e
 						"Accordion": "bars-staggered", "Breadcrumbs": "chevrons-right",
 						"Calendar": "calendar-days", "Chart": "chart-column",
 						"ClientScript": "code", "Script": "code", "ServerScript": "server",
-						"ShellScript": "terminal", "Form": "rectangle-list",
+						"Form": "rectangle-list",
 						"Geomap": "map-location-dot", "Graph": "diagram-project",
 						"Imagemap": "image", "Languages": "language", "List": "list",
 						"Menus": "bars", "Pivot": "table-cells", "Shortcut": "arrow-up-right-from-square",
@@ -615,10 +625,7 @@ a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="e
 						{
 							"icon": ($badges ? "<span style='float:right'>" & $badges & "</span>" : "") &
 								"<span class='fa-light fa-fw fa-" & ($icon ? $icon : "rectangle") & "' aria-hidden='true'></span>",
-							"url": $node.type = "Portal" ? "/stws/edit/edit-portal" :
-								$node.type = "Area" ? "/stws/edit/edit-area" :
-								$node.type = "Page" ? "/stws/edit/edit-page" :
-								"/stws/edit/edit-content",
+							"url": "/stws/edit/edit-" & ($node.type in ["Portal", "Area", "Page"] ? $lowercase($node.type) : "content"),
 							"uuid": $node.uuid,
 							"name": $node.name.en,
 							"type": $node.type,
@@ -627,7 +634,7 @@ a('#')\a('data-stw-editor-uuid="@@uuid" data-stw-editor-type="@@type" onclick="e
 					)};
 					$tree($))]]></query>
 					<layout>
-						<text xml:lang="en"><![CDATA[ft(' ')apf\a('onclick="event.preventDefault();_stwSendEditorRequest(this.dataset.url,this.dataset.uuid)" data-url="@@url" data-uuid="@@uuid"')]]></text>
+						<text xml:lang="en"><![CDATA[ft(' ')apf\a('data-stw-editor data-uuid="@@uuid" onclick="event.preventDefault();_stwSendEditorRequest('@@url','@@uuid' )"')]]></text>
 					</layout>
 				</content>
 				<content uuid="c6TC0s1xSa5SWiCO4QcQf7T" origin="a6T6S55WbZjerGVamxGi8kA" type="tree">

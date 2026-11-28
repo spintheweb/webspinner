@@ -50,7 +50,7 @@ async function chat(session, fields, fetchImpl) {
 		element = visibleElement(session, uuid);
 		context = Object.fromEntries(["uuid", "type", "subtype", "name", "slug", "description", "layout", "query", "connector"]
 			.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
-		context.locale = session.lang;
+		context.locale = session.placeholders.get("@@stwlanguage");
 		try {
 			revision = captureRevision(element);
 		} catch (error) {
@@ -73,9 +73,9 @@ async function chat(session, fields, fetchImpl) {
 	let answer = result.answer;
 	if (Object.keys(result.changes).length) {
 		if (!element) throw new TypeError("Proposal requires an element");
-		validateChanges(element, session.lang, result.changes);
+		validateChanges(element, session.placeholders.get("@@stwlanguage"), result.changes);
 		if (revision) {
-			session.states.set(proposalKey, { id: randomUUID(), uuid: element.uuid, locale: session.lang, changes: result.changes, current: context, revision, expires: Date.now() + 600000 });
+			session.states.set(proposalKey, { id: randomUUID(), uuid: element.uuid, locale: session.placeholders.get("@@stwlanguage"), changes: result.changes, current: context, revision, expires: Date.now() + 600000 });
 		} else {
 			answer += `\n(Cannot save this element: ${sourceError})`;
 		}
@@ -88,7 +88,7 @@ function apply(session) {
 	const proposal = session.states.get(proposalKey);
 	if (!proposal || Date.now() > proposal.expires) throw new Error("Proposal expired or not found");
 	const element = visibleElement(session, proposal.uuid);
-	if (session.lang !== proposal.locale) 	throw new Error("Language changed; request a new proposal");
+	if (session.placeholders.get("@@stwlanguage") !== proposal.locale) 	throw new Error("Language changed; request a new proposal");
 		if (!session.portal.langs.includes(proposal.locale)) throw new Error("Language is no longer available");
 	applyPersistentChanges(element, proposal.locale, proposal.changes, proposal.revision);
 	session.states.delete(proposalKey);

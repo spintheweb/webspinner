@@ -27,6 +27,7 @@ import { handleWebSocket } from "./stwComponents/stwWebSocket.js";
 const project = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 import { debugLog, envGet, envSet, isDocker } from "./stwComponents/stwConfig.js";
 import { newId } from "./stwComponents/stwIds.js";
+import { negotiateLanguage, parseAcceptLanguage } from "./stwComponents/stwLocalization.js";
 const moduleRoot = dirname(fileURLToPath(import.meta.url));
 
 try {
@@ -138,6 +139,9 @@ function getSession(request, incoming, sessionId = getCookies(request.headers).s
 			);
 		}
 		session = new STWSession(sessionId, remoteAddr, STWPortal.instance);
+		const preferred = parseAcceptLanguage(request.headers.get("accept-language"));
+		if (preferred.length) session.langs = preferred;
+		session.setLanguage(negotiateLanguage(session.portal.langs, preferred, session.placeholders.get("@@stwdefaultlanguage")), false);
 		stwSessions.set(sessionId, session);
 	}
 	return session;
@@ -146,7 +150,8 @@ function getSession(request, incoming, sessionId = getCookies(request.headers).s
 function rotateSession(session, preserveIdentity = false) {
 	const replacement = new STWSession(newId(), session.remoteAddr, session.portal);
 	replacement.baseurl = session.baseurl;
-	replacement.setLanguage(session.lang);
+	replacement.setLanguage(session.placeholders.get("@@stwlanguage"));
+	replacement.languageExplicit = session.languageExplicit || false;
 	replacement.langs = [...session.langs];
 	replacement.tz = session.tz;
 	if (preserveIdentity) {
