@@ -18,22 +18,21 @@
 				<role id="guest" />
 			</visibility>
 			<children>
-				<content uuid="c7UserManagementList001" origin="a6T6S55WbZjerBB8QbSCr9y" type="table"
-					section="main">
+				<content uuid="c7UserManagementList001" origin="a6T6S55WbZjerBB8QbSCr9y" type="table" section="main">
 					<name>
 						<text xml:lang="en" slug="user-list"><![CDATA[Users]]></text>
 					</name>
 					<query connector="wbol" parameters="/users"><![CDATA[(
-								$users := $;
-								$escape := function($value) {
-									$replace($replace($replace($string($value), "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
-								};
-								$map($users, function($item) {
-									{"user": $escape($item.user), "name": $escape($item.name),
-									 "email": $escape($item.email), "roles": $escape($item.roles),
-									 "encodeduser": $encodeUrlComponent($item.user), "recordcount": $count($users)}
-								})
-							)]]></query>
+						$users := $;
+						$escape := function($value) {
+							$replace($replace($replace($string($value), "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+						};
+						$map($users, function($item) {
+							{"user": $escape($item.user), "name": $escape($item.name),
+								"email": $escape($item.email), "roles": $escape($item.roles),
+								"encodeduser": $encodeUrlComponent($item.user), "recordcount": $count($users)}
+						})
+					)]]></query>
 					<layout>
 						<text xml:lang="en"><![CDATA[\s('caption='<i class="fas fa-fw fa-user"></i> Users' nodata="No users found"')l('User')a('/stwc/users/edit')p('manageduser;@@encodeduser')fl('Full Name')fl('Email')fl('Roles')f]]></text>
 					</layout>
@@ -116,7 +115,7 @@
 				</content>
 			</children>
 		</page>
-		<!-- Password recovery, log in and log out -->
+		<!-- Password recovery, log on and log off -->
 		<content uuid="c5TokLIuAijfTRXR4HqwejR" origin="a6T6S55WbZjerBB8QbSCr9y" type="form"
 			section="modal">
 			<name>
@@ -143,13 +142,12 @@
 				<role id="root" visibility="false" />
 			</visibility>
 		</content>
-		<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
-			class="none">
+		<content uuid="c3gJOg8rVapMR0eiVIizt6c" origin="wGGpiW7IjjrFqapqVuZopW" type="form"	class="stwForm stwHorizontal">
 			<name>
 				<text xml:lang="en" slug="log-off"><![CDATA[Log off]]></text>
 			</name>
 			<layout>
-				<text xml:lang="en"><![CDATA[b(';stwlogoff')t('<i class="fa-light fa-right-from-bracket"></i>')\a('style="min-width:2rem; padding:0.5rem 0; margin-right:1rem;"')]]></text>
+				<text xml:lang="en"><![CDATA[t('<i class="fa-light fa-user"></i>')\ta('/stwc/profile')v(';;@@stwloginname')\tb(';stwlogoff')t('<i class="fa-light fa-right-from-bracket"></i>')\a('style="min-width:2rem; padding:0; margin:0 1rem; line-height:1.5rem"')]]></text>
 			</layout>
 			<visibility>
 				<role id="guest" visibility="false" />

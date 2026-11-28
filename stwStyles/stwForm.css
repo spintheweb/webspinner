@@ -5,15 +5,19 @@
 	gap: 0.25rem;
 }
 
-/*
-dialog > :nth-child(1 of :not(h1, header)) {
-	padding: calc(2 * var(--padding));
-}
-*/
 .stwCompact form {
 	flex-direction: row;
 	flex-wrap: wrap;
 	font-size: smaller;
+}
+
+.stwHorizontal form {
+	padding: 0 !important;
+	align-items: center;
+}
+.stwHorizontal > section {
+	display: flex !important;
+	flex-direction: row !important;
 }
 
 .stwForm label {

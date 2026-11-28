@@ -120,11 +120,11 @@ class STWCalendar extends STWContent {
 }
 
 function getFirstDayOfWeek(session) {
-	const locale = new Intl.Locale(session.langs?.[0] || session.placeholders.get("@@stwlanguage"));
+	const locale = new Intl.Locale(session.placeholders.get("@@stwlanguage"));
 	const firstDay = locale.weekInfo?.firstDay ?? locale.getWeekInfo?.().firstDay;
 	if (firstDay) return firstDay % 7;
 	const sundayRegions = new Set(["CA", "IL", "JP", "MX", "PH", "US"]);
-	return sundayRegions.has(locale.region) ? 0 : 1;
+	return sundayRegions.has(locale.maximize().region) ? 0 : 1;
 }
 
 function toLocalDateString(date, session) {

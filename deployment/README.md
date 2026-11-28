@@ -25,6 +25,7 @@ Notes:
 - Docker settings are stored in `/app/.data/.env.docker` and survive container recreation. Changes require a restart; explicitly supplied environment variables take precedence.
 - The example users have a publicly known password. Change or remove them before exposing the service, and disable root access when it is no longer needed. Loopback port binding does not restrict access from other Docker containers.
 - Environment variables supported include `PORT`, `PORTAL_ROOT`, `WEBBASE`, `COMMON_WEBBASELET` and `ALLOW_ROOT`.
+- The standard Docker image supports SQL Server username/password connections but omits the native `msnodesqlv8` addon. SQL Server integrated authentication (`windowsAuth`) requires a custom image with that addon, a compatible ODBC driver, and the necessary authentication configuration.
 
 ## Developer WBOL API
 

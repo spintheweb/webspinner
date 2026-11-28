@@ -43,9 +43,6 @@
 				<option ref="/stwc/mail"></option>
 				<option ref="/stwc/configuration"></option>
 				<option></option>
-				<option>
-					<text xml:lang="en"><![CDATA[<i class="fa-light fa-fw fa-user"></i> @@stwloginname]]></text>
-				</option>
 				<option ref="c3gJOg8rVapMR0eiVIizt6c" />
 			</options>
 		</content>
@@ -210,6 +207,19 @@
 					</layout>
 					<visibility>
 						<role id="guest" visibility="true" />
+					</visibility>
+				</content>
+				<content uuid="c6LiTD27dGS77UhsHoIsoLQ" origin="wGGpiW7IjjrFqapqVuZopW" type="keypad"
+					section="leftPanel" sequence="2">
+					<name>
+						<text xml:lang="en" slug="keypad"><![CDATA[Keypad]]></text>
+					</name>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('mode="abc123\n456\n789\n0.{ENTER}"')]]></text>
+					</layout>
+					<visibility>
+						<role id="guest" visibility="true" />
+						<role id="developer" visibility="true" />
 					</visibility>
 				</content>
 			</children>

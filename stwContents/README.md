@@ -32,7 +32,18 @@ Implements the `STWBreadcrumbs` content type. Displays breadcrumb navigation bas
 
 ## stwCalendar.js
 
-Implements the `STWCalendar` content type. Shows events or records in a calendar view (month, week, or day), with navigation and localization support.
+Implements the `STWCalendar` content type. Shows events or records in a calendar view (month, week, or day), with navigation and localization support. Month and week views use the first day of the week for the selected session language.
+
+---
+
+## stwKeypad.js
+
+The `Keypad` content type renders keys from the `mode` setting, for example
+`\s('mode="789\n456\n123\n0.{ENTER}"')`. Each character is a key and `\n`
+starts a new row; `{ENTER}` is the supported special key. Other brace tokens
+are rejected. Keys edit the focused text-like input or textarea, including
+number inputs, at its selection. Enter activates the input's form's default
+submit button, or submits the form if it has no submit button.
 
 ---
 

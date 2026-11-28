@@ -31,6 +31,8 @@ import { STWMenus } from "../stwContents/stwMenus.js";
 import { STWLanguages } from "../stwContents/stwLanguages.js";
 import { STWForm } from "../stwContents/stwForm.js";
 import { STWGeomap } from "../stwContents/stwGeomap.js";
+import { STWCalendar } from "../stwContents/stwCalendar.js";
+import { STWKeypad } from "../stwContents/stwKeypad.js";
 import { STWShortcut } from "../stwContents/stwShortcut.js";
 import { STWAPI } from "../stwContents/stwAPI.js";
 import { STWText } from "../stwContents/stwText.js";
@@ -291,6 +293,117 @@ function geomapTestControls(markers = Buffer.from("[]").toString("base64")) {
 		DomEvent: { disableClickPropagation() {} }
 	};
 }
+
+test("keypad renders mode rows, special keys and escaped characters", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"], ["@@keys", "789\n456\n123\n0.{ENTER}\n<&😀"]]) };
+	const keypad = new STWKeypad({ uuid: "keypad", subtype: "Keypad", layout: { en: `\\s('mode="@@keys"')` } });
+	const html = await keypad.render(null, session, { fields: [], rows: [] });
+	const rows = html.match(/<div class="stwKeypadKeys"[^>]*>([\s\S]*?)<\/div>\s*<script/)[1];
+	assert.equal((rows.match(/<div>/g) || []).length, 5);
+	assert.match(rows, /data-stw-keypad-key="0">0<\/button>.*data-stw-keypad-key="\.">\.<\/button>.*data-stw-keypad-enter>ENTER/);
+	assert.match(rows, /data-stw-keypad-key="&lt;">&lt;<\/button>/);
+	assert.match(rows, /data-stw-keypad-key="&amp;">&amp;<\/button>/);
+	assert.match(rows, /data-stw-keypad-key="😀">😀<\/button>/);
+	const example = new STWKeypad({
+		uuid: "example", subtype: "Keypad",
+		layout: { en: `\\s('mode="789\\n456\\n123\\n0.{ENTER}"')` }
+	});
+	const exampleHtml = await example.render(null, session, { fields: [], rows: [] });
+	assert.match(exampleHtml, /data-stw-keypad-key="3">3<\/button><\/div><div><button type="button" data-stw-keypad-key="0"/);
+});
+
+test("keypad rejects missing and invalid modes", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const keypad = new STWKeypad({ uuid: "keypad", subtype: "Keypad", layout: { en: `\\s('mode="@@keys"')` } });
+	for (const value of ["", "12{BACKSPACE}", "12{ENTER", "12}", "12\u0000"]) {
+		session.placeholders.set("@@keys", value);
+		await assert.rejects(keypad.render(null, session, { fields: [], rows: [] }), /Keypad|keypad/);
+	}
+});
+
+test("keypad uses the last focused input and its form's default submitter", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]) };
+	const keypadContent = new STWKeypad({ uuid: "keypad", subtype: "Keypad", layout: { en: `\\s('mode="1{ENTER}"')` } });
+	const html = await keypadContent.render(null, session, { fields: [], rows: [] });
+	const source = html.match(/<script name="STWKeypad"[^>]*>([\s\S]*?)<\/script>/)[1];
+	const listeners = {}, keypadListeners = {}, commands = [], warnings = [];
+	let clicks = 0, fallback = 0, disabled = false;
+	const form = { requestSubmit: () => { fallback++; } };
+	class Input {
+		type = "text";
+		form = form;
+		isConnected = true;
+		readOnly = false;
+		matches() { return false; }
+		focus() { document.activeElement = this; }
+	}
+	const input = new Input();
+	const submitter = { form, type: "submit", matches: () => disabled, click: () => { clicks++; } };
+	const unrelated = { form: {}, type: "submit" };
+	let submitters = [unrelated, submitter];
+	const document = {
+		activeElement: input,
+		addEventListener: (name, listener) => { listeners[name] = listener; },
+		querySelectorAll: () => submitters,
+		execCommand: (...args) => { commands.push(args); return true; }
+	};
+	const context = {
+		document, HTMLInputElement: Input, HTMLTextAreaElement: class {},
+		console: { warn: message => warnings.push(message), error: assert.fail }
+	};
+	const keypad = {
+		addEventListener: (name, listener) => { keypadListeners[name] = listener; },
+		contains: () => true
+	};
+	runInNewContext(source, context);
+	context.stwInitKeypad({ previousElementSibling: keypad });
+	const button = {
+		dataset: { stwKeypadKey: "1" },
+		closest: () => button,
+		hasAttribute: () => false
+	};
+	listeners.focusin({ target: { closest: () => keypad } });
+	keypadListeners.click({ target: button });
+	assert.deepEqual(commands, [["insertText", false, "1"]]);
+	const enter = { closest: () => enter, hasAttribute: () => true };
+	keypadListeners.click({ target: enter });
+	assert.equal(clicks, 1);
+	assert.equal(fallback, 0);
+	disabled = true;
+	keypadListeners.click({ target: enter });
+	assert.equal(clicks, 1);
+	assert.equal(fallback, 0);
+	submitters = [unrelated];
+	keypadListeners.click({ target: enter });
+	assert.equal(fallback, 1);
+	listeners.pointerdown({ target: { closest: () => null } });
+	keypadListeners.click({ target: button });
+	assert.equal(commands.length, 1);
+	assert.equal(warnings.length, 1);
+});
+
+test("calendar month and week views use the selected session language for the week start", async () => {
+	const records = { fields: [], rows: [] };
+	for (const [language, browserLanguage, weekday, blanks] of [["it", "en", 1, 6], ["en-US", "it", 0, 0]]) {
+		const session = { placeholders: new Map([["@@stwlanguage", language]]), langs: [browserLanguage], tz: "UTC" };
+		const render = async mode => {
+			const layout = `\\s('mode="${mode}" date="2026-11-18T12:00:00"')`;
+			return new STWCalendar({ uuid: "calendar", subtype: "Calendar", layout: { en: layout, it: layout } })
+				.render(null, session, records);
+		};
+		const month = await render("month");
+		const headers = [...month.matchAll(/<th>(.*?)<\/th>/g)].map(match => match[1]);
+		const expectedHeader = new Date(Date.UTC(2023, 0, 1 + weekday))
+			.toLocaleDateString(language, { weekday: "short", timeZone: "UTC" });
+		assert.equal(headers[0], expectedHeader);
+		assert.equal(month.match(/<tbody><tr>((?:<td><\/td>)*)/)[1], "<td></td>".repeat(blanks));
+
+		const week = await render("week");
+		const firstDate = new Date("2026-11-18T12:00:00");
+		firstDate.setDate(firstDate.getDate() - (firstDate.getDay() - weekday + 7) % 7);
+		assert.equal(week.match(/data-group="([^"]+)"/)[1], firstDate.toISOString().slice(0, 10));
+	}
+});
 
 test("Geomap selects configured layers and offers choices only when mode is absent", async () => {
 	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
@@ -1780,6 +1893,35 @@ test("content connector failures are not treated as empty results", async () => 
 	assert.equal(result.body, "");
 });
 
+test("SQL Server integrated authentication reports a missing native addon", () => {
+	const connectorModule = new URL("../stwComponents/stwConnectors.js", import.meta.url).href;
+	for (const missing of ["msnodesqlv8", "another-dependency"]) {
+		const script = `
+			import assert from "node:assert/strict";
+			import { createRequire } from "node:module";
+			const Module = createRequire(import.meta.url)("node:module");
+			const load = Module._load;
+			Module._load = function(name, ...args) {
+				if (name === "msnodesqlv8") {
+					const error = new Error("Cannot find module '${missing}'");
+					error.code = "MODULE_NOT_FOUND";
+					throw error;
+				}
+				return load.call(this, name, ...args);
+			};
+			const { STWConnectors } = await import(${JSON.stringify(connectorModule)});
+			await assert.rejects(
+				STWConnectors.connectDatabase({ type: "mssql", windowsAuth: true }),
+				error => error.message.includes(${JSON.stringify(missing === "msnodesqlv8"
+					? "SQL Server integrated authentication requires msnodesqlv8"
+					: "Cannot find module 'another-dependency'")})
+			);
+		`;
+		const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+		assert.equal(result.status, 0, result.stderr);
+	}
+});
+
 test("failed connector initialization preserves its cause without blocking healthy connectors", async () => {
 	const previousPath = process.env.CONNECTORS;
 	const connectDatabase = STWConnectors.connectDatabase;
@@ -3105,6 +3247,94 @@ test("saving a Studio editor closes only that editor and refreshes the tree", as
 	});
 	assert.equal(closed, 1);
 	assert.equal(refreshed, 1);
+});
+
+test("overlapping content resource loads initialize each connected script once", async () => {
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const calls = [], resources = [];
+	const nodes = [];
+	const node = (type, name) => ({
+		type, isConnected: true, src: "", textContent: "", attributes: [],
+		getAttribute: attribute => attribute === "href" ? "/leaflet.css" : null,
+		onload: () => calls.push(name),
+		remove() { this.isConnected = false; }
+	});
+	const root = {
+		querySelectorAll: selector => nodes.filter(item => item.isConnected &&
+			item.type === (selector === "script" ? "script" : "link"))
+	};
+	const context = {
+		window: { addEventListener() {} },
+		document: {
+			body: root, baseURI: "http://localhost/", addEventListener() {},
+			head: { querySelectorAll: () => [], appendChild: resource => resources.push(resource) },
+			createElement: () => ({
+				listeners: {}, setAttribute() {},
+				addEventListener(type, listener) { this.listeners[type] = listener; }
+			})
+		},
+		URL, Event, sessionStorage: { getItem: () => "x1" }
+	};
+	runInNewContext(source, context);
+	const link = node("link", "stylesheet"), first = node("script", "first");
+	nodes.push(link, first);
+	const loading = context._stwLoadContentResources();
+	await Promise.resolve();
+	const overlapping = context._stwLoadContentResources();
+	nodes.push(node("script", "second"));
+	resources[0].listeners.load();
+	await Promise.all([loading, overlapping]);
+	assert.deepEqual(calls, ["stylesheet", "first", "second"]);
+	assert.equal(resources.length, 1);
+});
+
+test("content resource loads skip replaced scripts and continue after failures", async () => {
+	const source = await readFile("./public/scripts/stwClient.js", "utf8");
+	const calls = [], resources = [];
+	const nodes = [];
+	const node = (type, name) => ({
+		type, isConnected: true, src: "", textContent: "", attributes: [],
+		getAttribute: attribute => attribute === "href" ? `/${name}.css` : null,
+		onload: () => calls.push(name),
+		remove() { this.isConnected = false; }
+	});
+	const root = {
+		querySelectorAll: selector => nodes.filter(item => item.isConnected &&
+			item.type === (selector === "script" ? "script" : "link"))
+	};
+	const context = {
+		window: { addEventListener() {} },
+		document: {
+			body: root, baseURI: "http://localhost/", addEventListener() {},
+			head: { querySelectorAll: () => [], appendChild: resource => resources.push(resource) },
+			createElement: () => ({
+				listeners: {}, setAttribute() {},
+				addEventListener(type, listener) { this.listeners[type] = listener; }
+			})
+		},
+		URL, sessionStorage: { getItem: () => "x1" }, Event
+	};
+	runInNewContext(source, context);
+	const link = node("link", "stylesheet"), stale = node("script", "stale");
+	nodes.push(link, stale);
+	const loading = context._stwLoadContentResources();
+	await Promise.resolve();
+	stale.remove();
+	nodes.push(node("script", "replacement"));
+	const overlapping = context._stwLoadContentResources();
+	resources[0].listeners.load();
+	await Promise.all([loading, overlapping]);
+	assert.deepEqual(calls, ["stylesheet", "replacement"]);
+
+	nodes.push(node("link", "failed"));
+	const failed = context._stwLoadContentResources();
+	const rejection = assert.rejects(failed, /Failed to load content link/);
+	await Promise.resolve();
+	nodes.push(node("script", "after-failure"));
+	const next = context._stwLoadContentResources();
+	resources[1].listeners.error();
+	await Promise.all([rejection, next]);
+	assert.deepEqual(calls, ["stylesheet", "replacement", "after-failure"]);
 });
 
 test("content rendering errors replace their content, while editor errors remain in their dialogs", async () => {

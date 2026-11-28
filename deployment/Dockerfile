@@ -6,7 +6,8 @@ FROM node:${NODE_VERSION}-bookworm-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
 ENV NODE_ENV=production
-RUN npm ci --omit=dev
+RUN npm uninstall msnodesqlv8 --package-lock-only --ignore-scripts --offline --no-audit --no-fund \
+    && npm ci --omit=dev
 COPY stwSpinner.js ./
 COPY stwComponents ./stwComponents
 COPY stwContents ./stwContents

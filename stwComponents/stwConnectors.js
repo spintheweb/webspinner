@@ -493,7 +493,16 @@ async function createDatabaseConnection(settings) {
 		}
 		case "mssql": {
 			const windowsAuth = settings.windowsAuth === true;
-			const driver = windowsAuth ? (await import("mssql/msnodesqlv8.js")).default : sql;
+			let driver = sql;
+			if (windowsAuth) {
+				try {
+					driver = (await import("mssql/msnodesqlv8.js")).default;
+				} catch (error) {
+					if (error?.code === "MODULE_NOT_FOUND" && /^Cannot find module 'msnodesqlv8'/.test(error.message))
+						throw new Error("SQL Server integrated authentication requires msnodesqlv8; it is not included in the standard Docker image", { cause: error });
+					throw error;
+				}
+			}
 			const config = windowsAuth
 				? {
 					connectionString: [

@@ -347,37 +347,48 @@ function _stwLoadScript(src) {
 
 const _stwContentResources = new Map();
 const _stwInlineContentScripts = new Set();
+let _stwContentResourcesReady = Promise.resolve();
 
 async function _stwLoadContentResources(root = document.body) {
-	const links = [...root.querySelectorAll("link[href]")];
-	const scripts = [...root.querySelectorAll("script")];
-	const externalScripts = scripts.filter((script) => script.src);
-	const inlineScripts = scripts.filter((script) => !script.src);
-
+	const previous = _stwContentResourcesReady;
+	let release;
+	_stwContentResourcesReady = new Promise((resolve) => { release = resolve; });
+	await previous;
 	try {
-		await Promise.all(links.map((link) => _stwLoadContentResource("link", link)));
-		links.forEach(_stwRunContentLoadHandler);
-		for (const script of externalScripts) {
-			await _stwLoadContentResource("script", script);
-			_stwRunContentLoadHandler(script);
-		}
+		const links = [...root.querySelectorAll("link[href]")];
+		const scripts = [...root.querySelectorAll("script")];
+		const externalScripts = scripts.filter((script) => script.src);
+		const inlineScripts = scripts.filter((script) => !script.src);
 
-		for (const script of inlineScripts) {
-			const name = script.getAttribute("name");
-			if (script.textContent && (!name || !_stwInlineContentScripts.has(name))) {
-				const loadedScript = document.createElement("script");
-				for (const attribute of script.attributes) {
-					if (attribute.name !== "onload") loadedScript.setAttribute(attribute.name, attribute.value);
-				}
-				loadedScript.textContent = script.textContent;
-				document.head.appendChild(loadedScript);
-				if (name) _stwInlineContentScripts.add(name);
+		try {
+			await Promise.all(links.map((link) => _stwLoadContentResource("link", link)));
+			links.filter((link) => link.isConnected).forEach(_stwRunContentLoadHandler);
+			for (const script of externalScripts) {
+				if (!script.isConnected) continue;
+				await _stwLoadContentResource("script", script);
+				if (script.isConnected) _stwRunContentLoadHandler(script);
 			}
-			_stwRunContentLoadHandler(script);
+
+			for (const script of inlineScripts) {
+				if (!script.isConnected) continue;
+				const name = script.getAttribute("name");
+				if (script.textContent && (!name || !_stwInlineContentScripts.has(name))) {
+					const loadedScript = document.createElement("script");
+					for (const attribute of script.attributes) {
+						if (attribute.name !== "onload") loadedScript.setAttribute(attribute.name, attribute.value);
+					}
+					loadedScript.textContent = script.textContent;
+					document.head.appendChild(loadedScript);
+					if (name) _stwInlineContentScripts.add(name);
+				}
+				_stwRunContentLoadHandler(script);
+			}
+		} finally {
+			links.forEach((link) => link.remove());
+			scripts.forEach((script) => script.remove());
 		}
 	} finally {
-		links.forEach((link) => link.remove());
-		scripts.forEach((script) => script.remove());
+		release();
 	}
 }
 
