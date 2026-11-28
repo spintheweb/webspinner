@@ -239,57 +239,19 @@ class STWActionRouter {
 	}
 
 	/**
-	 * Executes a connector command or a sibling ServerScript.
-	 *
-	 * A connector argument executes immediately. Without one, the requested
-	 * action is resolved against scripts belonging to the originating page.
+	 * Executes a connector command.
 	 *
 	 * @param {ActionContext} ctx Action request context.
-	 * @returns {Promise<ActionResult>} Script or connector result.
+	 * @returns {Promise<ActionResult>} Connector result.
 	 */
 	async handleSubmit(ctx) {
-		const { content, session, req, formData } = ctx;
+		const { session, req, formData } = ctx;
 		const connector = ctx.args?.[0];
-		if (connector) {
-			const command = ctx.args.slice(1).join(";");
-			const result = await STWConnectors.executeAction(actionSession(session, formData), connector, command, "POST", submittedFields(formData));
-			return { ok: true, redirect: ctx.url || req.url, data: result };
-		}
-		const page = content.parent;
-		if (!page) {
-			return { ok: false, error: { name: "NoPage", message: "Content has no parent page" } };
-		}
-		const scriptContent = page.children.find(
-			(child) => child.subtype === "ServerScript" && (child.localize?.(session, "slug") === ctx.action.split(";")[1] || child.localize?.(session, "name") === ctx.action)
-		);
-		if (!scriptContent) {
-			return {
-				ok: false,
-				error: {
-					name: "NoScript",
-					message: `No ServerScript found for action: ${ctx.action}`
-				}
-			};
-		}
-		const records = {
-			rows: [Object.fromEntries(formData.entries())],
-			fields: Array.from(formData.keys()).map((name) => ({ name }))
-		};
-		const result = await scriptContent.render(req, session, records);
-		try {
-			const parsed = JSON.parse(result);
-			return {
-				ok: parsed.ok ?? true,
-				data: parsed.result || parsed,
-				redirect: parsed.redirect,
-				error: parsed.error
-			};
-		} catch {
-			return {
-				ok: true,
-				data: result
-			};
-		}
+		if (!connector)
+			return { ok: false, error: { name: "NoConnector", message: "stwsubmit requires a connector" } };
+		const command = ctx.args.slice(1).join(";");
+		const result = await STWConnectors.executeAction(actionSession(session, formData), connector, command, "POST", submittedFields(formData));
+		return { ok: true, redirect: ctx.url || req.url, data: result };
 	}
 
 	/**

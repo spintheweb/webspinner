@@ -163,9 +163,16 @@
 					<name>
 						<text xml:lang="en" slug="map"><![CDATA[Map]]></text>
 					</name>
-					<visibility>
-						<role id="user" visibility="false" />
-					</visibility>
+					<query connector="json"><![CDATA[
+[
+  {"name":"Prato della Valle","description":"A large square in Padua.","latlng":"45.4064, 11.8768"},
+  {"name":"Basilica of Saint Anthony","description":"A historic basilica in Padua.","latlng":"45.4061, 11.8808"},
+  {"name":"Piazza delle Erbe","description":"A central market square in Padua.","latlng":"45.4135, 11.8765"}
+]
+					]]></query>
+					<layout>
+						<text xml:lang="en"><![CDATA[\s('key="latlng"')f\rf]]></text>
+					</layout>
 				</content>
 				<content uuid="c4sHhypzM0UjizY20C0N9LP" origin="wGGpiW7IjjrFqapqVuZopW" type="form"
 					section="main" sequence="11">

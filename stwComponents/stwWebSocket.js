@@ -19,6 +19,7 @@
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWArea } from "../stwElements/stwArea.js";
 import { STWPage } from "../stwElements/stwPage.js";
+import { resolveAPIContent } from "../stwContents/stwAPI.js";
 import { newId } from "./stwIds.js";
 import { debugLog } from "./stwConfig.js";
 import { PlaceholderMap } from "./stwWBPL.js";
@@ -103,6 +104,10 @@ function handleWebSocket(request, socket, session, stwSessions) {
 				finalData.push({ method: "DELETE", id: resource });
 			} else {
 				const content = found;
+				if (resolveAPIContent(content)) {
+					finalData.push({ method: "DELETE", id: content.uuid });
+					continue;
+				}
 				try {
 					const response = await content.serve(
 						syntheticRequest,

@@ -14,10 +14,6 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 class STWList extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async render(request, session, records, contentPlaceholders = session.placeholders) {
 		if (!records.fields.length || !records.rows.length)
 			return "";

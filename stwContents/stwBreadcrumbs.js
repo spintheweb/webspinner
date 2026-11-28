@@ -14,10 +14,6 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 class STWBreadcrumbs extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async render(request, session, _records) {
 		let body = "";
 		for (let element = session.portal.find(session, new URL(request.url).pathname); element; element = element.parent)

@@ -97,29 +97,6 @@ class STWContent extends STWElement {
 		return localizedValue(this[name], session) ?? "";
 	}
 
-	/**
-	 * Retrieves the state of this content for the given session.
-	 * The state is stored in the session object.
-	 * @param session The current user session.
-	 * @returns The state object, or undefined if not stateful or no state is set.
-	 */
-	getState(session) {
-		return this.stateful ? session.states?.get(this.uuid) : void 0;
-	}
-
-	/**
-	 * Saves the state of this content for the given session.
-	 * The state is stored in the session object.
-	 * @param session The current user session.
-	 * @param state The state object to save.
-	 */
-	setState(session, state) {
-		if (this.stateful) {
-			if (!session.states) session.states = new Map();
-			session.states.set(this.uuid, state);
-		}
-	}
-
 	async serve(request, session, ref) {
 		if (!(this.isVisible(session) & 1) || (ref && !(ref.isVisible(session) & 1)))
 			return secureResponse(null, { status: 204 });

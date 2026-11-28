@@ -1,3 +1,35 @@
-.stwGeomap {
-	/* Content-specific styles using global color variables */
+.stwGeomapCanvas {
+	width: 100%;
+	height: 20rem;
+}
+
+dialog.stwGeomapFullscreen {
+	inset: 0;
+	width: 100vw;
+	height: 100vh;
+	height: 100dvh;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.stwGeomapFullscreen .stwGeomapCanvas {
+	height: 100%;
+}
+
+.stwGeomapCanvas .stwGeomapExpand {
+	display: block;
+	width: 30px;
+	min-width: 0;
+	height: 30px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: white;
+	color: black;
+	font-size: 22px;
+	line-height: 30px;
+	cursor: pointer;
 }

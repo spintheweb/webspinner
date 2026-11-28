@@ -288,24 +288,8 @@ function stwStartWebsocket() {
 			}
 		}
 
-		setup();
-		if (typeof _stwStudioApplyBlockStates === "function") _stwStudioApplyBlockStates();
-
-		// Load articles
-		document.body.querySelectorAll("article[href]").forEach((article) => {
-			stwWS.send(
-				JSON.stringify({
-					method: "PATCH",
-					resource: article.getAttribute("href"),
-					options: { placeholder: article.id },
-					search: window.location.search
-				}),
-			);
-			article.removeAttribute("href");
-		});
-
 		try {
-			await _stwLoadContentResources();
+			await _stwSetupContent();
 		} catch (error) {
 			console.error("Failed to load content resources:", error);
 		}
@@ -320,6 +304,23 @@ function stwStartWebsocket() {
 		stwWS = null;
 		setTimeout(stwStartWebsocket, 5000);
 	};
+}
+
+async function _stwSetupContent(root = document.body) {
+	setup();
+	if (typeof _stwStudioApplyBlockStates === "function") _stwStudioApplyBlockStates();
+	root.querySelectorAll("article[href]").forEach((article) => {
+		stwWS.send(
+			JSON.stringify({
+				method: "PATCH",
+				resource: article.getAttribute("href"),
+				options: { placeholder: article.id },
+				search: window.location.search
+			}),
+		);
+		article.removeAttribute("href");
+	});
+	await _stwLoadContentResources(root);
 }
 
 // --- Lazy editor loader utilities ---
@@ -347,9 +348,9 @@ function _stwLoadScript(src) {
 const _stwContentResources = new Map();
 const _stwInlineContentScripts = new Set();
 
-async function _stwLoadContentResources() {
-	const links = [...document.body.querySelectorAll("link[href]")];
-	const scripts = [...document.body.querySelectorAll("script")];
+async function _stwLoadContentResources(root = document.body) {
+	const links = [...root.querySelectorAll("link[href]")];
+	const scripts = [...root.querySelectorAll("script")];
 	const externalScripts = scripts.filter((script) => script.src);
 	const inlineScripts = scripts.filter((script) => !script.src);
 

@@ -15,10 +15,6 @@ import { STWContent } from "../stwElements/stwContent.js";
 import { secureResponse } from "../stwComponents/stwResponse.js";
 
 class STWLanguages extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	serve(_req, session) {
 		if (session.portal.langs.length == 1)
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));

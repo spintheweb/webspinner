@@ -16,10 +16,6 @@ import { secureResponse } from "../stwComponents/stwResponse.js";
 import { localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWScript extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	serve(_request, _session) {
 		if (!(this.isVisible(_session) & 1))
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));

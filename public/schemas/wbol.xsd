@@ -194,6 +194,7 @@
 
 	<xs:simpleType name="ContentKindType">
 		<xs:restriction base="xs:token">
+			<xs:enumeration value="api" />
 			<xs:enumeration value="error" />
 			<xs:enumeration value="text" />
 			<xs:enumeration value="table" />

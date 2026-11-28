@@ -30,7 +30,9 @@ import { STWList } from "../stwContents/stwList.js";
 import { STWMenus } from "../stwContents/stwMenus.js";
 import { STWLanguages } from "../stwContents/stwLanguages.js";
 import { STWForm } from "../stwContents/stwForm.js";
+import { STWGeomap } from "../stwContents/stwGeomap.js";
 import { STWShortcut } from "../stwContents/stwShortcut.js";
+import { STWAPI } from "../stwContents/stwAPI.js";
 import { STWText } from "../stwContents/stwText.js";
 import { STWTree } from "../stwContents/stwTree.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
@@ -51,6 +53,421 @@ import { handleWebSocket } from "../stwComponents/stwWebSocket.js";
 import { registerStudioConnection } from "../stwComponents/stwStudioEvents.js";
 import { executeAssistant } from "../stwComponents/stwAssistant.js";
 import { validateChanges } from "../stwComponents/stwAssistantPersistence.js";
+
+test("API content returns connector resources over HTTP without a WebSocket", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const api = new STWAPI({ uuid: "api-test", subtype: "Api", connector: "json" });
+	const shortcut = new STWShortcut({ uuid: "api-shortcut-test", subtype: "Shortcut", ref: api.uuid });
+	api.visibility.set("guest", true);
+	shortcut.visibility.set("guest", true);
+	STWIndex.set(api.uuid, api);
+	const session = new STWSession("api-test-session", {}, portal);
+	const request = async (path, method = "GET") => {
+		const req = new Request(`http://localhost${path}`, { method });
+		session.setPlaceholders(req);
+		return handleHttp(req, session, session.sessionId);
+	};
+	try {
+		portal.find = (_session, path) => path === "/api" ? api : shortcut;
+		api.query = JSON.stringify({ mime: "text/plain; charset=utf-8", content: "Caf\u00e9" });
+		let response = await request("/api");
+		assert.equal(response.status, 200);
+		assert.equal(response.headers.get("content-type"), "text/plain;charset=utf-8");
+		assert.match(response.headers.get("set-cookie"), /sessionId=api-test-session/);
+		assert.equal(await response.text(), "Caf\u00e9");
+
+		api.query = JSON.stringify({ mime: "application/pdf", content: "AP+A", encoding: "base64" });
+		response = await request("/shortcut");
+		assert.equal(response.status, 200);
+		assert.equal(response.headers.get("content-type"), "application/pdf");
+		assert.deepEqual(Buffer.from(await response.arrayBuffer()), Buffer.from([0, 255, 128]));
+
+		api.query = "[]";
+		response = await request("/api?stwActionToken=irrelevant");
+		assert.equal(response.status, 200);
+		assert.equal(await response.text(), "");
+		api.query = JSON.stringify({ mime: "text/plain", content: "" });
+		assert.equal(await (await request("/api")).text(), "");
+
+		for (const path of ["/api", "/shortcut"]) {
+			for (const method of ["POST", "PUT", "PATCH", "DELETE", "HEAD"]) {
+				response = await request(path, method);
+				assert.equal(response.status, 405);
+				assert.equal(response.headers.get("allow"), "GET");
+			}
+		}
+	} finally {
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+		STWIndex.delete(api.uuid);
+	}
+});
+
+test("API content is accessible through its actual localized path", async () => {
+	const portal = STWPortal.instance;
+	const page = new STWPage({ uuid: "api-route-page", slug: { en: "api-route-test" } });
+	const api = new STWAPI({
+		uuid: "czzzzzzzzzzzzzzzzzzzzz", subtype: "Api", slug: { en: "resource" }, connector: "json",
+		query: JSON.stringify({ mime: "text/plain", content: "route works" })
+	});
+	api.visibility.set("guest", true);
+	page.parent = portal;
+	api.parent = page;
+	page.children.push(api);
+	portal.children.push(page);
+	STWIndex.set(api.uuid, api);
+	const session = new STWSession("api-route-session", {}, portal);
+	try {
+		const req = new Request("http://localhost/api-route-test/resource");
+		session.setPlaceholders(req);
+		const response = await handleHttp(req, session, session.sessionId);
+		assert.equal(response.status, 200);
+		assert.equal(await response.text(), "route works");
+	} finally {
+		portal.children.splice(portal.children.indexOf(page), 1);
+		STWIndex.delete(api.uuid);
+	}
+});
+
+test("API content rejects connector failures and invalid response records", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const consoleError = console.error;
+	const api = new STWAPI({ uuid: "api-invalid", subtype: "Api", connector: "json" });
+	api.visibility.set("guest", true);
+	const session = new STWSession("api-invalid-session", {}, portal);
+	const errors = [];
+	try {
+		portal.find = () => api;
+		console.error = (...args) => errors.push(args);
+		for (const value of [
+			[{ mime: "text/plain", content: "a" }, { mime: "text/plain", content: "b" }],
+			[null], [1], [{}], [{ mime: "not a mime", content: "" }],
+			[{ mime: "text/plain", content: 1 }],
+			[{ mime: "text/plain", content: "", encoding: null }],
+			[{ mime: "text/plain", content: "", encoding: "hex" }],
+			[{ mime: "text/plain", content: "!!!", encoding: "base64" }],
+			[{ mime: "text/plain", content: "AB==", encoding: "base64" }]
+		]) {
+			api.query = JSON.stringify(value);
+			const response = await handleHttp(new Request("http://localhost/api"), session, session.sessionId);
+			assert.equal(response.status, 500, JSON.stringify(value));
+			assert.equal(await response.text(), "API content failed");
+		}
+		api.query = "{";
+		let response = await handleHttp(new Request("http://localhost/api"), session, session.sessionId);
+		assert.equal(response.status, 500);
+		assert.equal(await response.text(), "API content failed");
+		api.connector = "";
+		response = await handleHttp(new Request("http://localhost/api"), session, session.sessionId);
+		assert.equal(response.status, 500);
+		assert.equal(errors.length, 12);
+	} finally {
+		console.error = consoleError;
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+	}
+});
+
+test("API content and shortcuts enforce visibility before connector execution", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const command = STWConnectors.command;
+	const api = new STWAPI({ uuid: "api-private", subtype: "Api", connector: "json" });
+	const shortcut = new STWShortcut({ uuid: "api-private-shortcut", subtype: "Shortcut", ref: api.uuid });
+	STWIndex.set(api.uuid, api);
+	const session = new STWSession("api-private-session", {}, portal);
+	let calls = 0;
+	try {
+		portal.find = (_session, path) => path === "/api" ? api : shortcut;
+		STWConnectors.command = async () => { calls++; return { rows: [] }; };
+		for (const [apiVisible, shortcutVisible, path, status] of [
+			[false, true, "/api", 403], [false, true, "/shortcut", 403],
+			[true, false, "/shortcut", 403], [true, true, "/shortcut", 200]
+		]) {
+			api.visibility.set("guest", apiVisible);
+			shortcut.visibility.set("guest", shortcutVisible);
+			const response = await handleHttp(new Request(`http://localhost${path}`), session, session.sessionId);
+			assert.equal(response.status, status);
+		}
+		assert.equal(calls, 1);
+	} finally {
+		STWConnectors.command = command;
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+		STWIndex.delete(api.uuid);
+	}
+});
+
+test("WebSocket page and content refreshes do not execute API content or shortcuts", async () => {
+	const portal = STWPortal.instance;
+	const previousFind = portal.find;
+	const hadOwnFind = Object.hasOwn(portal, "find");
+	const command = STWConnectors.command;
+	const api = new STWAPI({ uuid: "api-socket", subtype: "Api", connector: "json" });
+	const shortcut = new STWShortcut({ uuid: "api-socket-shortcut", subtype: "Shortcut", ref: api.uuid });
+	const page = new STWPage({ uuid: "api-socket-page" });
+	page.isVisible = () => 1;
+	page.contents = () => ["api", "shortcut"];
+	STWIndex.set(api.uuid, api);
+	const session = new STWSession("api-socket-session", {}, portal);
+	const handlers = new Map(), messages = [];
+	const socket = {
+		on: (event, handler) => handlers.set(event, handler),
+		send: message => messages.push(JSON.parse(message))
+	};
+	let calls = 0;
+	try {
+		portal.find = (_session, path) => ({ "/page": page, api, shortcut })[path];
+		STWConnectors.command = async () => { calls++; return { rows: [] }; };
+		handleWebSocket(new Request("http://localhost/?tab=api-socket"), socket, session, new Map());
+		for (const resource of ["/page", "api", "shortcut"])
+			await handlers.get("message")(Buffer.from(JSON.stringify({ method: "PATCH", resource, options: {}, search: {} })));
+		assert.equal(calls, 0);
+		assert.deepEqual(messages.map(({ method, id }) => ({ method, id })), [
+			{ method: "DELETE", id: api.uuid }, { method: "DELETE", id: shortcut.uuid },
+			{ method: "DELETE", id: api.uuid }, { method: "DELETE", id: shortcut.uuid }
+		]);
+	} finally {
+		session.sockets.delete("api-socket");
+		handlers.get("close")();
+		STWConnectors.command = command;
+		if (hadOwnFind) portal.find = previousFind;
+		else delete portal.find;
+		STWIndex.delete(api.uuid);
+	}
+});
+
+function geomapTestControls(markers = Buffer.from("[]").toString("base64")) {
+	const canvases = new Map(), dialogs = [], buttons = [], selectors = [];
+	const control = () => ({ addTo(map) { this.onAdd(map); } });
+	control.layers = choices => ({ addTo(map) { selectors.push({ choices, map }); } });
+	return {
+		canvases, dialogs, buttons, selectors,
+		document: {
+			getElementById(id) {
+				if (!canvases.has(id)) canvases.set(id, {
+					dataset: { stwMarkers: markers },
+					parentElement: "inline",
+					before(dialog) { dialog.canvas = this; }
+				});
+				return canvases.get(id);
+			},
+			createElement() {
+				const events = {};
+				const dialog = {
+					open: false,
+					addEventListener: (event, handler) => { events[event] = handler; },
+					showModal() { this.open = true; },
+					append(canvas) { canvas.parentElement = this; },
+					after(canvas) { canvas.parentElement = "inline"; },
+					close() { this.open = false; events.close(); },
+					cancel() { events.cancel({ preventDefault() {} }); }
+				};
+				dialogs.push(dialog);
+				return dialog;
+			}
+		},
+		control,
+		DomUtil: {
+			create(tag) {
+				if (tag !== "button") return {};
+				const events = {}, attributes = {};
+				const button = {
+					attributes,
+					setAttribute: (name, value) => { attributes[name] = value; },
+					addEventListener: (event, handler) => { events[event] = handler; },
+					click: () => events.click(),
+					focus() {}
+				};
+				buttons.push(button);
+				return button;
+			}
+		},
+		DomEvent: { disableClickPropagation() {} }
+	};
+}
+
+test("Geomap selects configured layers and offers choices only when mode is absent", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const records = { fields: [], rows: [] };
+	const maps = [
+		{ uuid: "default" },
+		{ uuid: "topo", layout: { en: `\\s('mode="topographic" ')` } },
+		{ uuid: "hot", layout: { en: `\\s('mode="@@mapmode" ')` } }
+	];
+	const html = await Promise.all(maps.map(content => new STWGeomap({ ...content, subtype: "Geomap" })
+		.render(null, session, records, new Map([...session.placeholders, ["@@mapmode", "humanitarian"]]))));
+	const scripts = html.map(fragment => fragment.match(/<script name="STWGeomap" onload="([^"]+)">([\s\S]*?)<\/script>/));
+	assert.ok(scripts.every(Boolean));
+	assert.ok(scripts.every(script => script[2] === scripts[0][2]));
+
+	const loaded = [], controls = geomapTestControls();
+	const context = {
+		document: controls.document,
+		atob, TextDecoder, Uint8Array,
+		L: {
+			control: controls.control, DomUtil: controls.DomUtil, DomEvent: controls.DomEvent,
+			map: id => ({ setView() { return this; }, on() {}, id }),
+			tileLayer: (url, options) => ({ addTo: map => loaded.push({ id: map.id, url, options }) })
+		}
+	};
+	runInNewContext(scripts[0][2], context);
+	for (const script of scripts) runInNewContext(script[1], context);
+	assert.deepEqual(loaded.map(layer => layer.id), ["Mapdefault", "Maptopo", "Maphot"]);
+	assert.match(loaded[0].url, /^https:\/\/tile\.openstreetmap\.org\//);
+	assert.match(loaded[1].url, /^https:\/\/\{s\}\.tile\.opentopomap\.org\//);
+	assert.match(loaded[2].url, /^https:\/\/\{s\}\.tile\.openstreetmap\.fr\/hot\//);
+	assert.match(loaded[1].options.attribution, /OpenTopoMap/);
+	assert.match(loaded[2].options.attribution, /Humanitarian OpenStreetMap Team/);
+	assert.equal(loaded[1].options.maxNativeZoom, 17);
+	assert.equal(controls.selectors.length, 1);
+	assert.equal(controls.selectors[0].map.id, "Mapdefault");
+	assert.deepEqual(Object.keys(controls.selectors[0].choices), ["Standard", "Topographic", "Humanitarian"]);
+});
+
+test("Geomap window control restores the map and resizes Leaflet on close", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const html = await new STWGeomap({ uuid: "window", subtype: "Geomap" })
+		.render(null, session, { fields: [], rows: [] });
+	const script = html.match(/<script name="STWGeomap" onload="([^"]+)">([\s\S]*?)<\/script>/);
+	const controls = geomapTestControls();
+	let resizes = 0;
+	const context = {
+		document: controls.document, atob, TextDecoder, Uint8Array,
+		L: {
+			control: controls.control, DomUtil: controls.DomUtil, DomEvent: controls.DomEvent,
+			map: () => ({ setView() { return this; }, on() {}, invalidateSize() { resizes++; } }),
+			tileLayer: () => ({ addTo() {} })
+		}
+	};
+	runInNewContext(script[2], context);
+	runInNewContext(script[1], context);
+	const canvas = controls.canvases.get("Mapwindow");
+	const [dialog] = controls.dialogs, [button] = controls.buttons;
+	button.click();
+	assert.equal(dialog.open, true);
+	assert.equal(canvas.parentElement, dialog);
+	assert.equal(button.attributes["aria-pressed"], "true");
+	button.click();
+	assert.equal(dialog.open, false);
+	assert.equal(canvas.parentElement, "inline");
+	assert.equal(button.attributes["aria-pressed"], "false");
+	button.click();
+	dialog.cancel();
+	assert.equal(canvas.parentElement, "inline");
+	assert.equal(resizes, 4);
+});
+
+test("Geomap reports unsupported modes", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const map = new STWGeomap({ uuid: "invalid", subtype: "Geomap", layout: { en: `\\s('mode="satellite" ')` } });
+	await assert.rejects(map.render(null, session, { fields: [], rows: [] }), /Unsupported Geomap mode: satellite/);
+});
+
+test("Geomap renders connector rows as markers with row-specific popup layouts", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const map = new STWGeomap({
+		uuid: "markers", subtype: "Geomap",
+		layout: { en: `\\s('key="LATLNG" ')y('@@name')\\r y('@@value')j('globalThis.popupLoaded = true;')` }
+	});
+	const records = {
+		fields: ["latlng", "name", "value"],
+		rows: [
+			{ latlng: "0, -0.5", name: "First", value: 0 },
+			{ latlng: "45.4, 11.8", name: "Caf\u00e9", value: "</script>" }
+		]
+	};
+	const html = await map.render(null, session, records);
+	const encoded = html.match(/data-stw-markers="([^"]+)"/)[1];
+	const markers = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+	assert.deepEqual(markers.map(marker => marker.position), [[0, -0.5], [45.4, 11.8]]);
+	assert.match(markers[0].HTML, /First/);
+	assert.match(markers[0].HTML, /0/);
+	assert.match(markers[1].HTML, /Caf\u00e9/);
+	assert.match(markers[1].HTML, /<\/script>/);
+	assert.doesNotMatch(html, /Caf\u00e9/);
+
+	const pins = [], views = [], handlers = {};
+	const setupRoots = [];
+	const leafletMap = {
+		setView(position, zoom) { views.push({ position: [...position], zoom }); return this; },
+		fitBounds(bounds, options) { views.push({ bounds: Array.from(bounds, position => [...position]), maxZoom: options.maxZoom }); },
+		on(event, handler) { handlers[event] = handler; }
+	};
+	const controls = geomapTestControls(encoded);
+	const context = {
+		document: controls.document,
+		atob, TextDecoder, Uint8Array,
+		_stwSetupContent: async root => { setupRoots.push(root); },
+		L: {
+			control: controls.control, DomUtil: controls.DomUtil, DomEvent: controls.DomEvent,
+			map: () => leafletMap,
+			tileLayer: () => ({ addTo() {} }),
+			marker: position => ({
+				addTo() {
+					const pin = { position: [...position] };
+					pins.push(pin);
+					return { bindPopup: html2 => { pin.html = html2; } };
+				}
+			})
+		}
+	};
+	const script = html.match(/<script name="STWGeomap" onload="([^"]+)">([\s\S]*?)<\/script>/);
+	runInNewContext(script[2], context);
+	runInNewContext(script[1], context);
+	assert.deepEqual(pins.map(pin => pin.position), [[0, -0.5], [45.4, 11.8]]);
+	assert.equal(pins[0].html, markers[0].HTML);
+	assert.equal(pins[1].html, markers[1].HTML);
+	assert.deepEqual(views[1], { bounds: [[0, -0.5], [45.4, 11.8]], maxZoom: 13 });
+	const popupRoot = {};
+	await handlers.popupopen({ popup: { getElement: () => popupRoot } });
+	assert.deepEqual(setupRoots, [popupRoot]);
+});
+
+test("Geomap reports missing coordinate fields and invalid coordinates", async () => {
+	const session = { placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "", tz: "UTC" };
+	const createMap = layout => new STWGeomap({ uuid: "bad-coordinates", subtype: "Geomap", layout: { en: layout } });
+	const records = value => ({ fields: ["latlng"], rows: [{ latlng: value }] });
+	await assert.rejects(createMap("").render(null, session, records("0,0")), /requires a coordinate field/);
+	await assert.rejects(createMap(`\\s('key="other"')`).render(null, session, records("0,0")), /coordinate field not found: other/);
+	for (const value of ["", ",0", "91,0", "0,181", "NaN,0", "1,2,3", null])
+		await assert.rejects(createMap(`\\s('key="latlng"')`).render(null, session, records(value)), /Invalid coordinates in Geomap record 1/);
+});
+
+test("Geomap centers a single marker and gives popup actions their own form", async () => {
+	const session = { sessionId: "geomap-session", placeholders: new Map([["@@stwlanguage", "en"]]), baseurl: "localhost", tz: "UTC" };
+	const map = new STWGeomap({
+		uuid: "single-marker", subtype: "Geomap",
+		layout: { en: `\\s('key="latlng"')b('/;stwsubmit')t('Submit')` }
+	});
+	const html = await map.render(null, session, { fields: ["latlng"], rows: [{ latlng: "-12, 0" }] });
+	const encoded = html.match(/data-stw-markers="([^"]+)"/)[1];
+	const [marker] = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+	assert.match(marker.HTML, /^<form id="stwFAsingle-marker">/);
+	assert.match(marker.HTML, /data-stw-action-token=/);
+	assert.doesNotMatch(html, /data-stw-action-token/);
+	const views = [];
+	const controls = geomapTestControls(encoded);
+	const context = {
+		document: controls.document,
+		atob, TextDecoder, Uint8Array,
+		L: {
+			control: controls.control, DomUtil: controls.DomUtil, DomEvent: controls.DomEvent,
+			map: () => ({ setView(position, zoom) { views.push({ position: [...position], zoom }); return this; }, on() {} }),
+			tileLayer: () => ({ addTo() {} }),
+			marker: () => ({ addTo: () => ({ bindPopup() {} }) })
+		}
+	};
+	const script = html.match(/<script name="STWGeomap" onload="([^"]+)">([\s\S]*?)<\/script>/);
+	runInNewContext(script[2], context);
+	runInNewContext(script[1], context);
+	assert.deepEqual(views[1], { position: [-12, 0], zoom: 13 });
+});
 
 test("WBLL multiline inputs select supported editor formats", async () => {
 	const placeholders = new Map([["@@value", "<tag>& text"], ["@@stwlanguage", "en"]]);
@@ -2048,6 +2465,29 @@ test("connector-backed form submission returns action errors to the client", asy
 	}
 });
 
+test("form submission without a connector reports an error", async () => {
+	const id = "submit-missing-connector";
+	const content = new STWContent({ uuid: id, subtype: "Form" });
+	content.visibility.set("guest", true);
+	STWIndex.set(id, content);
+	const session = new STWSession("submit-missing-session", {}, STWPortal.instance);
+	const token = signAction({ action: "stwsubmit", args: [], origin: id, redirect: "http://localhost/" }, session.sessionId);
+	const formData = new FormData();
+	formData.set("stwAction", "stwsubmit");
+	formData.set("stwActionToken", token);
+	formData.set("stwOrigin", id);
+	const consoleError = console.error;
+	try {
+		console.error = () => {};
+		const response = await handleHttp(new Request("http://localhost/submit", { method: "POST", body: formData }), session, session.sessionId);
+		assert.equal(response.status, 400);
+		assert.equal(await response.text(), "stwsubmit requires a connector");
+	} finally {
+		console.error = consoleError;
+		STWIndex.delete(id);
+	}
+});
+
 test("actions require signed tokens and RBV visibility", async () => {
 	const id = `hidden-action-${Date.now()}`;
 	const content = new STWContent({ uuid: id, subtype: "Text", slug: { en: "hidden-action" } });
@@ -3164,6 +3604,13 @@ test("Node connector runs WBPL-expanded queries and actions and reports failures
 			query: 'const value = "@value"; console.log(JSON.stringify([{ value }]))'
 		});
 		assert.deepEqual(query.rows, [{ value: "hello" }]);
+		const api = new STWAPI({
+			uuid: "node-api", subtype: "Api", connector: "node",
+			query: 'const value = "@value"; console.log(JSON.stringify({ mime: "text/plain", content: value }))'
+		});
+		api.visibility.set("guest", true);
+		const response = await api.serve(null, { ...session, roles: ["guest"], portal: STWPortal.instance });
+		assert.equal(await response.text(), "hello");
 		const action = await STWConnectors.executeAction(session, "node",
 			'const value = "@value"; console.log(JSON.stringify({ value }))', "POST");
 		assert.deepEqual(action.rows, [{ value: "hello" }]);

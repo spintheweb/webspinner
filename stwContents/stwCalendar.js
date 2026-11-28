@@ -14,10 +14,6 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 class STWCalendar extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async render(_request, session, records) {
 		const fields = records.fields;
 		const firstRow = records.rows[0];

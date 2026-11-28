@@ -4,6 +4,20 @@ This folder contains content modules. Each file defines a specific type of conte
 
 ---
 
+## stwAPI.js
+
+Implements the `STWAPI` content type. A GET request executes its connector and returns the resource directly over HTTP, subject to content visibility. The connector must return no records (an empty 200 response) or one record with string fields `mime` and `content`. The optional `encoding` field is `utf8` (default) or `base64`; Base64 must use standard padded encoding. Invalid records and connector errors return 500 and are logged. Other HTTP methods return 405. API content is not rendered through WebSockets.
+
+For example, a Node connector command can return text:
+
+```js
+console.log(JSON.stringify({ mime: "text/plain; charset=utf-8", content: "Hello" }));
+```
+
+For binary resources, return the bytes encoded as Base64, for example `{ "mime": "application/pdf", "content": "...", "encoding": "base64" }`. Include a charset in `mime` when clients need to know the text encoding. A shortcut to an API is also served directly, provided both the shortcut and target are visible.
+
+---
+
 ## stwAccordion.js
 
 Implements the `STWAccordion` content type. Displays localized, expandable sections that load referenced content when opened, with optional links and parameters.
@@ -36,7 +50,13 @@ Implements the `STWForm` content type. Renders dynamic HTML forms for data input
 
 ## stwGeomap.js
 
-Implements the `STWGeomap` content type. Displays interactive maps and geospatial data using OpenLayers.
+Implements the `STWGeomap` content type. Displays an interactive OpenStreetMap using Leaflet. The `.stwGeomapCanvas` container defaults to a height of `20rem`.
+
+The WBLL setting `\s('mode="topographic" ')` fixes the map style to `standard`, `topographic` (OpenTopoMap), or `humanitarian` (OpenStreetMap France). Without a `mode`, the map starts with `standard` and provides a layer selector. Tile providers have their own usage policies and attribution requirements.
+
+The expand control fills the browser window; use it again or press Escape to restore the map.
+
+For connector records, set `key` to the coordinate field, e.g. `\s('key="latlng" ')`. Each value must be a `latitude, longitude` string; the remaining layout is rendered for each marker's popup using that record's placeholders. Missing fields or invalid coordinates produce a content error. The map fits the markers, or retains its default view when there are no records.
 
 ---
 

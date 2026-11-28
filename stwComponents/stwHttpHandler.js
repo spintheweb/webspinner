@@ -14,6 +14,7 @@ import { getCookies, serveFile, setCookie } from "./stwNode.js";
 import { STWPortal } from "../stwElements/stwPortal.js";
 import { STWIndex } from "../stwElements/stwIndex.js";
 import { STWContent } from "../stwElements/stwContent.js";
+import { resolveAPIContent } from "../stwContents/stwAPI.js";
 import { secureResponse } from "./stwResponse.js";
 import { envGet } from "./stwConfig.js";
 import { actionRouter } from "./stwActions.js";
@@ -53,13 +54,23 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 		return await handleWbolApi(request, session);
 	}
 	const element = STWPortal.instance.find(session, pathname);
+	const api = resolveAPIContent(element);
+	if (api && request.method !== "GET")
+		return secureResponse("Method not allowed", { status: 405, headers: { Allow: "GET" } });
 	let response = secureResponse(null, { status: 204 });
-	if (request.method === "GET" && !new URL(request.url).searchParams.has("stwActionToken")) {
+	if (request.method === "GET" && (api || !new URL(request.url).searchParams.has("stwActionToken"))) {
 		if (!element && !pathname.includes("/."))
 			response = await serveFile(request, `./public${pathname}`);
 		else if (element?.type === "Page" || element?.type === "Area" || element?.type === "Portal")
 			response = await element.serve(request, session);
-		else if (element?.type && session.sockets.size > 0) {
+		else if (api) {
+			try {
+				response = await api.serve(request, session, element === api ? undefined : element);
+			} catch (error) {
+				console.error(`API content ${api.uuid} failed:`, error);
+				response = secureResponse("API content failed", { status: 500 });
+			}
+		} else if (element?.type && session.sockets.size > 0) {
 			let res;
 			try {
 				res = await element.serve(request, session);
@@ -171,8 +182,7 @@ async function handleHttp(request, session, sessionId, rotateSession) {
 				const result = await actionRouter.execute(ctx);
 				if (!result.ok && result.error) {
 					session.placeholders.set("error", result.error.message);
-					if (["stwinsert", "stwupdate", "stwdelete"].includes(ctx.action) ||
-						ctx.action === "stwsubmit" && ctx.args?.length > 0) {
+					if (["stwinsert", "stwupdate", "stwdelete", "stwsubmit"].includes(ctx.action)) {
 						console.error(`Action ${ctx.action} failed:`, result.error.message);
 						return secureResponse(result.error.message, { status: 400 });
 					}

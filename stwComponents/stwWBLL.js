@@ -1124,16 +1124,9 @@ function Field(runtime, separator = "") {
 	const fieldName = runtime.Fields[runtime.FldIndex++] || "";
 	return `${separator ? fieldName + separator : ""}${runtime.Placeholders.get(`@@${fieldName.toLowerCase()}`)?.toString() || ""}`;
 }
-function isTruthy(val) {
-	if (!val || val === "false") return false;
-	if (val === "true") return true;
-	const num = Number(val);
-	return !isNaN(num) && num !== 0;
-}
 //#endregion
 
 export {
 	FLAGS,
-	STWLayout,
-	isTruthy
+	STWLayout
 };

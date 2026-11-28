@@ -14,10 +14,6 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 class STWGraph extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async render(_request, _session, _records) {
 		return `TODO: Render ${this.constructor.name} <pre>${_records}</pre>`;
 	}

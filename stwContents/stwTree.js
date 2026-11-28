@@ -14,10 +14,6 @@ import { registerElement } from "../stwComponents/stwFactory.js";
 import { STWContent } from "../stwElements/stwContent.js";
 
 class STWTree extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async render(_request, session, records) {
 		if (!records.fields?.length || !records.rows?.length)
 			return "";

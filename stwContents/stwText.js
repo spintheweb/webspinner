@@ -19,10 +19,6 @@ import { debugLog } from "../stwComponents/stwConfig.js";
 import { localizedValue } from "../stwComponents/stwLocalization.js";
 
 class STWText extends STWContent {
-	constructor(content) {
-		super(content);
-	}
-
 	async serve(req, session, ref) {
 		if (!(this.isVisible(session) & 1) || (ref && !(ref.isVisible(session) & 1))) {
 			return new Promise((resolve) => resolve(secureResponse(null, { status: 204 })));
